@@ -1,0 +1,117 @@
+/* --- Global Layout & Reset --- */
+body {
+  font-family: "Segoe UI", Tahoma, sans-serif;
+  background: #f4f7f6;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  margin: 0;
+}
+
+/* --- Shared Card Components --- */
+.reg-card,
+.welcome-card {
+  background: #fff;
+  padding: 40px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 400px;
+  box-sizing: border-box;
+}
+
+.logo {
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 20px;
+}
+
+.logo span {
+  color: #233dd2;
+}
+
+/* --- Form Elements (Registration) --- */
+input,
+select {
+  width: 100%;
+  padding: 12px;
+  margin: 8px 0;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  box-sizing: border-box;
+  font-size: 14px;
+}
+
+.btn-reg {
+  background: #233dd2;
+  color: white;
+  border: none;
+  padding: 14px;
+  width: 100%;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+  margin-top: 15px;
+  font-weight: bold;
+  transition: 0.3s;
+}
+
+.btn-reg:hover:not(:disabled) {
+  background: #1a2eb0;
+}
+
+.btn-reg:disabled {
+  background: #cccccc;
+  color: #666;
+  cursor: not-allowed;
+}
+
+/* --- Validation & Feedback --- */
+.error-msg {
+  color: #d9534f;
+  font-size: 13px;
+  margin-bottom: 15px;
+  padding: 10px;
+  background: #fdf2f2;
+  border-left: 4px solid #d9534f;
+}
+
+#strength-meter {
+  font-size: 12px;
+  margin-bottom: 10px;
+}
+
+.footer-links {
+  text-align: center;
+  margin-top: 20px;
+  font-size: 14px;
+}
+
+/* --- Welcome Page Specific Styles --- */
+.welcome-card {
+  text-align: center;
+  max-width: 450px; /* Slightly wider welcome card */
+}
+
+.welcome-card .logo {
+  text-align: center; /* Center logo on welcome page */
+}
+
+.success-icon {
+  font-size: 50px;
+  margin-bottom: 10px;
+}
+
+.user-name {
+  color: #233dd2;
+  font-weight: bold;
+  font-size: 1.8em;
+  display: block;
+  margin: 15px 0;
+}
+
+.welcome-card p {
+  color: #666;
+  line-height: 1.5;
+}
