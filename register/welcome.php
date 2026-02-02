@@ -26,7 +26,8 @@ $pageTitle = "欢迎 - StarAdmin";
     
     <p>欢迎加入我们，</p>
     
-    <span class="user-name"><?php echo htmlspecialchars($_SESSION['user_name']); ?></span>
+    <?php $displayUserName = $_SESSION['user_name'] ?? ''; ?>
+    <span class="user-name"><?php echo htmlspecialchars($displayUserName); ?></span>
     
     <p>您现在已自动登录，可以开始探索您的后台面板了。</p>
 </div>
