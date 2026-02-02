@@ -4,17 +4,6 @@ require_once __DIR__ . '/../init.php';
 require_once __DIR__ . '/../global-config.php';
 require_once __DIR__ . '/../functions.php';
 
-$connHost = isset($host) ? $host : dbhost;
-$connUser = isset($user) ? $user : dbuser;
-$connPass = isset($pass) ? $pass : dbpwd;
-$connDb = isset($db) ? $db : dbname;
-
-$conn = @mysqli_connect($connHost, $connUser, $connPass, $connDb);
-if (!$conn) {
-    die("数据库连接失败: " . mysqli_connect_error());
-}
-mysqli_set_charset($conn, 'utf8mb4');
-
 $message = "";
 $name = "";
 $email = "";
@@ -29,7 +18,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $gender = $_POST['gender'] ?? "";
     $birthday = $_POST['birthday'] ?? "";
 
-    // Validation Logic
+// Validation Logic
     if (empty($name) || empty($email) || empty($password)) {
         $message = "请填写所有必填字段";
     } 
@@ -39,21 +28,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     elseif (!isStrongPassword($password)) {
         $message = "密码不符合要求 (最低" . MIN_PWD_LENGTH . "个字符，需包含大小写字母、数字和特殊字符)";
     } 
-    // Age Validation (If birthday is provided)
+    // Simplified Age Validation
     elseif (!empty($birthday)) {
-        $today = new DateTime();
-        $birthDate = new DateTime($birthday);
-        
-        if ($birthDate > $today) {
+        $ageCheck = checkAgeRequirement($birthday, MIN_AGE_REQUIREMENT);
+
+        if ($ageCheck === "future_date") {
             $message = "生日不能晚于今天";
-        } else {
-            // Check if user meets the minimum requirement
-            $ageCheck = checkAgeRequirement($birthday, MIN_AGE_REQUIREMENT);
-            if ($ageCheck === "future_date") {
-                $message = "生日不能晚于今天";
-            } elseif ($ageCheck === false) {
-                $message = "您必须年满" . MIN_AGE_REQUIREMENT . "岁才能注册";
-            }
+        } elseif ($ageCheck === false) {
+            $message = "您必须年满" . MIN_AGE_REQUIREMENT . "岁才能注册";
         }
     }
 

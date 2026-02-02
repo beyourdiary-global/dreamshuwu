@@ -166,8 +166,36 @@ define('DEBIT_NOTES_INV', 'debit_notes_invoice');
 define('DEBIT_INV_PROD', 'debit_inv_products');
 define('LAZADA_ORDER_REQ', 'lazada_order_request');
 
-$connect = @mysqli_connect(dbhost, dbuser, dbpwd, dbname);
-$finance_connect = @mysqli_connect(dbhost, dbuser, dbpwd, dbFinance);
+$isLocal = in_array($_SERVER['SERVER_NAME'] ?? '', ['localhost', '127.0.0.1'], true);
+
+if (!$isLocal) {
+	$connect = @mysqli_connect(dbhost, dbuser, dbpwd, dbname);
+	$finance_connect = @mysqli_connect(dbhost, dbuser, dbpwd, dbFinance);
+}
 
 //define session
+
+// Reusable DB credentials for local mysqli usage
+$host = 'localhost';
+$db   = 'star_admin';
+$user = 'root';
+$pass = '';
+
+// 1. Determine the correct credentials
+$connHost = isset($host) ? $host : (defined('dbhost') ? dbhost : 'localhost');
+$connUser = isset($user) ? $user : (defined('dbuser') ? dbuser : 'root');
+$connPass = isset($pass) ? $pass : (defined('dbpwd') ? dbpwd : '');
+$connDb   = isset($db)   ? $db   : (defined('dbname') ? dbname : '');
+
+// 2. Establish connection
+$conn = @mysqli_connect($connHost, $connUser, $connPass, $connDb);
+
+// 3. Check connection
+if (!$conn) {
+    // Note: In production, consider logging this instead of die() for better UX
+    die("数据库连接失败: " . mysqli_connect_error());
+}
+
+// 4. Set charset
+mysqli_set_charset($conn, 'utf8mb4');
 ?>

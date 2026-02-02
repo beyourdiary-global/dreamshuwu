@@ -2,7 +2,7 @@
 /**
  * header.php
  * Shared HTML head component.
- * * Variables expected before inclusion:
+ * Variables expected before inclusion:
  * @var string $pageTitle - The title shown in the browser tab.
  * @var string $customCSS - The path/filename of the stylesheet (e.g., 'style.css').
  */
