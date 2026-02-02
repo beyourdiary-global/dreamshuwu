@@ -25,28 +25,43 @@ document.addEventListener("DOMContentLoaded", () => {
   pwd.addEventListener("input", () => {
     const val = pwd.value;
     let score = 0;
-    if (val.length >= 8) score++;
-    if (/[A-Z]/.test(val)) score++;
-    if (/[0-9]/.test(val)) score++;
-    if (/[\W_]/.test(val)) score++;
+    if (val.length > 0) {
+      if (val.length >= 8) score++;
+      if (/[A-Z]/.test(val)) score++;
+      if (/[0-9]/.test(val)) score++;
+      if (/[\W_]/.test(val)) score++;
+    }
 
     const levels = ["未填写", "弱", "中", "强", "极强"];
     const colors = ["#888", "#d9534f", "#f0ad4e", "#5cb85c", "#2e7d32"];
 
-    strengthText.innerText = levels[score] || "极强";
+    strengthText.innerText = levels[score];
     strengthText.style.color = colors[score];
   });
 
-  // 3. PREVENT DUPLICATE SUBMISSION
-  regForm.addEventListener("submit", () => {
-    setTimeout(() => {
-      submitBtn.disabled = true;
-      submitBtn.innerText = "注册中...";
-      submitBtn.style.opacity = "0.8";
-      submitBtn.style.cursor = "not-allowed";
-    }, 0);
+  // 3. RESOLVED: PREVENT DUPLICATE SUBMISSION
+  let isSubmitting = false;
+
+  regForm.addEventListener("submit", (e) => {
+    if (isSubmitting) {
+      e.preventDefault();
+      return;
+    }
+
+    if (!regForm.checkValidity()) {
+      e.preventDefault();
+      regForm.reportValidity();
+      return;
+    }
+
+    isSubmitting = true;
+
+    submitBtn.disabled = true;
+    submitBtn.innerText = "注册中...";
+    submitBtn.style.opacity = "0.8";
+    submitBtn.style.cursor = "not-allowed";
   });
 
-  // Run validation on load (handles browser autofill and sticky form persistence)
+  // Run validation on load
   validateForm();
 });
