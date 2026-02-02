@@ -87,6 +87,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 if (session_status() !== PHP_SESSION_ACTIVE) {
                     session_start();
                 }
+                $userId = mysqli_insert_id($conn);
+                $_SESSION['user_id'] = $userId ? (int)$userId : null;
                 $_SESSION['user_name'] = $name;
                 $_SESSION['logged_in'] = true;
 
