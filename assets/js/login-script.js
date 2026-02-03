@@ -18,7 +18,8 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   const showError = (code) => {
-    errorBox.textContent = messages[code] || messages.LOGIN_FAILED;
+    // The server might return the actual message or an error code
+    errorBox.textContent = messages[code] || code || messages.LOGIN_FAILED;
     errorBox.style.display = "block";
   };
 
@@ -27,11 +28,13 @@ document.addEventListener("DOMContentLoaded", () => {
     errorBox.style.display = "none";
   };
 
-  toggle.addEventListener("click", () => {
-    const isHidden = password.type === "password";
-    password.type = isHidden ? "text" : "password";
-    toggle.textContent = isHidden ? "隐藏" : "显示";
-  });
+  if (toggle) {
+    toggle.addEventListener("click", () => {
+      const isHidden = password.type === "password";
+      password.type = isHidden ? "text" : "password";
+      toggle.textContent = isHidden ? "隐藏" : "显示";
+    });
+  }
 
   form.addEventListener("submit", (e) => {
     e.preventDefault();
@@ -45,7 +48,11 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    // --- UPDATED: Reusing the global regex pattern from header.php ---
+    const globalRegex = window.StarAdminConfig
+      ? window.StarAdminConfig.emailRegex
+      : null;
+
     if (!emailRegex.test(emailVal)) {
       showError("INVALID_EMAIL");
       return;
@@ -72,9 +79,10 @@ document.addEventListener("DOMContentLoaded", () => {
     })
       .done((resp) => {
         if (resp && resp.success) {
-          window.location.href = resp.redirect || "welcome.php";
+          window.location.href = resp.redirect || "Home.php";
           return;
         }
+        // Handle response errors
         showError(resp && resp.message ? resp.message : "LOGIN_FAILED");
       })
       .fail(() => {
@@ -82,7 +90,7 @@ document.addEventListener("DOMContentLoaded", () => {
       })
       .always(() => {
         btn.disabled = false;
-        btn.textContent = "登录";
+        btn.textContent = "立即登录";
       });
   });
 });
