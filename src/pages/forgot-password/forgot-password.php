@@ -55,8 +55,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     $message = "重置链接已发送，请检查您的邮箱";
                     $msgType = "success";
                 } else {
-                    $whitelist = ['127.0.0.1', '::1', 'localhost'];
-                    if (in_array($_SERVER['SERVER_NAME'], $whitelist)) {
+                    if (in_array($_SERVER['SERVER_NAME'], LOCAL_WHITELIST, true)) {
                         $message = "<strong>本地测试模式:</strong><br><a href='" . $resetLink . "'>[点击这里重置密码]</a>";
                         $msgType = "warning";
                     } else {

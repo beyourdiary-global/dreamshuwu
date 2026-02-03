@@ -213,6 +213,16 @@ defined('MAIL_FROM_NAME') || define('MAIL_FROM_NAME', 'StarAdmin Support');
 // --- Password Reset Table Constant ---
 defined('PWD_RESET') || define('PWD_RESET', 'password_resets');
 
+// --- Regex Patterns for Validation ---
+defined('EMAIL_REGEX_PATTERN') || define('EMAIL_REGEX_PATTERN', '^[^\s@]+@[^\s@]+\.[^\s@]+$');
+defined('PWD_REGEX_PATTERN')   || define('PWD_REGEX_PATTERN', '^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$');
+
+// --- Environment Configuration ---
+// List of hostnames/IPs considered as local development environments
+defined('LOCAL_WHITELIST') || define('LOCAL_WHITELIST', ['127.0.0.1', '::1', 'localhost']);
+// Central source for the company/website name used in emails and UI
+defined('WEBSITE_NAME') || define('WEBSITE_NAME', 'StarAdmin');
+
 $isLocalEnvironment = in_array($_SERVER['SERVER_NAME'] ?? '', ['localhost', '127.0.0.1'], true);
 
 if ($isLocalEnvironment) {

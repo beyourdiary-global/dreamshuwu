@@ -8,6 +8,11 @@ document.addEventListener("DOMContentLoaded", () => {
   const clientError = document.getElementById("clientError");
   const strengthText = document.getElementById("strength-text");
 
+  // Access the global regex pattern from StarAdminConfig
+  const globalPwdRegex = window.StarAdminConfig
+    ? window.StarAdminConfig.pwdRegex
+    : null;
+
   const showError = (msg) => {
     clientError.textContent = msg;
     clientError.style.display = "block";
@@ -19,8 +24,8 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   const isStrong = (pwd) => {
-    const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
-    return regex.test(pwd);
+    // Reusing the centralized regex pattern
+    return pwdRegex.test(pwd);
   };
 
   const updateStrength = () => {

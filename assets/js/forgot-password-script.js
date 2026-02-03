@@ -26,7 +26,11 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    // --- UPDATED: Calling the centralized constant from init via window.StarAdminConfig ---
+    const globalRegex = window.StarAdminConfig
+      ? window.StarAdminConfig.emailRegex
+      : null;
+
     if (!emailRegex.test(emailVal)) {
       e.preventDefault();
       showError("请输入有效邮箱");

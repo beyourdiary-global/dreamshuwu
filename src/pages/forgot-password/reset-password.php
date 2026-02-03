@@ -117,10 +117,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $validToken) {
         </div>
     </div>
 </div>
-<?php
-$resetScriptPath = BASE_PATH . 'assets/js/reset-password-script.js';
-$resetScriptVersion = file_exists($resetScriptPath) ? filemtime($resetScriptPath) : time();
-?>
+
 <script src="<?php echo URL_ASSETS; ?>/js/reset-password-script.js?v=<?php echo $resetScriptVersion; ?>"></script>
 </body>
 </html>

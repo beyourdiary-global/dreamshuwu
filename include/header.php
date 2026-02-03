@@ -17,5 +17,12 @@
     <?php if (isset($customCSS)): ?>
         <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/<?php echo $customCSS; ?>">
     <?php endif; ?>
-</head>
 
+    <script>
+    window.StarAdminConfig = {
+        emailRegex: new RegExp(<?php echo json_encode(defined('EMAIL_REGEX_PATTERN') ? EMAIL_REGEX_PATTERN : '^[^\s@]+@[^\s@]+\.[^\s@]+$'); ?>),
+        // Bridge the password regex
+        pwdRegex: new RegExp(<?php echo json_encode(defined('PWD_REGEX_PATTERN') ? PWD_REGEX_PATTERN : '^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[\\W_]).{8,}$'); ?>)
+    };
+    </script>
+</head>

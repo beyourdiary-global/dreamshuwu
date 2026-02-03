@@ -81,9 +81,6 @@ function isUserActive($user) {
 /**
  * Simple Helper to format database dates for the UI
  */
-/**
- * Simple Helper to format database dates for the UI
- */
 function formatDate($date, $format = 'Y-m-d') {
     return date($format, strtotime($date));
 }
@@ -93,7 +90,7 @@ function formatDate($date, $format = 'Y-m-d') {
  * Returns true if sent, false otherwise
  */
 function sendPasswordResetEmail($email, $resetLink) {
-    $subject = "【StarAdmin】重置您的密码";
+    $subject = "【" . WEBSITE_NAME . "】重置您的密码";
     $headers = "MIME-Version: 1.0" . "\r\n";
     $headers .= "Content-type: text/html; charset=UTF-8" . "\r\n";
     $headers .= "From: " . MAIL_FROM_NAME . " <" . MAIL_FROM . ">" . "\r\n";
