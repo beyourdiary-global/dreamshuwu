@@ -3,7 +3,7 @@ require_once __DIR__ . '/../../../init.php';
 require_once BASE_PATH . 'config/urls.php'; 
 require_once BASE_PATH . 'functions.php';
 
-$pageTitle = "重置密码 - StarAdmin";
+$pageTitle = "重置密码 - " . WEBSITE_NAME;
 $customCSS = "login-style.css";
 
 $message = "";

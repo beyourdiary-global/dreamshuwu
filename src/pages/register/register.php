@@ -5,7 +5,7 @@ require_once BASE_PATH . 'config/urls.php';
 require_once BASE_PATH . 'functions.php';
 
 // Set page variables BEFORE including header
-$pageTitle = "注册 - StarAdmin";
+$pageTitle = "注册 - " . WEBSITE_NAME;
 $customCSS = "register-style.css";
 
 $message = "";
