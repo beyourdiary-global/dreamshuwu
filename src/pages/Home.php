@@ -1,19 +1,22 @@
 <?php
-session_start();
+require_once __DIR__ . '/../../init.php';
+require_once BASE_PATH . 'config/urls.php';
 
 // Security check: Redirect if they are not logged in
 if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
-    header("Location: register.php");
+    header("Location: " . URL_LOGIN);
     exit();
 }
 
+// Set page variables BEFORE including header
 $pageTitle = "欢迎 - StarAdmin";
+$customCSS = "register-style.css";
 ?>
 
 <!DOCTYPE html>
 <html lang="zh-CN">
 
-<?php require_once __DIR__ . '/header.php'; ?>
+<?php require_once BASE_PATH . 'include/header.php'; ?>
 
 <body>
 
@@ -34,7 +37,7 @@ $pageTitle = "欢迎 - StarAdmin";
 
     <div class="footer-links" style="margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px;">
         <p style="font-size: 14px; color: #666;">
-            <a href="login.php" style="color: #233dd2; text-decoration: none; margin: 0 10px;">返回登录页面</a>
+            <a href="<?php echo URL_LOGIN; ?>" style="color: #233dd2; text-decoration: none; margin: 0 10px;">返回登录页面</a>
         </p>
     </div>
 </div>

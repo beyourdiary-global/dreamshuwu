@@ -1,7 +1,9 @@
 <?php
 session_start();
 // $livemode = false; // true = test link, false = live link
-$siteOrlocalMode = true;  //true = live site, false = localhost
+// Auto-detect local environment
+$isLocalEnvironment = in_array($_SERVER['SERVER_NAME'] ?? '', ['localhost', '127.0.0.1'], true);
+$siteOrlocalMode = !$isLocalEnvironment;  //true = live site, false = localhost
 
 date_default_timezone_set('Asia/Singapore');
 
@@ -13,7 +15,17 @@ define('dbpwd', $siteOrlocalMode ? 'Byd1234@Global' : '');
 define('dbhost', $siteOrlocalMode ? '127.0.0.1:3306' : 'localhost');
 define('dbname', 'beyourdi_cms');
 define('dbFinance', 'beyourdi_financial');
-define('SITEURL', $siteOrlocalMode ? 'https://cms.beyourdiary.com' : 'http://localhost/cms');
+
+// Calculate SITEURL based on project root directory (where init.php lives)
+$localHost = $_SERVER['HTTP_HOST'] ?? 'localhost';
+$docRoot = rtrim(str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT'] ?? ''), '/');
+$initDir = rtrim(str_replace('\\', '/', __DIR__), '/');
+// Get relative path from document root to project root
+$projectPath = '';
+if ($docRoot !== '' && strpos($initDir, $docRoot) === 0) {
+    $projectPath = substr($initDir, strlen($docRoot));
+}
+define('SITEURL', $siteOrlocalMode ? 'https://cms.beyourdiary.com' : ('http://' . $localHost . $projectPath));
 $SITEURL = SITEURL;
 define('ROOT', dirname(__FILE__));
 define('email_cc', "report@beyourdiary.com	");
@@ -175,27 +187,55 @@ if (!$isLocal) {
 
 //define session
 
-// Reusable DB credentials for local mysqli usage
-$host = 'localhost';
-$db   = 'star_admin';
-$user = 'root';
-$pass = '';
+// This gets the absolute path to the directory containing init.php
+define('BASE_PATH', __DIR__ . '/');
 
-// 1. Determine the correct credentials
-$connHost = isset($host) ? $host : (defined('dbhost') ? dbhost : 'localhost');
-$connUser = isset($user) ? $user : (defined('dbuser') ? dbuser : 'root');
-$connPass = isset($pass) ? $pass : (defined('dbpwd') ? dbpwd : '');
-$connDb   = isset($db)   ? $db   : (defined('dbname') ? dbname : '');
+// --- Gender Options Mapping ---
+// Key = Database Value, Value = Display Text (Chinese)
+$GENDER_OPTIONS = [
+    ""  => "选择性别 (可选)",
+    "M" => "男",
+    "F" => "女",
+    "O" => "其他"
+];
 
-// 2. Establish connection
-$conn = @mysqli_connect($connHost, $connUser, $connPass, $connDb);
+// --- User Table Constant ---
+define('USR_LOGIN', 'users');
 
-// 3. Check connection
-if (!$conn) {
-    // Note: In production, consider logging this instead of die() for better UX
-    die("数据库连接失败: " . mysqli_connect_error());
+// --- Application Constants ---
+defined('MIN_AGE_REQUIREMENT') || define('MIN_AGE_REQUIREMENT', 13);
+defined('MIN_PWD_LENGTH')      || define('MIN_PWD_LENGTH', 8);
+
+$isLocalEnvironment = in_array($_SERVER['SERVER_NAME'] ?? '', ['localhost', '127.0.0.1'], true);
+
+if ($isLocalEnvironment) {
+    // === USE LOCAL SETTINGS ===
+    $connHost = 'localhost';
+    $connUser = 'root';
+    $connPass = '';
+    $connDb   = 'star_admin'; 
+} else {
+    // === USE LIVE SETTINGS ===
+    // This runs only when uploaded to the live server
+    $connHost = defined('dbhost') ? dbhost : 'localhost';
+    $connUser = defined('dbuser') ? dbuser : 'root';
+    $connPass = defined('dbpwd')  ? dbpwd  : '';
+    $connDb   = defined('dbname') ? dbname : 'beyourdi_cms';
 }
 
-// 4. Set charset
+// 2. Establish connection
+try {
+    $conn = mysqli_connect($connHost, $connUser, $connPass, $connDb);
+} catch (mysqli_sql_exception $e) {
+    // If connection fails, show a clear error message
+    die("Database Connection Error (Mode: " . ($isLocalEnvironment ? 'Local' : 'Live') . "): " . $e->getMessage());
+}
+
+// 3. Check connection object
+if (!$conn) {
+    die("System temporarily unavailable. Please try again later.");
+}
+
+// 4. Set Charset
 mysqli_set_charset($conn, 'utf8mb4');
 ?>

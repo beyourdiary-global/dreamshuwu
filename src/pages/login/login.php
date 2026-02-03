@@ -1,8 +1,12 @@
 <?php
-require_once __DIR__ . '/../init.php';
-require_once __DIR__ . '/../global-config.php';
-require_once __DIR__ . '/../functions.php';
+// 1. You only need to remember the path to init.php once
+require_once __DIR__ . '/../../../init.php'; 
 
+// 2. For everything else, use the BASE_PATH constant we just made
+require_once BASE_PATH . 'config/urls.php'; 
+require_once BASE_PATH . 'functions.php';
+
+// Set page variables BEFORE including header
 $pageTitle = "登录 - StarAdmin";
 $customCSS = "login-style.css";
 
@@ -14,7 +18,9 @@ $isAjax = isset($_POST['ajax']) && $_POST['ajax'] === '1';
 
 // Determine where to send the user after successful login
 $redirectCandidate = $_GET['redirect'] ?? ($_SESSION['redirect_after_login'] ?? '');
-$redirectTarget = isSafeRedirect($redirectCandidate) ? $redirectCandidate : 'welcome.php';
+
+// Use Constant URL_HOME for the default fallback
+$redirectTarget = isSafeRedirect($redirectCandidate) ? $redirectCandidate : URL_HOME;
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $email = trim($_POST['email'] ?? "");
@@ -37,7 +43,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
     if ($errorCode === "") {
         // 2. Database Lookup
-        $stmt = mysqli_prepare($conn, "SELECT * FROM users WHERE email = ? LIMIT 1");
+        // Use Constant USR_LOGIN instead of hardcoded table name "users"
+        $query = "SELECT * FROM " . USR_LOGIN . " WHERE email = ? LIMIT 1";
+        $stmt = mysqli_prepare($conn, $query);
+        
         mysqli_stmt_bind_param($stmt, "s", $email);
         mysqli_stmt_execute($stmt);
         $result = mysqli_stmt_get_result($stmt);
@@ -111,7 +120,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
 <!DOCTYPE html>
 <html lang="zh-CN">
-<?php require_once __DIR__ . '/header.php'; ?>
+<?php require_once __DIR__ . '/../../../include/header.php'; ?>
 <body>
 
 <div class="container">
@@ -149,8 +158,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     </button>
 
                     <div class="action-links d-flex justify-content-between mt-4 border-top pt-3">
-                        <a href="register.php" class="text-decoration-none small text-primary">注册新账号</a>
-                        <a href="forgot-password.php" class="text-decoration-none small text-muted">忘记密码？</a>
+                        <a href="<?php echo URL_REGISTER; ?>" class="text-decoration-none small text-primary">注册新账号</a>
+                        <a href="<?php echo URL_FORGOT_PWD; ?>" class="text-decoration-none small text-muted">忘记密码？</a>
                     </div>
                 </form>
             </div>
@@ -158,7 +167,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     </div>
 </div>
 
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-<script src="login-script.js"></script>
+<script src="<?php echo URL_ASSETS; ?>/js/jquery-3.7.1.min.js"></script>
+<script src="<?php echo URL_ASSETS; ?>/js/login-script.js"></script>
 </body>
 </html>

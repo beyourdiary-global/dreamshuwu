@@ -10,8 +10,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
-    <title><?php echo isset($pageTitle) ? htmlspecialchars($pageTitle) : 'StarAdmin'; ?></title>
-    
-    <link rel="stylesheet" href="<?php echo isset($customCSS) ? htmlspecialchars($customCSS) : 'register-style.css'; ?>">
+    <title><?php echo $pageTitle ?? 'StarAdmin'; ?></title>
+
+    <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/bootstrap.min.css">
+
+    <?php if (isset($customCSS)): ?>
+        <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/<?php echo $customCSS; ?>">
+    <?php endif; ?>
 </head>
+
