@@ -1,8 +1,12 @@
 <?php
+require_once __DIR__ . '/../../../init.php'; 
 
-require_once __DIR__ . '/../init.php';
-require_once __DIR__ . '/../global-config.php';
-require_once __DIR__ . '/../functions.php';
+require_once BASE_PATH . 'config/urls.php'; 
+require_once BASE_PATH . 'functions.php';
+
+// Set page variables BEFORE including header
+$pageTitle = "注册 - StarAdmin";
+$customCSS = "register-style.css";
 
 $message = "";
 $name = "";
@@ -18,7 +22,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $gender = $_POST['gender'] ?? "";
     $birthday = $_POST['birthday'] ?? "";
 
-// Validation Logic
+    // Validation Logic
     if (empty($name) || empty($email) || empty($password)) {
         $message = "请填写所有必填字段";
     } 
@@ -42,7 +46,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     // Database Operations ---
     if (empty($message)) {
         // Check if email already exists in the system
-        $check = mysqli_prepare($conn, "SELECT id FROM users WHERE email = ?");
+        // UPDATE: Used USR_LOGIN constant instead of hardcoded 'users'
+        $check = mysqli_prepare($conn, "SELECT id FROM " . USR_LOGIN . " WHERE email = ?");
         mysqli_stmt_bind_param($check, "s", $email);
         mysqli_stmt_execute($check);
         mysqli_stmt_store_result($check);
@@ -57,9 +62,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $birthdayDb = $birthday !== "" ? $birthday : null;
 
             // Prepare the insertion SQL
+            // UPDATE: Used USR_LOGIN constant instead of hardcoded 'users'
             $stmt = mysqli_prepare(
                 $conn,
-                "INSERT INTO users (name, email, password_hash, gender, birthday) VALUES (?, ?, ?, ?, ?)"
+                "INSERT INTO " . USR_LOGIN . " (name, email, password_hash, gender, birthday) VALUES (?, ?, ?, ?, ?)"
             );
             mysqli_stmt_bind_param($stmt, "sssss", $name, $email, $hash, $genderDb, $birthdayDb);
             $success = mysqli_stmt_execute($stmt);
@@ -74,7 +80,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 $_SESSION['user_name'] = $name;
                 $_SESSION['logged_in'] = true;
 
-                header("Location: welcome.php");
+                header("Location: " . URL_HOME);
                 exit();
             } else {
                 $message = "系统错误，请稍后再试";
@@ -86,7 +92,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
 <!DOCTYPE html>
 <html lang="zh-CN">
-<?php require_once __DIR__ . '/header.php'; ?>
+<?php require_once __DIR__ . '/../../../include/header.php'; ?>
 <body>
 <div class="reg-card">
     <div class="logo">Star<span>Admin</span></div>
@@ -130,11 +136,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         <button type="submit" class="btn-reg" id="submitBtn" disabled>注册</button>
     </form>
 
-    <div class="footer-links">
-        已有账号？ <a href="login.php" style="color: #233dd2; text-decoration: none;">直接登录</a>
-    </div>
+   <div class="footer-links">
+    已有账号？
+    <a href="<?= URL_LOGIN ?>" style="color: #233dd2; text-decoration: none;">
+        直接登录
+    </a>
+</div>
 </div>
 
-<script src="register-script.js"></script>
+<script src="<?php echo URL_ASSETS; ?>/js/register-script.js"></script>
 </body>
 </html>
