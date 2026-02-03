@@ -206,6 +206,13 @@ define('USR_LOGIN', 'users');
 defined('MIN_AGE_REQUIREMENT') || define('MIN_AGE_REQUIREMENT', 13);
 defined('MIN_PWD_LENGTH')      || define('MIN_PWD_LENGTH', 8);
 
+// --- Email Configuration ---
+defined('MAIL_FROM')      || define('MAIL_FROM', 'report@beyourdiary.com');
+defined('MAIL_FROM_NAME') || define('MAIL_FROM_NAME', 'StarAdmin Support');
+
+// --- Password Reset Table Constant ---
+defined('PWD_RESET') || define('PWD_RESET', 'password_resets');
+
 $isLocalEnvironment = in_array($_SERVER['SERVER_NAME'] ?? '', ['localhost', '127.0.0.1'], true);
 
 if ($isLocalEnvironment) {
