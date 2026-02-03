@@ -22,7 +22,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $gender = $_POST['gender'] ?? "";
     $birthday = $_POST['birthday'] ?? "";
 
-// Validation Logic
+    // Validation Logic
     if (empty($name) || empty($email) || empty($password)) {
         $message = "请填写所有必填字段";
     } 
@@ -46,7 +46,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     // Database Operations ---
     if (empty($message)) {
         // Check if email already exists in the system
-        $check = mysqli_prepare($conn, "SELECT id FROM users WHERE email = ?");
+        // UPDATE: Used USR_LOGIN constant instead of hardcoded 'users'
+        $check = mysqli_prepare($conn, "SELECT id FROM " . USR_LOGIN . " WHERE email = ?");
         mysqli_stmt_bind_param($check, "s", $email);
         mysqli_stmt_execute($check);
         mysqli_stmt_store_result($check);
@@ -61,9 +62,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $birthdayDb = $birthday !== "" ? $birthday : null;
 
             // Prepare the insertion SQL
+            // UPDATE: Used USR_LOGIN constant instead of hardcoded 'users'
             $stmt = mysqli_prepare(
                 $conn,
-                "INSERT INTO users (name, email, password_hash, gender, birthday) VALUES (?, ?, ?, ?, ?)"
+                "INSERT INTO " . USR_LOGIN . " (name, email, password_hash, gender, birthday) VALUES (?, ?, ?, ?, ?)"
             );
             mysqli_stmt_bind_param($stmt, "sssss", $name, $email, $hash, $genderDb, $birthdayDb);
             $success = mysqli_stmt_execute($stmt);
