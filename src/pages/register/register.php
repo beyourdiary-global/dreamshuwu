@@ -92,7 +92,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <!DOCTYPE html>
 <html lang="<?php echo defined('SITE_LANG') ? SITE_LANG : 'zh-CN'; ?>">
 <?php require_once __DIR__ . '/../../../include/header.php'; ?>
-<body>
+<body class="auth-page">
 <div class="reg-card">
     <div class="logo">Star<span>Admin</span></div>
     <h3>新用户？</h3>

@@ -75,7 +75,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 <!DOCTYPE html>
 <html lang="<?php echo defined('SITE_LANG') ? SITE_LANG : 'zh-CN'; ?>">
 <?php require_once BASE_PATH . 'include/header.php'; ?>
-<body>
+<body class="auth-page">
 
 <div class="container">
     <div class="row justify-content-center mt-5">

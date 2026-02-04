@@ -8,6 +8,9 @@ body {
   background: #f4f7f6;
   min-height: 100vh;
   margin: 0;
+}
+
+body.auth-page {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -15,9 +18,9 @@ body {
 
 /* --- 2. Card Container (Shared) --- */
 /* Supports both .login-card and .reg-card classes */
-.login-card,
-.reg-card,
-.welcome-card {
+.auth-page .login-card,
+.auth-page .reg-card,
+.auth-page .welcome-card {
   background: #fff;
   padding: 36px;
   border-radius: 12px;
@@ -29,25 +32,25 @@ body {
 }
 
 /* --- 3. Typography --- */
-.logo {
+.auth-page .logo {
   font-size: 24px;
   font-weight: 700;
   margin-bottom: 20px;
   text-align: center;
 }
 
-.logo span {
+.auth-page .logo span {
   color: #233dd2;
 }
 
-.subtext {
+.auth-page .subtext {
   color: #666;
   margin-bottom: 20px;
   text-align: center;
   font-size: 14px;
 }
 
-h3 {
+.auth-page h3 {
   text-align: center;
   margin-bottom: 10px;
   color: #333;
@@ -55,12 +58,12 @@ h3 {
 
 /* --- 4. Form Elements (Unified) --- */
 /* Targets both Bootstrap .form-control and raw Inputs */
-.form-control,
-input[type="text"],
-input[type="email"],
-input[type="password"],
-input[type="date"],
-select {
+.auth-page .form-control,
+.auth-page input[type="text"],
+.auth-page input[type="email"],
+.auth-page input[type="password"],
+.auth-page input[type="date"],
+.auth-page select {
   width: 100%;
   padding: 12px;
   border: 1px solid #e0e0e0;
@@ -73,31 +76,31 @@ select {
 }
 
 /* Focus State */
-.form-control:focus,
-input:focus,
-select:focus {
+.auth-page .form-control:focus,
+.auth-page input:focus,
+.auth-page select:focus {
   border-color: #233dd2;
   box-shadow: 0 0 0 3.2px rgba(35, 61, 210, 0.15);
   outline: none;
 }
 
 /* Remove default IE/Edge reveal icons */
-input[type="password"]::-ms-reveal,
-input[type="password"]::-ms-clear {
+.auth-page input[type="password"]::-ms-reveal,
+.auth-page input[type="password"]::-ms-clear {
   display: none;
 }
 
 /* Auto-fill background fix */
-input:-webkit-autofill,
-input:-webkit-autofill:hover,
-input:-webkit-autofill:focus {
+.auth-page input:-webkit-autofill,
+.auth-page input:-webkit-autofill:hover,
+.auth-page input:-webkit-autofill:focus {
   -webkit-box-shadow: 0 0 0 1000px #fff inset;
   transition: background-color 5000s ease-in-out 0s;
 }
 
 /* --- 5. Buttons (Shared) --- */
-.btn-primary,
-.btn-reg {
+.auth-page .btn-primary,
+.auth-page .btn-reg {
   background: #233dd2;
   color: white;
   border: none;
@@ -111,13 +114,13 @@ input:-webkit-autofill:focus {
   display: block;
 }
 
-.btn-primary:hover,
-.btn-reg:hover {
+.auth-page .btn-primary:hover,
+.auth-page .btn-reg:hover {
   background: #1a2eb0;
 }
 
-.btn-primary:disabled,
-.btn-reg:disabled {
+.auth-page .btn-primary:disabled,
+.auth-page .btn-reg:disabled {
   background: #c9d1f7;
   cursor: not-allowed;
 }
