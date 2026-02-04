@@ -6,12 +6,6 @@
   margin: 0 auto;
 }
 
-/* Move DataTables Buttons to the right */
-div.dt-buttons {
-  float: right;
-  margin-left: 10px;
-}
-
 /* Badge Colors */
 .badge-info {
   background-color: #0dcaf0;
@@ -50,6 +44,75 @@ td.details-control {
   color: #233dd2;
 }
 
+/* Card Header Icons */
 .card-header h4 i {
   margin-right: 8px;
+}
+
+/* =========================================
+   MOBILE RESPONSIVE FIXES (Max Width 576px)
+   ========================================= */
+@media (max-width: 576px) {
+  /* 1. Reduce Container Padding */
+  .audit-container {
+    padding: 10px; /* Less padding on outside */
+  }
+  .card-body {
+    padding: 10px; /* Less padding inside card */
+  }
+
+  /* 2. Force Search & Filter to Full Width */
+  .dataTables_wrapper .dataTables_filter {
+    text-align: left !important;
+    margin-top: 10px;
+    margin-bottom: 10px;
+  }
+  .dataTables_wrapper .dataTables_filter label {
+    width: 100%;
+  }
+  .dataTables_wrapper .dataTables_filter input {
+    width: 100% !important; /* Search box takes full width */
+    margin-left: 0 !important;
+    display: block;
+  }
+
+  /* 3. Adjust Table Cell Padding & Fonts */
+  table.dataTable.dtr-inline.collapsed > tbody > tr > td.dtr-control:before,
+  table.dataTable.dtr-inline.collapsed > tbody > tr > th.dtr-control:before {
+    /* Align the (+) button better */
+    top: 50%;
+    transform: translateY(-50%);
+    left: 5px;
+  }
+
+  table.dataTable > tbody > tr > td,
+  table.dataTable > tbody > tr > th {
+    padding: 8px 5px !important; /* Tighter spacing */
+    font-size: 0.85rem; /* Slightly smaller font */
+  }
+
+  /* 4. Fix Badge Alignment */
+  .badge {
+    font-size: 0.75rem; /* Smaller badge text */
+    padding: 4px 6px;
+  }
+
+  /* 5. Ensure "Action" Badge doesn't wrap weirdly */
+  td {
+    white-space: nowrap; /* Prevent weird wrapping on short text */
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Allow wrapping ONLY for the 'Details' expansion row */
+  tr.child td {
+    white-space: normal;
+  }
+
+  /* 6. Fix "No data available" row */
+  .dataTables_empty {
+    text-align: center !important;
+    padding: 20px !important;
+    white-space: normal !important;
+  }
 }
