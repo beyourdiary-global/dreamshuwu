@@ -185,7 +185,6 @@ if (!$isLocal) {
 	$finance_connect = @mysqli_connect(dbhost, dbuser, dbpwd, dbFinance);
 }
 
-//define session
 
 // This gets the absolute path to the directory containing init.php
 define('BASE_PATH', __DIR__ . '/');
@@ -198,6 +197,10 @@ $GENDER_OPTIONS = [
     "F" => "女",
     "O" => "其他"
 ];
+
+// Define Avatar Upload Size (2MB)
+// 2 * 1024 * 1024 = 2097152 bytes
+defined('AVATAR_UPLOAD_SIZE')  || define('AVATAR_UPLOAD_SIZE', 2097152);
 
 // --- User Table Constant ---
 define('USR_LOGIN', 'users');

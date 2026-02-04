@@ -29,4 +29,5 @@ defined('URL_USER_MESSAGES')  || define('URL_USER_MESSAGES', SITEURL . '/src/pag
 
 // --- 5. Author Dashboard ---
 defined('URL_AUTHOR_DASHBOARD') || define('URL_AUTHOR_DASHBOARD', SITEURL . '/src/pages/author/dashboard.php');
+
 ?>
