@@ -130,4 +130,45 @@ function sendPasswordResetEmail($email, $resetLink) {
 
     return @mail($email, $subject, $emailContent, $headers);
 }
+
+/**
+ * Helper: Handle Image Upload
+ * Returns array: ['success' => bool, 'filename' => string|null, 'message' => string]
+ */
+function uploadImage($fileInput, $targetDir, $maxSizeMB = 2) {
+    // 1. Check for upload errors
+    if (!isset($fileInput) || $fileInput['error'] !== UPLOAD_ERR_OK) {
+        return ['success' => false, 'message' => '没有文件被上传或上传出错'];
+    }
+
+    // 2. Validate Size
+    if ($fileInput['size'] > $maxSizeMB * 1024 * 1024) {
+        return ['success' => false, 'message' => "文件大小不能超过 {$maxSizeMB}MB"];
+    }
+
+    // 3. Validate Extension
+    $fileName = $fileInput['name'];
+    $fileExt = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+    $allowedExts = ['jpg', 'jpeg', 'png', 'gif'];
+
+    if (!in_array($fileExt, $allowedExts)) {
+        return ['success' => false, 'message' => '仅支持 JPG, JPEG, PNG, GIF 格式'];
+    }
+
+    // 4. Create Directory if not exists
+    if (!is_dir($targetDir)) {
+        mkdir($targetDir, 0755, true);
+    }
+
+    // 5. Generate Unique Name and Move
+    // Using uniqid() ensures filenames are unique and harder to guess
+    $newFileName = uniqid('img_', true) . '.' . $fileExt;
+    $destPath = $targetDir . $newFileName;
+
+    if (move_uploaded_file($fileInput['tmp_name'], $destPath)) {
+        return ['success' => true, 'filename' => $newFileName, 'message' => '上传成功'];
+    }
+
+    return ['success' => false, 'message' => '文件移动失败，请检查文件夹权限'];
+}
 ?>
