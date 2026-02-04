@@ -8,7 +8,7 @@ $pageTitle = "首页 - " . WEBSITE_NAME;
 ?>
 
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="<?php echo defined('SITE_LANG') ? SITE_LANG : 'zh-CN'; ?>">
 
 <?php require_once BASE_PATH . 'include/header.php'; ?>
 
