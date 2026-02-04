@@ -149,10 +149,10 @@ function uploadImage($fileInput, $targetDir, $maxSizeMB = 2) {
     // 3. Validate Extension
     $fileName = $fileInput['name'];
     $fileExt = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
-    $allowedExts = ['jpg', 'jpeg', 'png', 'gif'];
+    $allowedExts = ['jpg', 'jpeg', 'png'];
 
     if (!in_array($fileExt, $allowedExts)) {
-        return ['success' => false, 'message' => '仅支持 JPG, JPEG, PNG, GIF 格式'];
+        return ['success' => false, 'message' => '仅支持 JPG, JPEG, PNG 格式'];
     }
 
     // 4. Create Directory if not exists

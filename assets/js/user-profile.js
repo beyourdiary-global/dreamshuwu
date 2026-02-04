@@ -67,7 +67,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // --- 3. Avatar Preview Logic (Existing) ---
+  // --- 3. Avatar Preview Logic ---
   const avatarInput = document.getElementById("avatarInput");
   const avatarImg = document.getElementById("avatarPreview");
 
@@ -75,11 +75,15 @@ document.addEventListener("DOMContentLoaded", () => {
     avatarInput.addEventListener("change", function (e) {
       const file = e.target.files[0];
       if (file) {
-        if (file.size > 2 * 1024 * 1024) {
-          alert("图片大小不能超过 2MB"); // You can also change this to showError() if you want
-          this.value = "";
+        // [UPDATED] Read limit from the HTML attribute data-max-size
+        const maxSize = this.dataset.maxSize;
+
+        if (file.size > maxSize) {
+          alert("图片大小不能超过 2MB");
+          this.value = ""; // Clear input
           return;
         }
+
         const reader = new FileReader();
         reader.onload = function (e) {
           avatarImg.src = e.target.result;
@@ -87,6 +91,7 @@ document.addEventListener("DOMContentLoaded", () => {
         reader.readAsDataURL(file);
       }
     });
+
     avatarImg.addEventListener("click", () => {
       avatarInput.click();
     });

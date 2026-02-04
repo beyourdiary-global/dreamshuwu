@@ -44,7 +44,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['action']) && $_POST['
 
             if ($result['success']) {
                 // 1. FETCH OLD AVATAR (Before updating DB)
-                $oldAvQuery = "SELECT avatar FROM " . USR_DASHBOARD . " WHERE user_id = ?";
+                $oldAvQuery = "SELECT avatar FROM " . USR_DASHBOARD . " WHERE user_id = ? LIMIT 1";
                 $oldStmt = $conn->prepare($oldAvQuery);
                 $oldStmt->bind_param("i", $userId);
                 $oldStmt->execute();
@@ -56,7 +56,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['action']) && $_POST['
                     
                     // 2. DELETE OLD FILE (If it exists and is not empty)
                     if (!empty($oldFile) && file_exists($oldFilePath)) {
-                        unlink($oldFilePath); // This deletes the file
+                        @unlink($oldFilePath); // Suppress errors if file missing
                     }
                 }
 
@@ -97,21 +97,28 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['action']) && $_POST['
     $newPwd = $_POST['new_password'];
     $confirmPwd = $_POST['confirm_password'];
 
-    $pwdSql = "SELECT password_hash FROM " . USR_LOGIN . " WHERE id = ?";
+    $pwdSql = "SELECT password_hash FROM " . USR_LOGIN . " WHERE id = ? LIMIT 1";
     $pwdStmt = $conn->prepare($pwdSql);
     $pwdStmt->bind_param("i", $userId);
     $pwdStmt->execute();
     $pwdResult = $pwdStmt->get_result();
     $userRow = $pwdResult->fetch_assoc();
 
-    if (!password_verify($currentPwd, $userRow['password_hash'])) {
+    // [Fix 1: Null Pointer Check]
+    // Check if user exists before accessing password_hash to avoid crash
+    if (!$userRow || !isset($userRow['password_hash'])) {
+        $message = "系统错误: 无法获取用户信息";
+        $msgType = "danger";
+    } 
+    // [Check Password Match]
+    elseif (!password_verify($currentPwd, $userRow['password_hash'])) {
         $message = "当前密码错误";
         $msgType = "danger";
     } elseif ($newPwd !== $confirmPwd) {
         $message = "两次输入的密码不一致";
         $msgType = "danger";
     } elseif (!isStrongPassword($newPwd)) {
-        $message = "新密码强度不足 (需包含大小写字母、数字)";
+        $message = "新密码强度不足 (需包含大小写字母、数字和特殊字符)";
         $msgType = "danger";
     } else {
         $newHash = password_hash($newPwd, PASSWORD_DEFAULT);
@@ -146,8 +153,7 @@ $dashStmt->bind_param("i", $userId);
 $dashStmt->execute();
 $dashRow = $dashStmt->get_result()->fetch_assoc();
 
-// 3. Merge results so existing HTML works perfectly
-// If $dashRow is null (user has no dashboard entry yet), we use an empty array
+// 3. Merge results
 $currentUser = array_merge($userRow, $dashRow ?? ['avatar' => null]);
 
 $avatarUrl = URL_ASSETS . '/images/default-avatar.png'; // Default
@@ -163,6 +169,7 @@ $customCSS = "user-profile.css";
 <html lang="<?php echo defined('SITE_LANG') ? SITE_LANG : 'zh-CN'; ?>">
 <head>
     <?php require_once BASE_PATH . 'include/header.php'; ?>
+    <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/<?php echo $customCSS; ?>">
 </head>
 <body>
 
@@ -194,7 +201,11 @@ $customCSS = "user-profile.css";
                 <img src="<?php echo $avatarUrl; ?>" alt="Avatar" class="avatar-preview" id="avatarPreview">
                 <div class="upload-btn-wrapper">
                     <button type="button" class="btn-upload">更换头像</button>
-                    <input type="file" name="avatar" id="avatarInput" accept="image/png, image/jpeg, image/jpg">
+                    <input type="file" 
+                           name="avatar" 
+                           id="avatarInput" 
+                           accept="image/png, image/jpeg, image/jpg"
+                           data-max-size="<?php echo AVATAR_UPLOAD_SIZE; ?>">
                 </div>
                 <small class="text-muted mt-2">支持 JPG/PNG, 最大 2MB</small>
             </div>
@@ -214,10 +225,11 @@ $customCSS = "user-profile.css";
                 <div class="col-half form-group">
                     <label>性别</label>
                     <select name="gender" class="form-control">
-                        <option value="">-- 请选择 --</option>
-                        <option value="M" <?php echo ($currentUser['gender'] === 'M') ? 'selected' : ''; ?>>男</option>
-                        <option value="F" <?php echo ($currentUser['gender'] === 'F') ? 'selected' : ''; ?>>女</option>
-                        <option value="O" <?php echo ($currentUser['gender'] === 'O') ? 'selected' : ''; ?>>其他</option>
+                        <?php foreach ($GENDER_OPTIONS as $key => $label): ?>
+                            <option value="<?php echo $key; ?>" <?php echo ($currentUser['gender'] === $key) ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($label); ?>
+                            </option>
+                        <?php endforeach; ?>
                     </select>
                 </div>
                 <div class="col-half form-group">

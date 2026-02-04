@@ -198,6 +198,10 @@ $GENDER_OPTIONS = [
     "O" => "其他"
 ];
 
+// Define Avatar Upload Size (2MB)
+// 2 * 1024 * 1024 = 2097152 bytes
+defined('AVATAR_UPLOAD_SIZE')  || define('AVATAR_UPLOAD_SIZE', 2097152);
+
 // --- User Table Constant ---
 define('USR_LOGIN', 'users');
 
