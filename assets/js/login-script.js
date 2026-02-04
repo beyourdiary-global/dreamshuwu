@@ -53,7 +53,7 @@ document.addEventListener("DOMContentLoaded", () => {
       ? window.StarAdminConfig.emailRegex
       : null;
 
-    if (!emailRegex.test(emailVal)) {
+    if (!globalRegex.test(emailVal)) {
       showError("INVALID_EMAIL");
       return;
     }

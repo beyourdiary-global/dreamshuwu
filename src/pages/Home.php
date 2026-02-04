@@ -2,15 +2,9 @@
 require_once __DIR__ . '/../../init.php';
 require_once BASE_PATH . 'config/urls.php';
 
-// Security check: Redirect if they are not logged in
-if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
-    header("Location: " . URL_LOGIN);
-    exit();
-}
 
-// Set page variables BEFORE including header
-$pageTitle = "欢迎 - StarAdmin";
-$customCSS = "register-style.css";
+// Set page variables
+$pageTitle = "首页 - " . WEBSITE_NAME; 
 ?>
 
 <!DOCTYPE html>
@@ -20,26 +14,20 @@ $customCSS = "register-style.css";
 
 <body>
 
-<div class="welcome-card">
-    <div class="logo">Star<span>Admin</span></div>
-    
-    <div class="success-icon">🎉</div>
-    <h1>注册成功!</h1>
-    
-    <p>欢迎加入我们，</p>
-    
-    <?php $displayUserName = $_SESSION['user_name'] ?? ''; ?>
-    <div class="user-name" style="font-size: 1.5rem; font-weight: bold; color: #233dd2; margin: 10px 0;">
-        <?php echo htmlspecialchars($displayUserName); ?>
-    </div>
-    
-    <p>您现在已自动登录，可以开始探索您的后台面板了。</p>
+<?php require_once BASE_PATH . 'common/menu/header.php'; ?>
 
-    <div class="footer-links" style="margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px;">
-        <p style="font-size: 14px; color: #666;">
-            <a href="<?php echo URL_LOGIN; ?>" style="color: #233dd2; text-decoration: none; margin: 0 10px;">返回登录页面</a>
-        </p>
-    </div>
+
+<div class="container main-content" style="max-width: 1200px; margin: 20px auto; padding: 0 15px;">
+    
+    <?php if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true): ?>
+        <div class="alert alert-success">
+            欢迎回来, <strong><?php echo htmlspecialchars($_SESSION['user_name'] ?? 'User'); ?></strong>!
+        </div>
+    <?php endif; ?>
+
+    <h3>首页内容区域</h3>
+    <p>这里是公开内容，任何人都可以看到 (Banner, Rank, Categories)。</p>
+
 </div>
 
 </body>

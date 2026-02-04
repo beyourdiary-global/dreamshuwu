@@ -53,7 +53,7 @@ input.form-control:-webkit-autofill:active {
 
 .form-control:focus {
   border-color: #233dd2;
-  box-shadow: 0 0 0 0.2rem rgba(35, 61, 210, 0.15);
+  box-shadow: 0 0 0 3.2px rgba(35, 61, 210, 0.15);
 }
 
 .password-field {
@@ -61,11 +61,11 @@ input.form-control:-webkit-autofill:active {
 }
 
 .password-field .form-control {
-  padding-right: 4.75rem;
+  padding-right: 76px;
 }
 
 .password-field label {
-  padding-right: 4.75rem;
+  padding-right: 76px;
 }
 
 .password-toggle {
