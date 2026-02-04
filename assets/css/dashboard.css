@@ -1,0 +1,224 @@
+/* --- Layout Grid --- */
+.dashboard-container {
+  display: flex;
+  max-width: 1200px;
+  margin: 30px auto;
+  padding: 0 20px;
+  gap: 30px;
+  min-height: 80vh;
+}
+
+/* --- Sidebar (Desktop Only) --- */
+.dashboard-sidebar {
+  width: 240px;
+  flex-shrink: 0;
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+
+  /* --- Make it Sticky --- */
+  height: fit-content; /* Ensures it doesn't stretch to full height */
+  position: sticky; /* Sticky positioning */
+  z-index: 10; /* Ensure it stays above other elements */
+}
+
+.sidebar-menu {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.sidebar-menu li {
+  margin-bottom: 10px;
+}
+
+.sidebar-menu a {
+  display: flex;
+  align-items: center;
+  padding: 12px 15px;
+  color: #333;
+  text-decoration: none;
+  border-radius: 8px;
+  transition: all 0.2s;
+  font-weight: 500;
+}
+
+.sidebar-menu a i {
+  width: 24px;
+  margin-right: 10px;
+  color: #888;
+}
+
+.sidebar-menu a:hover,
+.sidebar-menu a.active {
+  background: #f0f7ff;
+  color: #233dd2;
+}
+
+.sidebar-menu a:hover i,
+.sidebar-menu a.active i {
+  color: #233dd2;
+}
+
+/* --- Main Content Area --- */
+.dashboard-main {
+  flex-grow: 1;
+}
+
+/* --- Profile Card --- */
+.profile-card {
+  background: linear-gradient(135deg, #233dd2 0%, #5b73e8 100%);
+  border-radius: 12px;
+  padding: 30px;
+  color: white;
+  display: flex;
+  align-items: center;
+  position: relative;
+  margin-bottom: 30px;
+  box-shadow: 0 8px 20px rgba(35, 61, 210, 0.2);
+}
+
+.profile-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  margin-right: 20px;
+  object-fit: cover;
+}
+
+.profile-info h2 {
+  margin: 0 0 5px 0;
+  font-size: 20px;
+}
+
+.level-badge {
+  background: #ff9f43;
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
+.profile-stats {
+  display: flex;
+  gap: 20px;
+  margin-top: 10px;
+  font-size: 13px;
+  opacity: 0.9;
+}
+
+/* Settings Button (Base Style) */
+.settings-btn {
+  position: absolute;
+  right: 20px;
+  color: white;
+  opacity: 0.8;
+  font-size: 18px;
+  transition: opacity 0.2s;
+  text-decoration: none;
+}
+.settings-btn:hover {
+  opacity: 1;
+  text-decoration: none;
+}
+
+/* --- Quick Actions (Shared Component) --- */
+.quick-actions-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr); /* 3 Columns */
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.action-card {
+  background: #fff;
+  padding: 25px 15px;
+  border-radius: 12px;
+  text-align: center;
+  text-decoration: none;
+  color: #333;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  transition: transform 0.2s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.action-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+}
+
+.action-icon-wrapper {
+  width: 50px;
+  height: 50px;
+  background: #f4f7f6;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 10px;
+  font-size: 20px;
+  color: #233dd2;
+}
+
+.action-card h4 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* --- Icon Visibility Defaults (Desktop First) --- */
+.mobile-icon {
+  display: none;
+}
+.desktop-icon {
+  display: block;
+}
+
+/* --- Mobile Responsive Rules (Unified) --- */
+@media (max-width: 767px) {
+  /* Layout Changes */
+  .dashboard-container {
+    flex-direction: column; /* Stack vertically */
+    padding: 0 15px;
+    margin-top: 20px;
+  }
+
+  /* Hide Sidebar */
+  .dashboard-sidebar {
+    display: none;
+  }
+
+  /* Adjust Profile Card */
+  .profile-card {
+    padding: 20px;
+  }
+
+  .profile-avatar {
+    width: 60px;
+    height: 60px;
+  }
+
+  /* Switch Icons: Hide Gear, Show Arrow */
+  .desktop-icon {
+    display: none;
+  }
+  .mobile-icon {
+    display: block;
+    font-size: 20px;
+  }
+
+  /* Reposition Settings Button to be Vertically Centered */
+  .settings-btn {
+    top: 50%;
+    transform: translateY(-50%);
+    right: 15px;
+    color: #fff;
+    opacity: 0.8;
+  }
+}

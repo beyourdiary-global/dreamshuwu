@@ -202,6 +202,12 @@ $GENDER_OPTIONS = [
 // --- User Table Constant ---
 define('USR_LOGIN', 'users');
 
+// --- Password Reset Table Constant ---
+defined('PWD_RESET') || define('PWD_RESET', 'password_resets');
+
+// -- User Dashboard Table Constant ---
+defined('USR_DASHBOARD') || define('USR_DASHBOARD', 'users_dashboard');
+
 // --- Application Constants ---
 defined('MIN_AGE_REQUIREMENT') || define('MIN_AGE_REQUIREMENT', 13);
 defined('MIN_PWD_LENGTH')      || define('MIN_PWD_LENGTH', 8);
@@ -209,9 +215,6 @@ defined('MIN_PWD_LENGTH')      || define('MIN_PWD_LENGTH', 8);
 // --- Email Configuration ---
 defined('MAIL_FROM')      || define('MAIL_FROM', 'report@beyourdiary.com');
 defined('MAIL_FROM_NAME') || define('MAIL_FROM_NAME', 'StarAdmin Support');
-
-// --- Password Reset Table Constant ---
-defined('PWD_RESET') || define('PWD_RESET', 'password_resets');
 
 // --- Regex Patterns for Validation ---
 defined('EMAIL_REGEX_PATTERN') || define('EMAIL_REGEX_PATTERN', '^[^\s@]+@[^\s@]+\.[^\s@]+$');

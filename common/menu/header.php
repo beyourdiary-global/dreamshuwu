@@ -60,7 +60,7 @@ $navLinks = [
             </form>
 
             <!-- Author Dashboard Link -->
-            <a href="<?php echo $isLoggedIn ? URL_AUTHOR_DASHBOARD : URL_LOGIN; ?>" class="author-link">
+            <a href="<?php echo $isLoggedIn ? URL_USER_DASHBOARD : URL_LOGIN; ?>" class="author-link">
                 作者专区
             </a>
 
