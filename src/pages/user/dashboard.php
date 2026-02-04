@@ -27,6 +27,18 @@ $dashStmt->bind_param("i", $currentUserId);
 $dashStmt->execute();
 $dashRow = $dashStmt->get_result()->fetch_assoc();
 
+// ---------------------------------------------------------
+// [NEW] Audit Log: View Dashboard
+// ---------------------------------------------------------
+logAudit([
+    'page'           => 'User Dashboard',
+    'action'         => 'V',             // V = View
+    'action_message' => 'User viewed dashboard',
+    'query'          => "SELECT ... FROM " . USR_DASHBOARD,
+    'query_table'    => USR_DASHBOARD,
+    'user_id'        => $currentUserId
+]);
+// ---------------------------------------------------------
 // --- DATA PREPARATION (ALL ARRAYS) ---
 
 // 1. Prepare Raw Data

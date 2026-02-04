@@ -75,6 +75,18 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 $_SESSION['user_name'] = $user['name'] ?? $email;
                 $_SESSION['logged_in'] = true;
                 
+                // ---------------------------------------------------------
+                // [NEW] Audit Log: Record Successful Login
+                // ---------------------------------------------------------
+                logAudit([
+                    'page'           => 'Login Page',
+                    'action'         => 'V',             // V = View/Access
+                    'action_message' => 'User logged in successfully',
+                    'query'          => "SELECT * FROM " . USR_LOGIN . " WHERE email = ?", 
+                    'query_table'    => USR_LOGIN,
+                    'user_id'        => (int)$user['id'] // The user who just logged in
+                ]);
+                
                 // Cleanup temporary redirect session
                 unset($_SESSION['redirect_after_login']);
 

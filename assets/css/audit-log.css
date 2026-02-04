@@ -1,0 +1,55 @@
+/* --- Custom Page Styles --- */
+
+.audit-container {
+  padding: 20px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* Move DataTables Buttons to the right */
+div.dt-buttons {
+  float: right;
+  margin-left: 10px;
+}
+
+/* Badge Colors */
+.badge-info {
+  background-color: #0dcaf0;
+  color: #000;
+}
+.badge-warning {
+  background-color: #ffc107;
+  color: #000;
+}
+.badge-danger {
+  background-color: #dc3545;
+  color: #fff;
+}
+.badge-success {
+  background-color: #198754;
+  color: #fff;
+}
+
+/* JSON Pretty Print Styling */
+pre {
+  background: #f8f9fa;
+  padding: 10px;
+  border-radius: 5px;
+  border: 1px solid #dee2e6;
+  max-height: 250px;
+  overflow-y: auto;
+  font-size: 0.85em;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+/* Expansion Row Styling */
+td.details-control {
+  cursor: pointer;
+  text-align: center;
+  color: #233dd2;
+}
+
+.card-header h4 i {
+  margin-right: 8px;
+}

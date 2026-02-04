@@ -71,6 +71,30 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
             if ($success) {
                 // AUTO LOGIN: Start a session and redirect to Welcome page
+
+                // ---------------------------------------------------------
+            // [NEW] Audit Log: Record New User Registration
+            // ---------------------------------------------------------
+            if ($success) {
+                // Get the ID of the new user we just created
+                $newUserId = mysqli_insert_id($conn);
+                
+                logAudit([
+                    'page'           => 'Register Page',
+                    'action'         => 'A',             // A = Add
+                    'action_message' => 'New user registered',
+                    'query'          => "INSERT INTO " . USR_LOGIN . " ...",
+                    'query_table'    => USR_LOGIN,
+                    'new_value'      => [
+                        'name'     => $name,
+                        'email'    => $email,
+                        'gender'   => $gender,
+                        'birthday' => $birthday
+                    ],
+                    'user_id'        => $newUserId
+                ]);
+            }
+            // ---------------------------------------------------------
                 if (session_status() !== PHP_SESSION_ACTIVE) {
                     session_start();
                 }
