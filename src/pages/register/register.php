@@ -6,7 +6,6 @@ require_once BASE_PATH . 'functions.php';
 
 // Set page variables BEFORE including header
 $pageTitle = "注册 - " . WEBSITE_NAME;
-$customCSS = "register-style.css";
 
 $message = "";
 $name = "";
@@ -91,9 +90,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 ?>
 
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="<?php echo defined('SITE_LANG') ? SITE_LANG : 'zh-CN'; ?>">
 <?php require_once __DIR__ . '/../../../include/header.php'; ?>
-<body>
+<body class="auth-page">
 <div class="reg-card">
     <div class="logo">Star<span>Admin</span></div>
     <h3>新用户？</h3>
@@ -121,7 +120,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             <?php endforeach; ?>
         </select>
         
-        <label style="font-size: 12px; color: #666; display: block; margin-top: 10px;">生日 (可选):</label>
+        <label class="form-label-sm">生日 (可选):</label>
         
         <input type="date" name="birthday" id="birthday"
                max="<?php echo date('Y-m-d'); ?>"
@@ -129,8 +128,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                oninvalid="this.setCustomValidity('日期不能晚于今天')"
                oninput="this.setCustomValidity('')">
 
-        <div style="font-size: 13px; color: #666; margin-top: 10px;">
-            <input type="checkbox" id="terms" required style="width: auto; margin-right: 5px;"> 我同意所有条款与条件
+        <div class="terms-container">
+            <input type="checkbox" id="terms" required class="terms-checkbox">
+            <label for="terms" style="cursor:pointer;">我同意所有条款与条件</label>
         </div>
 
         <button type="submit" class="btn-reg" id="submitBtn" disabled>注册</button>

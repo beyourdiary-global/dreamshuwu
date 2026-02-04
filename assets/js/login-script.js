@@ -1,3 +1,16 @@
+function togglePassword(inputId, btn) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+
+  if (input.type === "password") {
+    input.type = "text";
+    btn.innerText = "隐藏"; // Hide
+  } else {
+    input.type = "password";
+    btn.innerText = "显示"; // Show
+  }
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   const form = document.getElementById("loginForm");
   const email = document.getElementById("email");
