@@ -1,0 +1,249 @@
+/* * assets/css/auth-style.css
+ * Unified styles for Login, Register, Forgot, and Reset Password pages
+ */
+
+/* --- 1. Global Layout --- */
+body {
+  font-family: "Roboto", "Segoe UI", Tahoma, sans-serif;
+  background: #f4f7f6;
+  min-height: 100vh;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* --- 2. Card Container (Shared) --- */
+/* Supports both .login-card and .reg-card classes */
+.login-card,
+.reg-card,
+.welcome-card {
+  background: #fff;
+  padding: 36px;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  width: 100%;
+  max-width: 420px; /* Standardized width */
+  box-sizing: border-box;
+  margin: auto;
+}
+
+/* --- 3. Typography --- */
+.logo {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.logo span {
+  color: #233dd2;
+}
+
+.subtext {
+  color: #666;
+  margin-bottom: 20px;
+  text-align: center;
+  font-size: 14px;
+}
+
+h3 {
+  text-align: center;
+  margin-bottom: 10px;
+  color: #333;
+}
+
+/* --- 4. Form Elements (Unified) --- */
+/* Targets both Bootstrap .form-control and raw Inputs */
+.form-control,
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="date"],
+select {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background-color: #fff;
+  box-sizing: border-box;
+  font-size: 14px;
+  transition: all 0.2s;
+  margin-bottom: 15px; /* Spacing for raw inputs */
+}
+
+/* Focus State */
+.form-control:focus,
+input:focus,
+select:focus {
+  border-color: #233dd2;
+  box-shadow: 0 0 0 3.2px rgba(35, 61, 210, 0.15);
+  outline: none;
+}
+
+/* Remove default IE/Edge reveal icons */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+  display: none;
+}
+
+/* Auto-fill background fix */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px #fff inset;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+/* --- 5. Buttons (Shared) --- */
+.btn-primary,
+.btn-reg {
+  background: #233dd2;
+  color: white;
+  border: none;
+  padding: 12px;
+  width: 100%;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 16px;
+  cursor: pointer;
+  transition: 0.3s;
+  display: block;
+}
+
+.btn-primary:hover,
+.btn-reg:hover {
+  background: #1a2eb0;
+}
+
+.btn-primary:disabled,
+.btn-reg:disabled {
+  background: #c9d1f7;
+  cursor: not-allowed;
+}
+
+/* --- 6. Helpers & Validation --- */
+.error-msg,
+.alert-danger {
+  color: #d9534f;
+  background: #fdf2f2;
+  border-left: 4px solid #d9534f;
+  padding: 10px;
+  font-size: 13px;
+  border-radius: 6px;
+  margin-bottom: 15px;
+}
+
+.alert-success {
+  color: #0f5132;
+  background-color: #d1e7dd;
+  border-color: #badbcc;
+  padding: 10px;
+  border-radius: 6px;
+  margin-bottom: 15px;
+}
+
+.text-muted {
+  color: #6c757d;
+}
+.text-center {
+  text-align: center;
+}
+
+/* Links */
+.action-links,
+.footer-links {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 16px;
+  font-size: 14px;
+}
+
+.footer-links {
+  justify-content: center; /* Center for register page */
+  gap: 5px;
+}
+
+a {
+  color: #233dd2;
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+/* --- 7. Special Components --- */
+
+/* Password Toggle Button */
+.password-field {
+  position: relative;
+}
+
+/* Ensure input has space for the button */
+.password-field input {
+  padding-right: 60px;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: transparent;
+  color: #233dd2;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0;
+  z-index: 5;
+}
+
+/* Password Strength Meter */
+#strength-meter,
+.strength-meter {
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 10px;
+  margin-top: -10px;
+}
+
+/* --- Register Page Specifics --- */
+
+/* Small Label (for Birthday, etc.) */
+.form-label-sm {
+  font-size: 12px;
+  color: #666;
+  display: block;
+  margin-top: 10px;
+  margin-bottom: 4px;
+}
+
+/* Terms & Conditions Container */
+.terms-container {
+  font-size: 13px;
+  color: #666;
+  margin-top: 15px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center; /* Vertically align checkbox with text */
+}
+
+/* Terms Checkbox Override */
+.terms-checkbox {
+  width: auto !important; /* Override global 100% width */
+  margin-right: 8px !important;
+  margin-bottom: 0 !important;
+  cursor: pointer;
+}
+
+/* --- 8. Responsive --- */
+@media (max-width: 576px) {
+  body {
+    padding: 16px;
+  }
+  .login-card,
+  .reg-card {
+    padding: 24px;
+  }
+}

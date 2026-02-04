@@ -7,7 +7,6 @@ require_once BASE_PATH . 'functions.php';
 
 // Set page variables BEFORE including header
 $pageTitle = "登录 - " . WEBSITE_NAME;
-$customCSS = "login-style.css";
 
 $message = "";
 $errorCode = "";
@@ -118,7 +117,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 ?>
 
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="<?php echo defined('SITE_LANG') ? SITE_LANG : 'zh-CN'; ?>">
 <?php require_once __DIR__ . '/../../../include/header.php'; ?>
 <body>
 <div class="container">
