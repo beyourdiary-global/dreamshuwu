@@ -3,6 +3,14 @@
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
+// Show fatal errors (blank page fix)
+register_shutdown_function(function () {
+    $err = error_get_last();
+    if ($err && in_array($err['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR], true)) {
+        echo "<pre style='color:red; font-family:monospace;'>FATAL: {$err['message']} in {$err['file']} on line {$err['line']}</pre>";
+    }
+});
+
 session_start();
 // $livemode = false; // true = test link, false = live link
 // Auto-detect local environment
