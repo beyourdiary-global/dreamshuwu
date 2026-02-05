@@ -8,6 +8,13 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
     header("Location: " . URL_LOGIN);
     exit();
 }
+//2. Array of Audit Actions for Filter Dropdown
+$auditActions = [
+    'V' => 'View',
+    'E' => 'Edit',
+    'A' => 'Add',
+    'D' => 'Delete'
+];
 
 // ==========================================
 //  BACKEND: JSON API Mode (for DataTable)
@@ -78,14 +85,16 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
     $result = $stmt->get_result();
     
     $data = [];
-    $actionMap = ['V' => 'View', 'E' => 'Edit', 'D' => 'Delete', 'A' => 'Add'];
 
     while ($row = $result->fetch_assoc()) {
         $dt = new DateTime($row['created_at']);
         
+        // Use the central $auditActions array here
+        $actionLabel = $auditActions[$row['action']] ?? $row['action'];
+
         $data[] = [
             htmlspecialchars($row['page']),
-            '<span class="badge badge-'. getActionColor($row['action']) .'">' . ($actionMap[$row['action']] ?? $row['action']) . '</span>',
+            '<span class="badge badge-'. getActionColor($row['action']) .'">' . $actionLabel . '</span>',
             htmlspecialchars($row['action_message']),
             htmlspecialchars(($row['user_name'] ?? 'Unknown') . " (ID:" . $row['user_id'] . ")"),
             $dt->format('Y-m-d'),
@@ -120,9 +129,9 @@ function getActionColor($code) {
 $pageTitle = "System Audit Log - " . WEBSITE_NAME;
 // CSS Loading Array
 $customCSS = [
-    "dataTables.bootstrap5.min.css",
-    "responsive.bootstrap5.min.css",
-    "buttons.bootstrap5.min.css", 
+    "dataTables.bootstrap.min.css",
+    "responsive.bootstrap.min.css",
+    "buttons.bootstrap.min.css", 
     "audit-log.css"
 ];
 ?>
@@ -146,12 +155,14 @@ $customCSS = [
             
             <div class="d-flex gap-2 align-items-center">
                 <label class="text-muted small mb-0 text-nowrap">Filter Action:</label>
+                
                 <select id="actionFilter" class="form-select form-select-sm" style="width: 200px;">
                     <option value="">All Actions</option>
-                    <option value="V">View</option>
-                    <option value="E">Edit</option>
-                    <option value="A">Add</option>
-                    <option value="D">Delete</option>
+                    <?php foreach ($auditActions as $code => $label): ?>
+                        <option value="<?php echo htmlspecialchars($code); ?>">
+                            <?php echo htmlspecialchars($label); ?>
+                        </option>
+                    <?php endforeach; ?>
                 </select>
             </div>
         </div>
@@ -163,16 +174,14 @@ $customCSS = [
                    data-api-url="<?php echo $_SERVER['PHP_SELF']; ?>?mode=data">
                 <thead>
                     <tr>
-                        <th class="all" style="width: 20px;"></th>
-        
-                        <th class="all">Page</th>
+                        <th class="all" style="width: 20px;"></th> <th class="all">Page</th>
                         <th class="all">Action</th>
                         <th>Message</th>
                         <th>User</th>
                         <th>Date</th>
                         <th>Time</th>
                         <th class="none">Details</th>
-                        </tr>
+                    </tr>
                 </thead>
             </table>
         </div>
@@ -181,12 +190,12 @@ $customCSS = [
 
 <script src="<?php echo URL_ASSETS; ?>/js/jquery-3.6.0.min.js"></script>
 <script src="<?php echo URL_ASSETS; ?>/js/jquery.dataTables.min.js"></script>
-<script src="<?php echo URL_ASSETS; ?>/js/dataTables.bootstrap5.min.js"></script>
+<script src="<?php echo URL_ASSETS; ?>/js/dataTables.bootstrap.min.js"></script>
 <script src="<?php echo URL_ASSETS; ?>/js/dataTables.responsive.min.js"></script>
-<script src="<?php echo URL_ASSETS; ?>/js/responsive.bootstrap5.min.js"></script>
+<script src="<?php echo URL_ASSETS; ?>/js/responsive.bootstrap.min.js"></script>
 
-<script src="<?php echo URL_ASSETS; ?>/js/buttons.dataTables.min.js"></script>
-<script src="<?php echo URL_ASSETS; ?>/js/buttons.bootstrap5.min.js"></script>
+<script src="<?php echo URL_ASSETS; ?>/js/dataTables.buttons.min.js"></script>
+<script src="<?php echo URL_ASSETS; ?>/js/buttons.bootstrap.min.js"></script>
 <script src="<?php echo URL_ASSETS; ?>/js/buttons.colVis.min.js"></script>
 
 <script src="<?php echo URL_ASSETS; ?>/js/audit-log.js"></script>

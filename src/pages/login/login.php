@@ -8,6 +8,11 @@ require_once BASE_PATH . 'functions.php';
 // Set page variables BEFORE including header
 $pageTitle = "登录 - " . WEBSITE_NAME;
 
+// Centralize DB Config for reuse in Logic & Audit Log
+$dbTable = USR_LOGIN; 
+$loginQuery = "SELECT * FROM " . $dbTable . " WHERE email = ?";
+$auditPage = 'Login Page'; 
+
 $message = "";
 $errorCode = "";
 
@@ -41,9 +46,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
     if ($errorCode === "") {
         // 2. Database Lookup
-        // Use Constant USR_LOGIN instead of hardcoded table name "users"
-        $query = "SELECT * FROM " . USR_LOGIN . " WHERE email = ? LIMIT 1";
-        $stmt = mysqli_prepare($conn, $query);
+        // Use the centralized variable
+        $stmt = mysqli_prepare($conn, $loginQuery . " LIMIT 1");
         
         mysqli_stmt_bind_param($stmt, "s", $email);
         mysqli_stmt_execute($stmt);
@@ -79,13 +83,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 // [NEW] Audit Log: Record Successful Login
                 // ---------------------------------------------------------
                 logAudit([
-                    'page'           => 'Login Page',
-                    'action'         => 'V',             // V = View/Access
+                    'page'           => $auditPage,
+                    'action'         => 'V',
                     'action_message' => 'User logged in successfully',
-                    'query'          => "SELECT * FROM " . USR_LOGIN . " WHERE email = ?", 
-                    'query_table'    => USR_LOGIN,
-                    'user_id'        => (int)$user['id'] // The user who just logged in
+                    'query'          => $loginQuery, // [REFACTOR] Reusing variable
+                    'query_table'    => $dbTable,    // [REFACTOR] Reusing variable
+                    'user_id'        => (int)$user['id']
                 ]);
+                // ---------------------------------------------------------
                 
                 // Cleanup temporary redirect session
                 unset($_SESSION['redirect_after_login']);

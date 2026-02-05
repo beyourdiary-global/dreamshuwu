@@ -17,7 +17,7 @@ $(document).ready(function () {
         d.filter_action = $("#actionFilter").val();
       },
     },
-    // This wrapper ensures elements stack nicely
+    // Bootstrap 3 Grid Structure for Controls
     dom:
       "<'row'<'col-sm-12 col-md-6'B><'col-sm-12 col-md-6'f>>" +
       "<'row'<'col-sm-12'tr>>" +
@@ -26,19 +26,19 @@ $(document).ready(function () {
       {
         extend: "colvis",
         text: '<i class="fa-solid fa-columns"></i> Columns',
-        className: "btn btn-sm btn-outline-secondary",
-        columns: ":not(.dtr-control):not(.none)", // Don't let users hide the (+) button
+        // [FIX] Changed 'btn-outline-secondary' (BS5) to 'btn-default' (BS3)
+        className: "btn btn-sm btn-default",
+        columns: ":not(.dtr-control):not(.none)",
       },
     ],
-    // [NEW] Responsive Configuration
     responsive: {
       details: {
         type: "column",
-        target: 0, // The first column (index 0) is the click target
+        target: 0,
       },
     },
     columns: [
-      // [NEW] Column 0: Dedicated Expand Button (+)
+      // Index 0: Expand Button (+)
       {
         className: "dtr-control",
         orderable: false,
@@ -46,16 +46,19 @@ $(document).ready(function () {
         defaultContent: "",
         responsivePriority: 1,
       },
-
-      // Existing Columns (Shifted Indices +1)
-      { data: 0, responsivePriority: 1 }, // Page
-      { data: 1, responsivePriority: 1 }, // Action
-      { data: 2, responsivePriority: 3 }, // Message
-      { data: 3, responsivePriority: 4 }, // User (Hidden on mobile)
-      { data: 4, responsivePriority: 2 }, // Date
-      { data: 5, responsivePriority: 5 }, // Time (Hidden on mobile)
-
-      // Details Column (Always Hidden, shows in expansion)
+      // Index 1: Page
+      { data: 0, responsivePriority: 1 },
+      // Index 2: Action
+      { data: 1, responsivePriority: 1 },
+      // Index 3: Message
+      { data: 2, responsivePriority: 3 },
+      // Index 4: User
+      { data: 3, responsivePriority: 4 },
+      // Index 5: Date
+      { data: 4, responsivePriority: 2 },
+      // Index 6: Time
+      { data: 5, responsivePriority: 5 },
+      // Index 7: Details
       {
         className: "none",
         orderable: false,
@@ -65,9 +68,10 @@ $(document).ready(function () {
         },
       },
     ],
+    // [VERIFIED] Date is at Index 5, Time is at Index 6. This is CORRECT.
     order: [
-      [5, "desc"], // Sort by Date (index 5 now)
-      [6, "desc"], // Sort by Time (index 6 now)
+      [5, "desc"],
+      [6, "desc"],
     ],
     pageLength: 10,
   });
@@ -86,30 +90,30 @@ $(document).ready(function () {
       }
     }
 
-    var html = '<div class="row p-3 bg-light border-top">';
+    var html =
+      '<div class="row" style="padding: 15px; background: #f9f9f9; border-top: 1px solid #ddd;">';
 
-    // SQL Query
-    html += '<div class="col-12 mb-2">';
+    html += '<div class="col-xs-12 mb-2">';
     html += '<strong><i class="fa-solid fa-database"></i> SQL Query:</strong>';
     html +=
-      '<div class="bg-white p-2 border rounded mt-1 text-break"><code>' +
+      '<div style="background: #fff; padding: 10px; border: 1px solid #ccc; border-radius: 4px; margin-top: 5px; word-wrap: break-word;"><code>' +
       (d.query || "N/A") +
       "</code></div>";
     html += "</div>";
 
-    // Changes
     if (d.changes) {
-      html += '<div class="col-12">';
+      html += '<div class="col-xs-12">';
       html +=
         '<strong><i class="fa-solid fa-pen-to-square"></i> Specific Changes:</strong>';
       html += "<pre>" + safeJson(d.changes) + "</pre>";
       html += "</div>";
     } else {
-      html += '<div class="col-md-6">';
+      // Use col-sm-6 for side-by-side on tablet/desktop, col-xs-12 for mobile
+      html += '<div class="col-xs-12 col-sm-6">';
       html +=
         "<strong>Old Value:</strong><pre>" + safeJson(d.old_value) + "</pre>";
       html += "</div>";
-      html += '<div class="col-md-6">';
+      html += '<div class="col-xs-12 col-sm-6">';
       html +=
         "<strong>New Value:</strong><pre>" + safeJson(d.new_value) + "</pre>";
       html += "</div>";
