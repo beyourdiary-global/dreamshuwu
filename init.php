@@ -283,23 +283,4 @@ if (!$conn || mysqli_connect_errno()) {
 }
 
 mysqli_set_charset($conn, 'utf8mb4');
-    $conn = false; 
-}
-
-// 3. Check connection object
-// This condition checks BOTH types of errors:
-// 1. !$conn (Connection object didn't create)
-// 2. mysqli_connect_errno (Connection object exists but has an error)
-if (!$conn || mysqli_connect_errno()) {
-    
-    if (!defined('SKIP_DB_CHECK')) {
-        header("Location: " . URL_ERROR);
-        exit(); // Stop here, redirect user
-    }
-    
-}
-// 4. Set Charset (Only if connection is valid)
-if ($conn) {
-    mysqli_set_charset($conn, 'utf8mb4');
-}
 ?>
