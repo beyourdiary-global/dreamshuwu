@@ -186,6 +186,9 @@ if (!$isLocal) {
 	$finance_connect = @mysqli_connect(dbhost, dbuser, dbpwd, dbFinance);
 }
 
+//-- Error Page URL Constant --
+defined('URL_ERROR') || define('URL_ERROR', SITEURL . '/src/pages/error404.php');
+
 
 // This gets the absolute path to the directory containing init.php
 define('BASE_PATH', __DIR__ . '/');
@@ -211,6 +214,9 @@ defined('PWD_RESET') || define('PWD_RESET', 'password_resets');
 
 // -- User Dashboard Table Constant ---
 defined('USR_DASHBOARD') || define('USR_DASHBOARD', 'users_dashboard');
+
+// --- Audit Log Table Constant ---
+defined('AUDIT_LOG') || define('AUDIT_LOG', 'audit_log');
 
 // --- Application Constants ---
 defined('MIN_AGE_REQUIREMENT') || define('MIN_AGE_REQUIREMENT', 13);
@@ -277,4 +283,23 @@ if (!$conn || mysqli_connect_errno()) {
 }
 
 mysqli_set_charset($conn, 'utf8mb4');
+    $conn = false; 
+}
+
+// 3. Check connection object
+// This condition checks BOTH types of errors:
+// 1. !$conn (Connection object didn't create)
+// 2. mysqli_connect_errno (Connection object exists but has an error)
+if (!$conn || mysqli_connect_errno()) {
+    
+    if (!defined('SKIP_DB_CHECK')) {
+        header("Location: " . URL_ERROR);
+        exit(); // Stop here, redirect user
+    }
+    
+}
+// 4. Set Charset (Only if connection is valid)
+if ($conn) {
+    mysqli_set_charset($conn, 'utf8mb4');
+}
 ?>

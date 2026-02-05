@@ -11,21 +11,42 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
 
 $currentUserId = $_SESSION['user_id'];
 
+$userTable = USR_LOGIN;
+$dashTable = USR_DASHBOARD;
+$auditPage = 'User Dashboard';
+
+// Define queries once at the top
+$userQuery = "SELECT name FROM " . $userTable . " WHERE id = ? LIMIT 1";
+$dashQuery = "SELECT avatar, level, following_count, followers_count FROM " . $dashTable . " WHERE user_id = ? LIMIT 1";
+
 // --- DATA FETCHING ---
+
 // Query 1: Basic Info
-$userQuery = "SELECT name FROM " . USR_LOGIN . " WHERE id = ? LIMIT 1";
+// Use centralized variable
 $userStmt = $conn->prepare($userQuery);
 $userStmt->bind_param("i", $currentUserId);
 $userStmt->execute();
 $userRow = $userStmt->get_result()->fetch_assoc();
 
 // Query 2: Dashboard Stats
-$dashQuery = "SELECT avatar, level, following_count, followers_count 
-              FROM " . USR_DASHBOARD . " WHERE user_id = ? LIMIT 1";
+// Use centralized variable
 $dashStmt = $conn->prepare($dashQuery);
 $dashStmt->bind_param("i", $currentUserId);
 $dashStmt->execute();
 $dashRow = $dashStmt->get_result()->fetch_assoc();
+
+// ---------------------------------------------------------
+// [NEW] Audit Log: View Dashboard
+// ---------------------------------------------------------
+logAudit([
+    'page'           => $auditPage,
+    'action'         => 'V',             // V = View
+    'action_message' => 'User viewed dashboard',
+    'query'          => $dashQuery,      
+    'query_table'    => $dashTable,      
+    'user_id'        => $currentUserId
+]);
+// ---------------------------------------------------------
 
 // --- DATA PREPARATION (ALL ARRAYS) ---
 
