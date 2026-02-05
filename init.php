@@ -185,6 +185,9 @@ if (!$isLocal) {
 	$finance_connect = @mysqli_connect(dbhost, dbuser, dbpwd, dbFinance);
 }
 
+//-- Error Page URL Constant --
+defined('URL_ERROR') || define('URL_ERROR', SITEURL . '/src/pages/error404.php');
+
 
 // This gets the absolute path to the directory containing init.php
 define('BASE_PATH', __DIR__ . '/');
@@ -250,17 +253,25 @@ if ($isLocalEnvironment) {
 
 // 2. Establish connection
 try {
-    $conn = mysqli_connect($connHost, $connUser, $connPass, $connDb);
+    $conn = @mysqli_connect($connHost, $connUser, $connPass, $connDb);
 } catch (mysqli_sql_exception $e) {
-    // If connection fails, show a clear error message
-    die("Database Connection Error (Mode: " . ($isLocalEnvironment ? 'Local' : 'Live') . "): " . $e->getMessage());
+    $conn = false; 
 }
 
 // 3. Check connection object
-if (!$conn) {
-    die("System temporarily unavailable. Please try again later.");
+// This condition checks BOTH types of errors:
+// 1. !$conn (Connection object didn't create)
+// 2. mysqli_connect_errno (Connection object exists but has an error)
+if (!$conn || mysqli_connect_errno()) {
+    
+    if (!defined('SKIP_DB_CHECK')) {
+        header("Location: " . URL_ERROR);
+        exit(); // Stop here, redirect user
+    }
+    
 }
-
-// 4. Set Charset
-mysqli_set_charset($conn, 'utf8mb4');
+// 4. Set Charset (Only if connection is valid)
+if ($conn) {
+    mysqli_set_charset($conn, 'utf8mb4');
+}
 ?>
