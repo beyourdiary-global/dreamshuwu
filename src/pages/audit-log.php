@@ -20,6 +20,11 @@ $auditActions = [
 //  BACKEND: JSON API Mode (for DataTable)
 // ==========================================
 if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
+    // Ensure we don't crash if json_encode is missing
+    if (!function_exists('json_encode')) {
+        die('Error: PHP JSON extension is not enabled. Please enable it in cPanel.');
+    }
+
     header('Content-Type: application/json');
 
     $columns = ['id', 'page', 'action', 'action_message', 'user_id', 'created_at', 'query', 'old_value', 'new_value', 'changes'];
@@ -87,7 +92,14 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
     $data = [];
 
     while ($row = $result->fetch_assoc()) {
-        $dt = new DateTime($row['created_at']);
+        try {
+            $dt = new DateTime($row['created_at']);
+            $dateStr = $dt->format('Y-m-d');
+            $timeStr = $dt->format('H:i:s');
+        } catch (Exception $e) {
+            $dateStr = 'Invalid Date';
+            $timeStr = '';
+        }
         
         // Use the central $auditActions array here
         $actionLabel = $auditActions[$row['action']] ?? $row['action'];
@@ -97,22 +109,25 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
             '<span class="badge badge-'. getActionColor($row['action']) .'">' . $actionLabel . '</span>',
             htmlspecialchars($row['action_message']),
             htmlspecialchars(($row['user_name'] ?? 'Unknown') . " (ID:" . $row['user_id'] . ")"),
-            $dt->format('Y-m-d'),
-            $dt->format('H:i:s'),
+            $dateStr,
+            $timeStr,
             // Hidden columns for Details Row
-            'query' => htmlspecialchars($row['query']),
+            'query' => htmlspecialchars($row['query'] ?? ''),
             'old_value' => $row['old_value'],
             'new_value' => $row['new_value'],
             'changes' => $row['changes']
         ];
     }
 
+    // Final Output using json_encode
+    // We added flags to handle special characters better
+    $jsonFlags = defined('JSON_UNESCAPED_UNICODE') ? JSON_UNESCAPED_UNICODE : 0;
     echo json_encode([
         "draw" => intval($_GET['draw']),
         "recordsTotal" => $totalRecords,
         "recordsFiltered" => $totalRecords, 
         "data" => $data
-    ]);
+    ], $jsonFlags);
     exit();
 }
 
@@ -174,7 +189,7 @@ $customCSS = [
                    data-api-url="<?php echo $_SERVER['PHP_SELF']; ?>?mode=data">
                 <thead>
                     <tr>
-                        <th class="all" style="width: 20px;"></th> <th class="all">Page</th>
+                        <th class="all">Page</th>
                         <th class="all">Action</th>
                         <th>Message</th>
                         <th>User</th>

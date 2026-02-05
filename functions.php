@@ -106,6 +106,7 @@ function sendPasswordResetEmail($email, $resetLink) {
             .header { background: #233dd2; color: white; padding: 20px; text-align: center; border-radius: 5px; }
             .content { padding: 20px; background: #f9f9f9; }
             .footer { font-size: 12px; color: #999; margin-top: 20px; }
+            .footer p { margin: 5px 0; }
             a.btn { display: inline-block; background: #233dd2; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 15px 0; }
         </style>
     </head>
@@ -122,7 +123,7 @@ function sendPasswordResetEmail($email, $resetLink) {
                 <p style='color: #999; font-size: 14px;'><strong>重要：</strong>此链接有效期为 30 分钟。如果您没有提出此请求，请忽略此邮件。</p>
             </div>
             <div class='footer'>
-                <p>© " . date('Y') . " StarAdmin. 版权所有。</p>
+                <p>© " . date('Y') . " " . WEBSITE_NAME . ". 版权所有。</p>
             </div>
         </div>
     </body>
@@ -168,10 +169,22 @@ function logAudit($params) {
         }
     }
 
-    // 3. JSON Encode
-    $jsonOld     = !empty($oldData) ? json_encode($oldData, JSON_UNESCAPED_UNICODE) : null;
-    $jsonNew     = !empty($newData) ? json_encode($newData, JSON_UNESCAPED_UNICODE) : null;
-    $jsonChanges = !empty($changes) ? json_encode($changes, JSON_UNESCAPED_UNICODE) : null;
+    // 3. JSON Encode (WITH SAFETY CHECK)
+    // This fixes the "Call to undefined function json_encode" error
+    if (function_exists('json_encode')) {
+        // Use standard JSON encode if server supports it
+        $flags = defined('JSON_UNESCAPED_UNICODE') ? JSON_UNESCAPED_UNICODE : 0;
+        
+        $jsonOld     = !empty($oldData) ? json_encode($oldData, $flags) : null;
+        $jsonNew     = !empty($newData) ? json_encode($newData, $flags) : null;
+        $jsonChanges = !empty($changes) ? json_encode($changes, $flags) : null;
+    } else {
+        // FALLBACK: If JSON extension is disabled, send NULL to avoid crash
+        // IMPORTANT: You should enable the "json" extension in CPanel
+        $jsonOld     = null;
+        $jsonNew     = null;
+        $jsonChanges = null;
+    }
 
     // 4. Prepare SQL
     $sql = "INSERT INTO " . AUDIT_LOG . " 
