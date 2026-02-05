@@ -242,10 +242,10 @@ if ($isLocalEnvironment) {
 } else {
     // === USE LIVE SETTINGS ===
     // This runs only when uploaded to the live server
-    $connHost = defined('dbhost') ? dbhost : 'localhost';
-    $connUser = defined('dbuser') ? dbuser : 'root';
-    $connPass = defined('dbpwd')  ? dbpwd  : '';
-    $connDb   = defined('dbname') ? dbname : 'beyourdi_cms';
+    $connHost = defined('dbhost') ? dbhost : '127.0.0.1:3306';
+    $connUser = defined('dbuser') ? dbuser : 'beyourdi_cms';
+    $connPass = defined('dbpwd')  ? dbpwd  : 'Byd1234@Global';
+    $connDb   = defined('dbname') ? dbname : 'beyourdi_dreamshuwu';
 }
 
 // 2. Establish connection
