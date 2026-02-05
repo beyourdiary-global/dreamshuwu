@@ -14,7 +14,7 @@ $dbUser = $siteOrlocalMode ? 'beyourdi_cms' : 'root';
 define('dbuser', $dbUser);
 define('dbpwd', $siteOrlocalMode ? 'Byd1234@Global' : '');
 define('dbhost', $siteOrlocalMode ? '127.0.0.1:3306' : 'localhost');
-define('dbname', 'beyourdi_cms');
+define('dbname', $siteOrlocalMode ? 'beyourdi_dreamshuwu' : 'star_admin');
 define('dbFinance', 'beyourdi_financial');
 
 // Calculate SITEURL based on project root directory (where init.php lives)
@@ -232,25 +232,14 @@ defined('WEBSITE_NAME') || define('WEBSITE_NAME', 'StarAdmin');
 // Site language setting
 defined('SITE_LANG') || define('SITE_LANG', 'zh-CN');
 
-$isLocalEnvironment = in_array($_SERVER['SERVER_NAME'] ?? '', ['localhost', '127.0.0.1'], true);
-
-if ($isLocalEnvironment) {
-    // === USE LOCAL SETTINGS ===
-    $connHost = 'localhost';
-    $connUser = 'root';
-    $connPass = '';
-    $connDb   = 'star_admin'; 
-} else {
-    // === USE LIVE SETTINGS ===
-    // This runs only when uploaded to the live server
-    $connHost = defined('dbhost') ? dbhost : '127.0.0.1:3306';
-    $connUser = defined('dbuser') ? dbuser : 'beyourdi_cms';
-    $connPass = defined('dbpwd')  ? dbpwd  : 'Byd1234@Global';
-    $connDb   = defined('dbname') ? dbname : 'beyourdi_dreamshuwu';
-}
+// Use the constants already defined above
+$connHost = dbhost;
+$connUser = dbuser;
+$connPass = dbpwd;
+$connDb   = dbname;
 
 // --- TEMPORARY LIVE DEBUGGING ---
-$debug_mode = true; // Change to false once the page works!
+$debug_mode = false; // Set to true only for debugging
 
 if ($debug_mode) {
     error_reporting(E_ALL);
