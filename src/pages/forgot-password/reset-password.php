@@ -21,11 +21,14 @@ if (empty($token)) {
     $stmt = $conn->prepare("SELECT email FROM " . PWD_RESET . " WHERE token = ? AND expires_at > ? LIMIT 1");
     $stmt->bind_param("ss", $token, $currentDate);
     $stmt->execute();
-    $result = $stmt->get_result();
-
-    if ($row = $result->fetch_assoc()) {
+    
+    // [FIX] Universal Fetch (Replaces get_result)
+    // We bind the result to a variable instead of fetching an object
+    $stmt->bind_result($fetchedEmail);
+    
+    if ($stmt->fetch()) {
         $validToken = true;
-        $email = $row['email'];
+        $email = $fetchedEmail;
     } else {
         $message = "重置链接已失效，请重新申请";
         $msgType = "danger";
@@ -131,6 +134,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $validToken) {
 
 <script src="<?php echo URL_ASSETS; ?>/js/login-script.js"></script>
 
-<script src="<?php echo URL_ASSETS; ?>/js/reset-password-script.js?v=<?php echo $resetScriptVersion; ?>"></script>
+<script src="<?php echo URL_ASSETS; ?>/js/reset-password-script.js?v=<?php echo time(); ?>"></script>
 </body>
 </html>

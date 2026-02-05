@@ -43,24 +43,31 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['action']) && $_POST['
             $result = uploadImage($_FILES['avatar'], $uploadDir); 
 
             if ($result['success']) {
-                // 1. FETCH OLD AVATAR (Before updating DB)
+                // 1. FETCH OLD AVATAR (COMPATIBILITY FIXED)
                 $oldAvQuery = "SELECT avatar FROM " . USR_DASHBOARD . " WHERE user_id = ? LIMIT 1";
                 $oldStmt = $conn->prepare($oldAvQuery);
                 $oldStmt->bind_param("i", $userId);
                 $oldStmt->execute();
-                $oldRes = $oldStmt->get_result();
                 
-                if ($oldRow = $oldRes->fetch_assoc()) {
+                // [FIX] Universal Fetch
+                $oldRow = null;
+                $meta = $oldStmt->result_metadata();
+                $row = []; $params = [];
+                while ($field = $meta->fetch_field()) { $params[] = &$row[$field->name]; }
+                call_user_func_array(array($oldStmt, 'bind_result'), $params);
+                if ($oldStmt->fetch()) { foreach($row as $k=>$v){ $oldRow[$k]=$v; } }
+                $oldStmt->close();
+                // [END FIX]
+
+                if ($oldRow) {
                     $oldFile = $oldRow['avatar'];
                     $oldFilePath = $uploadDir . $oldFile;
-                    
-                    // 2. DELETE OLD FILE (If it exists and is not empty)
                     if (!empty($oldFile) && file_exists($oldFilePath)) {
-                        @unlink($oldFilePath); // Suppress errors if file missing
+                        @unlink($oldFilePath);
                     }
                 }
 
-                // 3. SAVE NEW AVATAR TO DB
+                // 2. SAVE NEW AVATAR
                 $avSql = "INSERT INTO " . USR_DASHBOARD . " (user_id, avatar) VALUES (?, ?) 
                           ON DUPLICATE KEY UPDATE avatar = VALUES(avatar)";
                 $avStmt = $conn->prepare($avSql);
@@ -101,17 +108,22 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['action']) && $_POST['
     $pwdStmt = $conn->prepare($pwdSql);
     $pwdStmt->bind_param("i", $userId);
     $pwdStmt->execute();
-    $pwdResult = $pwdStmt->get_result();
-    $userRow = $pwdResult->fetch_assoc();
 
-    // [Fix 1: Null Pointer Check]
-    // Check if user exists before accessing password_hash to avoid crash
+    // [FIX] Universal Fetch for Password
+    $userRow = null;
+    $meta = $pwdStmt->result_metadata();
+    $row = []; $params = [];
+    while ($field = $meta->fetch_field()) { $params[] = &$row[$field->name]; }
+    call_user_func_array(array($pwdStmt, 'bind_result'), $params);
+    if ($pwdStmt->fetch()) { foreach($row as $k=>$v){ $userRow[$k]=$v; } }
+    $pwdStmt->close();
+    // [END FIX]
+
+    // Validate
     if (!$userRow || !isset($userRow['password_hash'])) {
         $message = "系统错误: 无法获取用户信息";
         $msgType = "danger";
-    } 
-    // [Check Password Match]
-    elseif (!password_verify($currentPwd, $userRow['password_hash'])) {
+    } elseif (!password_verify($currentPwd, $userRow['password_hash'])) {
         $message = "当前密码错误";
         $msgType = "danger";
     } elseif ($newPwd !== $confirmPwd) {
@@ -137,21 +149,37 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['action']) && $_POST['
     }
 }
 
-// --- FETCH DATA (Split Queries for Efficiency) ---
+// --- FETCH DATA (COMPATIBILITY FIXED) ---
 
-// 1. Fetch Basic Info from Users Table
+// 1. Fetch Basic Info
 $userSql = "SELECT name, email, gender, birthday FROM " . USR_LOGIN . " WHERE id = ? LIMIT 1";
 $userStmt = $conn->prepare($userSql);
 $userStmt->bind_param("i", $userId);
 $userStmt->execute();
-$userRow = $userStmt->get_result()->fetch_assoc();
 
-// 2. Fetch Avatar from Dashboard Table
+// [FIX] Universal Fetch
+$userRow = [];
+$meta = $userStmt->result_metadata();
+$row = []; $params = [];
+while ($field = $meta->fetch_field()) { $params[] = &$row[$field->name]; }
+call_user_func_array(array($userStmt, 'bind_result'), $params);
+if ($userStmt->fetch()) { foreach($row as $k=>$v){ $userRow[$k]=$v; } }
+$userStmt->close();
+
+// 2. Fetch Avatar
 $dashSql = "SELECT avatar FROM " . USR_DASHBOARD . " WHERE user_id = ? LIMIT 1";
 $dashStmt = $conn->prepare($dashSql);
 $dashStmt->bind_param("i", $userId);
 $dashStmt->execute();
-$dashRow = $dashStmt->get_result()->fetch_assoc();
+
+// [FIX] Universal Fetch
+$dashRow = [];
+$meta = $dashStmt->result_metadata();
+$row = []; $params = [];
+while ($field = $meta->fetch_field()) { $params[] = &$row[$field->name]; }
+call_user_func_array(array($dashStmt, 'bind_result'), $params);
+if ($dashStmt->fetch()) { foreach($row as $k=>$v){ $dashRow[$k]=$v; } }
+$dashStmt->close();
 
 // 3. Merge results
 $currentUser = array_merge($userRow, $dashRow ?? ['avatar' => null]);
@@ -175,7 +203,6 @@ $customCSS = "user-profile.css";
 
 <?php require_once BASE_PATH . 'common/menu/header.php'; ?>
 <div class="profile-container">
-    
     <div class="section-header">
         <div class="header-text-content">
             <h2>个人资料设置</h2>
@@ -213,11 +240,11 @@ $customCSS = "user-profile.css";
             <div class="form-row">
                 <div class="col-half form-group">
                     <label>昵称 <span class="text-danger">*</span></label>
-                    <input type="text" name="display_name" class="form-control" value="<?php echo htmlspecialchars($currentUser['name']); ?>">
+                    <input type="text" name="display_name" class="form-control" value="<?php echo htmlspecialchars($currentUser['name'] ?? ''); ?>">
                 </div>
                 <div class="col-half form-group">
                     <label>电子邮箱 <span class="text-danger">*</span></label>
-                    <input type="email" name="email" class="form-control" value="<?php echo htmlspecialchars($currentUser['email']); ?>">
+                    <input type="email" name="email" class="form-control" value="<?php echo htmlspecialchars($currentUser['email'] ?? ''); ?>">
                 </div>
             </div>
 
@@ -226,7 +253,7 @@ $customCSS = "user-profile.css";
                     <label>性别</label>
                     <select name="gender" class="form-control">
                         <?php foreach ($GENDER_OPTIONS as $key => $label): ?>
-                            <option value="<?php echo $key; ?>" <?php echo ($currentUser['gender'] === $key) ? 'selected' : ''; ?>>
+                            <option value="<?php echo $key; ?>" <?php echo (isset($currentUser['gender']) && $currentUser['gender'] === $key) ? 'selected' : ''; ?>>
                                 <?php echo htmlspecialchars($label); ?>
                             </option>
                         <?php endforeach; ?>
@@ -234,7 +261,7 @@ $customCSS = "user-profile.css";
                 </div>
                 <div class="col-half form-group">
                     <label>生日</label>
-                    <input type="date" name="birth_date" class="form-control" value="<?php echo $currentUser['birthday']; ?>">
+                    <input type="date" name="birth_date" class="form-control" value="<?php echo $currentUser['birthday'] ?? ''; ?>">
                 </div>
             </div>
 
@@ -273,7 +300,6 @@ $customCSS = "user-profile.css";
             </div>
         </form>
     </div>
-
 </div>
 
 <script src="<?php echo URL_ASSETS; ?>/js/user-profile.js"></script>
