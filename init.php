@@ -245,7 +245,7 @@ $connPass = dbpwd;
 $connDb   = dbname;
 
 // --- TEMPORARY LIVE DEBUGGING ---
-$debug_mode = false; // Set to true only for debugging
+$debug_mode = true; // Set to true only for debugging
 
 if ($debug_mode) {
     error_reporting(E_ALL);
