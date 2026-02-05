@@ -6,6 +6,11 @@ require_once BASE_PATH . 'functions.php';
 
 // Set page variables BEFORE including header
 $pageTitle = "注册 - " . WEBSITE_NAME;
+$auditPage = 'Register Page';
+
+$dbTable = USR_LOGIN;
+$insertQuery = "INSERT INTO " . $dbTable . " (name, email, password_hash, gender, birthday) VALUES (?, ?, ?, ?, ?)";
+$checkQuery  = "SELECT id FROM " . $dbTable . " WHERE email = ?";
 
 $message = "";
 $name = "";
@@ -45,8 +50,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     // Database Operations ---
     if (empty($message)) {
         // Check if email already exists in the system
-        // UPDATE: Used USR_LOGIN constant instead of hardcoded 'users'
-        $check = mysqli_prepare($conn, "SELECT id FROM " . USR_LOGIN . " WHERE email = ?");
+        $check = mysqli_prepare($conn, $checkQuery);
         mysqli_stmt_bind_param($check, "s", $email);
         mysqli_stmt_execute($check);
         mysqli_stmt_store_result($check);
@@ -64,13 +68,31 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             // UPDATE: Used USR_LOGIN constant instead of hardcoded 'users'
             $stmt = mysqli_prepare(
                 $conn,
-                "INSERT INTO " . USR_LOGIN . " (name, email, password_hash, gender, birthday) VALUES (?, ?, ?, ?, ?)"
+                $insertQuery
             );
             mysqli_stmt_bind_param($stmt, "sssss", $name, $email, $hash, $genderDb, $birthdayDb);
             $success = mysqli_stmt_execute($stmt);
 
             if ($success) {
-                // AUTO LOGIN: Start a session and redirect to Welcome page
+                // Get the ID of the new user we just created
+                $newUserId = mysqli_insert_id($conn);
+                
+                logAudit([
+                    'page'           => $auditPage,
+                    'action'         => 'A',             // A = Add
+                    'action_message' => 'New user registered',
+                    'query'          => $insertQuery,
+                    'query_table'    => $dbTable,
+                    'new_value'      => [
+                        'name'     => $name,
+                        'email'    => $email,
+                        'gender'   => $gender,
+                        'birthday' => $birthday
+                    ],
+                    'user_id'        => $newUserId
+                ]);
+            
+            // ---------------------------------------------------------
                 if (session_status() !== PHP_SESSION_ACTIVE) {
                     session_start();
                 }

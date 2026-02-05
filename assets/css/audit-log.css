@@ -1,0 +1,181 @@
+/* --- Custom Page Styles --- */
+
+.audit-container {
+  padding: 20px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* Badge Colors */
+.badge-info {
+  background-color: #0dcaf0;
+  color: #000;
+}
+.badge-warning {
+  background-color: #ffc107;
+  color: #000;
+}
+.badge-danger {
+  background-color: #dc3545;
+  color: #fff;
+}
+.badge-success {
+  background-color: #198754;
+  color: #fff;
+}
+
+/* JSON Pretty Print Styling */
+pre {
+  background: #f8f9fa;
+  padding: 10px;
+  border-radius: 5px;
+  border: 1px solid #dee2e6;
+  max-height: 250px;
+  overflow-y: auto;
+  font-size: 0.85em;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+/* Expansion Row Styling */
+td.details-control {
+  cursor: pointer;
+  text-align: center;
+  color: #233dd2;
+}
+
+/* Card Header Icons */
+.card-header h4 i {
+  margin-right: 8px;
+}
+
+/* =========================================
+   MOBILE RESPONSIVE FIXES (Max Width 576px)
+   ========================================= */
+@media (max-width: 576px) {
+  /* 1. Reduce Container Padding */
+  .audit-container {
+    padding: 10px;
+    overflow-x: hidden; /* Prevent horizontal scroll on body */
+  }
+  .card-body {
+    padding: 10px;
+  }
+
+  /* 2. FIX: Search Bar Overflow */
+  .dataTables_wrapper .dataTables_filter {
+    text-align: left !important;
+    margin-top: 10px;
+    margin-bottom: 10px;
+    width: 100%;
+  }
+
+  /* Turn the label into a vertical stack (Text top, Input bottom) */
+  .dataTables_wrapper .dataTables_filter label {
+    width: 100%;
+    display: flex !important; /* Use Flexbox */
+    flex-direction: column; /* Stack vertically */
+    align-items: flex-start; /* Align text to left */
+    gap: 5px; /* Space between text and box */
+  }
+
+  /* Force input to fit the container */
+  .dataTables_wrapper .dataTables_filter input {
+    width: 100% !important; /* Fill width */
+    margin-left: 0 !important; /* Remove default spacing */
+    display: block !important;
+    box-sizing: border-box; /* Ensure padding doesn't increase width */
+  }
+
+  /* 3. Adjust Table Cell Padding & Fonts */
+  table.dataTable.dtr-inline.collapsed > tbody > tr > td.dtr-control:before,
+  table.dataTable.dtr-inline.collapsed > tbody > tr > th.dtr-control:before {
+    top: 50%;
+    transform: translateY(-50%);
+    left: 5px;
+  }
+
+  table.dataTable > tbody > tr > td,
+  table.dataTable > tbody > tr > th {
+    padding: 8px 5px !important;
+    font-size: 0.85rem;
+  }
+
+  /* 4. Fix Badge Alignment */
+  .badge {
+    font-size: 0.75rem;
+    padding: 4px 6px;
+  }
+
+  /* 5. Ensure "Action" Badge doesn't wrap weirdly */
+  td {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 150px; /* Safety cap for text width */
+  }
+
+  /* Allow wrapping ONLY for the 'Details' expansion row */
+  tr.child td {
+    white-space: normal;
+    max-width: none;
+  }
+
+  /* 6. Fix "No data available" row */
+  .dataTables_empty {
+    text-align: center !important;
+    padding: 20px !important;
+    white-space: normal !important;
+  }
+}
+
+/* =========================================
+   FIX: DataTables BS3 Pagination in BS5
+   ========================================= */
+
+/* 1. Reset the list style so they sit in a row */
+.dataTables_wrapper .pagination {
+  display: flex;
+  justify-content: flex-end;
+  list-style: none;
+  padding: 0;
+  margin-top: 10px;
+  gap: 5px; /* Space between buttons */
+}
+
+/* 2. Style the links to look like buttons */
+.dataTables_wrapper .pagination > li > a {
+  padding: 6px 12px;
+  border: 1px solid #dee2e6;
+  background-color: #fff;
+  color: #0d6efd; /* Bootstrap 5 Primary Blue */
+  text-decoration: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+/* 3. Hover Effect */
+.dataTables_wrapper .pagination > li > a:hover {
+  background-color: #e9ecef;
+  border-color: #dee2e6;
+  color: #0a58ca;
+}
+
+/* 4. Active Page (Blue Background) */
+.dataTables_wrapper .pagination > .active > a {
+  background-color: #0d6efd;
+  border-color: #0d6efd;
+  color: white;
+  font-weight: bold;
+}
+
+/* 5. Disabled Buttons (Previous/Next when not usable) */
+.dataTables_wrapper .pagination > .disabled > a {
+  color: #6c757d;
+  pointer-events: none;
+  background-color: #fff;
+  border-color: #dee2e6;
+  opacity: 0.6;
+}
