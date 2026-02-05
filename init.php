@@ -185,11 +185,6 @@ define('LAZADA_ORDER_REQ', 'lazada_order_request');
 
 $isLocal = in_array($_SERVER['SERVER_NAME'] ?? '', ['localhost', '127.0.0.1'], true);
 
-if (!$isLocal) {
-	$connect = @mysqli_connect(dbhost, dbuser, dbpwd, dbname);
-	$finance_connect = @mysqli_connect(dbhost, dbuser, dbpwd, dbFinance);
-}
-
 //-- Error Page URL Constant --
 defined('URL_ERROR') || define('URL_ERROR', SITEURL . '/src/pages/error404.php');
 
@@ -249,6 +244,14 @@ $connUser = dbuser;
 $connPass = dbpwd;
 $connDb   = dbname;
 
+// Parse host:port format (e.g. 127.0.0.1:3306)
+$connPort = 3306;
+if (strpos($connHost, ':') !== false) {
+    $connParts = explode(':', $connHost, 2);
+    $connHost = $connParts[0];
+    $connPort = (int) $connParts[1];
+}
+
 // --- TEMPORARY LIVE DEBUGGING ---
 $debug_mode = true; // Set to true only for debugging
 
@@ -259,7 +262,7 @@ if ($debug_mode) {
 
 // 2. Establish connection
 try {
-    $conn = @mysqli_connect($connHost, $connUser, $connPass, $connDb);
+    $conn = @mysqli_connect($connHost, $connUser, $connPass, $connDb, $connPort);
 } catch (mysqli_sql_exception $e) {
     $conn = false;
 }
