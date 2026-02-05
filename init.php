@@ -10,6 +10,7 @@ date_default_timezone_set('Asia/Singapore');
 
 $dbUser = $siteOrlocalMode ? 'beyourdi_cms' : 'root';
 
+//cms database
 define('dbuser', $dbUser);
 define('dbpwd', $siteOrlocalMode ? 'Byd1234@Global' : '');
 define('dbhost', $siteOrlocalMode ? '127.0.0.1:3306' : 'localhost');
@@ -25,7 +26,7 @@ $projectPath = '';
 if ($docRoot !== '' && strpos($initDir, $docRoot) === 0) {
     $projectPath = substr($initDir, strlen($docRoot));
 }
-define('SITEURL', $siteOrlocalMode ? 'https://cms.beyourdiary.com' : ('http://' . $localHost . $projectPath));
+define('SITEURL', $siteOrlocalMode ? 'https://dreamshuwu.beyourdiary.com' : ('http://' . $localHost . $projectPath));
 $SITEURL = SITEURL;
 define('ROOT', dirname(__FILE__));
 define('email_cc', "report@beyourdiary.com	");
