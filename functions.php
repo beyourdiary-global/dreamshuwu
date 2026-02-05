@@ -132,43 +132,66 @@ function sendPasswordResetEmail($email, $resetLink) {
 }
 
 /**
- * Helper: Handle Image Upload
- * Returns array: ['success' => bool, 'filename' => string|null, 'message' => string]
+ * Logs a database operation to the audit_log table.
  */
-function uploadImage($fileInput, $targetDir, $maxSizeMB = 2) {
-    // 1. Check for upload errors
-    if (!isset($fileInput) || $fileInput['error'] !== UPLOAD_ERR_OK) {
-        return ['success' => false, 'message' => '没有文件被上传或上传出错'];
+function logAudit($params) {
+    global $conn;
+
+    // 1. Set Defaults
+    $page        = $params['page'] ?? 'Unknown';
+    $action      = $params['action'] ?? 'V';
+    $message     = $params['action_message'] ?? '';
+    $query       = $params['query'] ?? '';
+    $table       = $params['query_table'] ?? '';
+    $userId      = $params['user_id'] ?? 0;
+    
+    // Arrays for JSON columns
+    $oldData     = $params['old_value'] ?? null;
+    $newData     = $params['new_value'] ?? null;
+    $changes     = null;
+
+    // 2. Calculate Changes (Improved Logic: From -> To)
+    if ($action === 'E' && is_array($oldData) && is_array($newData)) {
+        $changes = [];
+        foreach ($newData as $key => $value) {
+            // Check if key exists in old data AND is different
+            if (array_key_exists($key, $oldData) && $oldData[$key] !== $value) {
+                $changes[$key] = [
+                    'from' => $oldData[$key],
+                    'to'   => $value
+                ];
+            }
+        }
+        // If no actual changes found, set to null
+        if (empty($changes)) {
+            $changes = null;
+        }
     }
 
-    // 2. Validate Size
-    if ($fileInput['size'] > $maxSizeMB * 1024 * 1024) {
-        return ['success' => false, 'message' => "文件大小不能超过 {$maxSizeMB}MB"];
+    // 3. JSON Encode
+    $jsonOld     = !empty($oldData) ? json_encode($oldData, JSON_UNESCAPED_UNICODE) : null;
+    $jsonNew     = !empty($newData) ? json_encode($newData, JSON_UNESCAPED_UNICODE) : null;
+    $jsonChanges = !empty($changes) ? json_encode($changes, JSON_UNESCAPED_UNICODE) : null;
+
+    // 4. Prepare SQL
+    $sql = "INSERT INTO " . AUDIT_LOG . " 
+            (page, action, action_message, query, query_table, 
+             old_value, new_value, changes, user_id, 
+             created_at, updated_at, created_by, updated_by) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ?, ?)";
+
+    $stmt = $conn->prepare($sql);
+
+    if ($stmt) {
+        $stmt->bind_param(
+            "ssssssssiii", 
+            $page, $action, $message, $query, $table, 
+            $jsonOld, $jsonNew, $jsonChanges, $userId, $userId, $userId
+        );
+        $stmt->execute();
+        $stmt->close();
+    } else {
+        error_log("Audit Log SQL Error: " . $conn->error);
     }
-
-    // 3. Validate Extension
-    $fileName = $fileInput['name'];
-    $fileExt = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
-    $allowedExts = ['jpg', 'jpeg', 'png'];
-
-    if (!in_array($fileExt, $allowedExts)) {
-        return ['success' => false, 'message' => '仅支持 JPG, JPEG, PNG 格式'];
-    }
-
-    // 4. Create Directory if not exists
-    if (!is_dir($targetDir)) {
-        mkdir($targetDir, 0755, true);
-    }
-
-    // 5. Generate Unique Name and Move
-    // Using uniqid() ensures filenames are unique and harder to guess
-    $newFileName = uniqid('img_', true) . '.' . $fileExt;
-    $destPath = $targetDir . $newFileName;
-
-    if (move_uploaded_file($fileInput['tmp_name'], $destPath)) {
-        return ['success' => true, 'filename' => $newFileName, 'message' => '上传成功'];
-    }
-
-    return ['success' => false, 'message' => '文件移动失败，请检查文件夹权限'];
 }
 ?>
