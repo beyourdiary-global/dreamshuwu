@@ -1,4 +1,8 @@
 <?php
+// Enable error display FIRST (before any code that might fail)
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
 session_start();
 // $livemode = false; // true = test link, false = live link
 // Auto-detect local environment
@@ -232,7 +236,8 @@ defined('PWD_REGEX_PATTERN')   || define('PWD_REGEX_PATTERN', '^(?=.*[a-z])(?=.*
 
 // --- Environment Configuration ---
 // List of hostnames/IPs considered as local development environments
-defined('LOCAL_WHITELIST') || define('LOCAL_WHITELIST', ['127.0.0.1', '::1', 'localhost']);
+// Using comma-separated string for PHP 5.6 compatibility
+defined('LOCAL_WHITELIST') || define('LOCAL_WHITELIST', '127.0.0.1,::1,localhost');
 // Central variable for the company/website name used in emails and UI
 defined('WEBSITE_NAME') || define('WEBSITE_NAME', 'StarAdmin');
 // Site language setting
