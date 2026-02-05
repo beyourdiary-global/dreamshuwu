@@ -255,10 +255,45 @@ if ($isLocalEnvironment) {
     $connDb   = defined('dbname') ? dbname : 'beyourdi_dreamshuwu';
 }
 
+// --- TEMPORARY LIVE DEBUGGING ---
+$debug_mode = true; // Change to false once the page works!
+
+if ($debug_mode) {
+    error_reporting(E_ALL);
+    ini_set('display_errors', 1);
+}
+
 // 2. Establish connection
 try {
     $conn = @mysqli_connect($connHost, $connUser, $connPass, $connDb);
 } catch (mysqli_sql_exception $e) {
+    $conn = false;
+}
+
+// 3. Check connection & Debug
+if (!$conn || mysqli_connect_errno()) {
+    if ($debug_mode) {
+        echo "<div style='background:#fee; border:2px solid red; padding:20px; margin:20px; font-family:sans-serif;'>";
+        echo "<h2 style='color:red;'>⚠️ Database Debug Information</h2>";
+        echo "<b>Current Mode:</b> " . ($isLocalEnvironment ? 'Local' : 'Live (Server)') . "<br>";
+        echo "<b>Attempted Host:</b> " . $connHost . "<br>";
+        echo "<b>Attempted User:</b> " . $connUser . "<br>";
+        echo "<b>Attempted DB:</b> " . $connDb . "<br>";
+        echo "<b>Error Message:</b> " . mysqli_connect_error() . "<br>";
+        echo "<b>SITEURL:</b> " . SITEURL . "<br>";
+        echo "<hr>";
+        echo "<i>Check if the Database User is added to the Database in CPanel.</i>";
+        echo "</div>";
+        die("Stopping redirect for debugging..."); // This prevents the redirect to error404.php
+    }
+    
+    if (!defined('SKIP_DB_CHECK')) {
+        header("Location: " . SITEURL . "/src/pages/error404.php");
+        exit();
+    }
+}
+
+mysqli_set_charset($conn, 'utf8mb4');
     $conn = false; 
 }
 
