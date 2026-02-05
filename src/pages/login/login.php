@@ -86,8 +86,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     'page'           => $auditPage,
                     'action'         => 'V',
                     'action_message' => 'User logged in successfully',
-                    'query'          => $loginQuery, // [REFACTOR] Reusing variable
-                    'query_table'    => $dbTable,    // [REFACTOR] Reusing variable
+                    'query'          => $loginQuery, 
+                    'query_table'    => $dbTable,    
                     'user_id'        => (int)$user['id']
                 ]);
                 // ---------------------------------------------------------
@@ -97,10 +97,18 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
                 if ($isAjax) {
                     header('Content-Type: application/json');
-                    echo json_encode([
-                        'success' => true,
-                        'redirect' => $redirectTarget
-                    ]);
+                    
+                    // [SAFETY FIX] Check if json_encode exists
+                    if (function_exists('json_encode')) {
+                        echo json_encode([
+                            'success' => true,
+                            'redirect' => $redirectTarget
+                        ]);
+                    } else {
+                        // Manual JSON Fallback so you can still login!
+                        // This prevents the white screen/crash
+                        echo '{"success": true, "redirect": "' . $redirectTarget . '"}';
+                    }
                     exit();
                 }
 
@@ -124,10 +132,18 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
     if ($isAjax) {
         header('Content-Type: application/json');
-        echo json_encode([
-            'success' => false,
-            'message' => $message
-        ]);
+        
+        // [SAFETY FIX] Check if json_encode exists
+        if (function_exists('json_encode')) {
+            echo json_encode([
+                'success' => false,
+                'message' => $message
+            ]);
+        } else {
+            // Manual JSON Fallback for Errors
+            // Returns a valid JSON string so the UI shows the error properly
+            echo '{"success": false, "message": "System Error: PHP JSON Extension disabled. Please contact admin."}';
+        }
         exit();
     }
 }
