@@ -5,11 +5,15 @@ $(document).ready(function () {
       $(this).remove();
     });
 
+  const $table = $("#tagTable");
+  const apiUrl = $table.data("api-url") || "index.php?mode=data";
+  const deleteUrl = $table.data("delete-url") || "index.php";
+
   // Initialize DataTable with server-side processing
   const table = $("#tagTable").DataTable({
     processing: true,
     serverSide: true,
-    ajax: { url: "index.php?mode=data", type: "GET" },
+    ajax: { url: apiUrl, type: "GET" },
     columns: [{ data: 0 }, { data: 1, orderable: false }],
     order: [],
     dom:
@@ -58,7 +62,7 @@ $(document).ready(function () {
     }).then((result) => {
       if (result.isConfirmed) {
         $.ajax({
-          url: "index.php",
+          url: deleteUrl,
           type: "POST",
           data: { mode: "delete", id: id, name: name },
           dataType: "json",

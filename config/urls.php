@@ -31,7 +31,11 @@ defined('URL_USER_MESSAGES')  || define('URL_USER_MESSAGES', SITEURL . '/src/pag
 defined('URL_AUTHOR_DASHBOARD') || define('URL_AUTHOR_DASHBOARD', SITEURL . '/src/pages/author/dashboard.php');
 
 // --- 6. Novel Management ---
-defined('URL_NOVEL_TAGS') || define('URL_NOVEL_TAGS', SITEURL . '/src/pages/tags/index.php');
-// --  6. Audit Log Page ---
+// UI entry for novel tags (rendered inside user dashboard)
+defined('URL_NOVEL_TAGS') || define('URL_NOVEL_TAGS', SITEURL . '/src/pages/user/dashboard.php?view=tags');
+// Backend API endpoint for tags (DataTables + delete)
+defined('URL_NOVEL_TAGS_API') || define('URL_NOVEL_TAGS_API', SITEURL . '/src/pages/tags/index.php');
+
+// --  7. Audit Log Page ---
 defined('URL_AUDIT_LOG') || define('URL_AUDIT_LOG', SITEURL . '/src/pages/audit-log.php');
 ?>
