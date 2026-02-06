@@ -1,4 +1,5 @@
 <?php
+// Path: src/pages/audit-log.php
 require_once __DIR__ . '/../../init.php';
 require_once BASE_PATH . 'config/urls.php';
 require_once BASE_PATH . 'functions.php';
@@ -11,17 +12,16 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
 $auditActions = ['V' => 'View', 'E' => 'Edit', 'A' => 'Add', 'D' => 'Delete'];
 
 if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
+    // [FIX] Removed the manual JSON check that was causing false positives
     header('Content-Type: application/json');
 
-    // 1. Base Queries
     $sql = "SELECT * FROM " . AUDIT_LOG . " WHERE 1=1";
     $countSql = "SELECT COUNT(*) FROM " . AUDIT_LOG . " WHERE 1=1";
     
-    // separate arrays to prevent index mismatch errors
     $mainParams = []; $mainTypes = "";
     $countParams = []; $countTypes = "";
 
-    // 2. Search Logic
+    // 1. Search Logic
     if (!empty($_GET['search']['value'])) {
         $search = "%" . $_GET['search']['value'] . "%";
         $userSubQuery = "(SELECT id FROM " . USR_LOGIN . " WHERE name LIKE ?)";
@@ -30,15 +30,12 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
         $sql .= $clause;
         $countSql .= $clause;
         
-        // Add to both param sets
         $searchParams = [$search, $search, $search];
-        $searchTypes = "sss";
-        
         foreach($searchParams as $p) { $mainParams[] = $p; $countParams[] = $p; }
-        $mainTypes .= $searchTypes; $countTypes .= $searchTypes;
+        $mainTypes .= "sss"; $countTypes .= "sss";
     }
     
-    // 3. Filter Action
+    // 2. Filter Action
     if (!empty($_GET['filter_action'])) {
         $clause = " AND action = ?";
         $sql .= $clause;
@@ -48,20 +45,30 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
         $mainTypes .= "s"; $countTypes .= "s";
     }
 
-    // 4. Execute Count Query
-    $countStmt = $conn->prepare($countSql);
-    if (!empty($countParams)) {
-        $countStmt->bind_param($countTypes, ...$countParams);
+    // [FIX] Safe Parameter Binding Helper
+    function bindDynamicParams($stmt, $types, $params) {
+        if (!empty($params)) {
+            $bindParams = [];
+            $bindParams[] = $types;
+            for ($i = 0; $i < count($params); $i++) {
+                $bindParams[] = &$params[$i];
+            }
+            call_user_func_array(array($stmt, 'bind_param'), $bindParams);
+        }
     }
+
+    // 3. Count Query
+    $countStmt = $conn->prepare($countSql);
+    bindDynamicParams($countStmt, $countTypes, $countParams);
     $countStmt->execute();
     $countStmt->bind_result($totalRecords);
     $countStmt->fetch();
     $countStmt->close();
 
-    // 5. Sorting & Pagination (Only for Main Query)
+    // 4. Sort & Limit
     $sortCols = ['page', 'action', 'action_message', 'user_id', 'created_at', 'created_at']; 
     $colIdx = $_GET['order'][0]['column'] ?? 5; 
-    $realColIdx = ($colIdx > 0) ? $colIdx - 1 : 4; 
+    $realColIdx = ($colIdx > 0) ? $colIdx - 1 : 4; // Adjust for hidden column
     $colName = $sortCols[$realColIdx] ?? 'created_at';
     $dir = ($_GET['order'][0]['dir'] ?? 'desc') === 'asc' ? 'ASC' : 'DESC';
     $sql .= " ORDER BY " . $colName . " " . $dir;
@@ -72,14 +79,11 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
     $mainParams[] = $start; $mainParams[] = $length;
     $mainTypes .= "ii";
 
-    // 6. Execute Main Query
+    // 5. Execute Main
     $stmt = $conn->prepare($sql);
-    if (!empty($mainParams)) {
-        $stmt->bind_param($mainTypes, ...$mainParams);
-    }
+    bindDynamicParams($stmt, $mainTypes, $mainParams);
     $stmt->execute();
     
-    // Universal Fetch Loop
     $results = [];
     $meta = $stmt->result_metadata();
     $row = []; $bindResult = [];
@@ -91,39 +95,39 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
     }
     $stmt->close();
 
-    // 7. Get User Names
+    // 6. User Mapping
     $userIds = array_unique(array_column($results, 'user_id'));
     $userMap = [];
     if (!empty($userIds)) {
         $idList = implode(',', array_map('intval', $userIds));
         $uRes = $conn->query("SELECT id, name FROM " . USR_LOGIN . " WHERE id IN ($idList)");
-        while ($uRow = $uRes->fetch_assoc()) $userMap[$uRow['id']] = $uRow['name'];
+        if($uRes) while ($uRow = $uRes->fetch_assoc()) $userMap[$uRow['id']] = $uRow['name'];
     }
 
-    // 8. Output Data
+    // 7. Output Data
     $data = [];
     foreach ($results as $cRow) {
         $badgeClass = 'secondary';
-        switch ($cRow['action']) {
+        $actCode = trim($cRow['action'] ?? '');
+        
+        switch ($actCode) {
             case 'V': $badgeClass = 'info'; break;
             case 'E': $badgeClass = 'warning'; break;
             case 'D': $badgeClass = 'danger'; break;
             case 'A': $badgeClass = 'success'; break;
         }
 
+        // [FIX] Ensure Action Text is never empty
+        $actionLabel = $auditActions[$actCode] ?? $actCode;
+        if (empty($actionLabel)) $actionLabel = "Record"; 
+
         $data[] = [
             'page'    => htmlspecialchars($cRow['page']),
-            'action'  => '<span class="badge badge-custom badge-'.$badgeClass.'">' . ($auditActions[$cRow['action']] ?? $cRow['action']) . '</span>',
+            'action'  => '<span class="badge badge-custom badge-'.$badgeClass.'">' . htmlspecialchars($actionLabel) . '</span>',
             'message' => htmlspecialchars($cRow['action_message']),
             'user'    => htmlspecialchars(($userMap[$cRow['user_id']] ?? 'Unknown') . " (ID:" . $cRow['user_id'] . ")"),
             'date'    => (new DateTime($cRow['created_at']))->format('Y-m-d'),
-            'time'    => (new DateTime($cRow['created_at']))->format('H:i:s'),
-            'details' => [
-                'query' => $cRow['query'], 
-                'old' => $cRow['old_value'], 
-                'new' => $cRow['new_value'], 
-                'changes' => $cRow['changes']
-            ]
+            'time'    => (new DateTime($cRow['created_at']))->format('H:i:s')
         ];
     }
 
