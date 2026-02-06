@@ -207,4 +207,71 @@ function logAudit($params) {
         error_log("Audit Log SQL Error: " . $conn->error);
     }
 }
+
+/**
+ * Secure Image Upload Function
+ * Handles avatar uploads safely.
+ * * @param array $file The $_FILES['input_name'] array
+ * @param string $targetDir The directory to save the file
+ * @return array ['success' => bool, 'message' => string, 'filename' => string]
+ */
+function uploadImage($file, $targetDir) {
+    // 1. Check for basic upload errors
+    if ($file['error'] !== UPLOAD_ERR_OK) {
+        $errorMessages = [
+            UPLOAD_ERR_INI_SIZE   => '文件大小超过服务器限制',
+            UPLOAD_ERR_FORM_SIZE  => '文件大小超过表单限制',
+            UPLOAD_ERR_PARTIAL    => '文件上传不完整',
+            UPLOAD_ERR_NO_FILE    => '没有选择文件',
+            UPLOAD_ERR_NO_TMP_DIR => '临时文件夹丢失',
+            UPLOAD_ERR_CANT_WRITE => '无法写入文件',
+            UPLOAD_ERR_EXTENSION  => '文件上传被扩展程序停止',
+        ];
+        $msg = $errorMessages[$file['error']] ?? '未知上传错误';
+        return ['success' => false, 'message' => $msg];
+    }
+
+    // 2. Validate Image Extension
+    $allowedTypes = ['jpg', 'jpeg', 'png'];
+    $fileExt = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+    
+    if (!in_array($fileExt, $allowedTypes)) {
+        return ['success' => false, 'message' => '只允许上传 JPG 和 PNG 格式的图片'];
+    }
+
+    // 3. Validate Mime Type (Security Check)
+    // If finfo_open doesn't exist (some shared hosts), we skip this or use a fallback
+    if (function_exists('finfo_open')) {
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mime = finfo_file($finfo, $file['tmp_name']);
+        finfo_close($finfo);
+        
+        $allowedMimes = ['image/jpeg', 'image/png'];
+        if (!in_array($mime, $allowedMimes)) {
+            return ['success' => false, 'message' => '文件内容无效 (MIME mismatch)'];
+        }
+    }
+
+    // 4. Generate Safe Filename
+    $newFilename = uniqid('av_') . '.' . $fileExt;
+    
+    // Ensure the target directory ends with a slash
+    $targetDir = rtrim($targetDir, '/') . '/';
+    $targetPath = $targetDir . $newFilename;
+
+    // 5. Create Directory if missing
+    if (!is_dir($targetDir)) {
+        // Try to create directory with permissions
+        if (!mkdir($targetDir, 0755, true)) {
+            return ['success' => false, 'message' => '无法创建上传目录 (权限不足)'];
+        }
+    }
+
+    // 6. Move File
+    if (move_uploaded_file($file['tmp_name'], $targetPath)) {
+        return ['success' => true, 'filename' => $newFilename];
+    }
+
+    return ['success' => false, 'message' => '无法保存文件 (Move failed)'];
+}
 ?>
