@@ -25,6 +25,11 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
             }
 
             if (is_array($data)) {
+                // IMPORTANT: Empty arrays must always be encoded as [] (not {})
+                if ($data === []) {
+                    return '[]';
+                }
+
                 $isAssoc = array_keys($data) !== range(0, count($data) - 1);
                 $items = [];
                 foreach ($data as $key => $value) {
