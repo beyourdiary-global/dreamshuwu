@@ -10,7 +10,7 @@ $msgType = "";
 $validToken = false;
 $email = "";
 
-$token = $_GET['token'] ?? '';
+$token = $_POST['token'] ?? ($_GET['token'] ?? '');
 
 if (empty($token)) {
     $message = "无效的访问链接";
@@ -94,6 +94,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $validToken) {
                 <?php if ($validToken): ?>
                 <p class="subtext text-center text-muted">请为您的账号设置一个新的安全密码</p>
                 <form id="resetForm" method="POST" autocomplete="off" novalidate>
+                    <input type="hidden" name="token" value="<?php echo htmlspecialchars($token); ?>">
                     
                     <div class="form-floating mb-3 position-relative">
                         <input type="password" class="form-control" id="new_password" name="new_password" placeholder="New Password" required style="padding-right: 60px;">
