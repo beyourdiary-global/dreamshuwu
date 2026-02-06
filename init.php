@@ -10,10 +10,11 @@ date_default_timezone_set('Asia/Singapore');
 
 $dbUser = $siteOrlocalMode ? 'beyourdi_cms' : 'root';
 
+//cms database
 define('dbuser', $dbUser);
 define('dbpwd', $siteOrlocalMode ? 'Byd1234@Global' : '');
 define('dbhost', $siteOrlocalMode ? '127.0.0.1:3306' : 'localhost');
-define('dbname', 'beyourdi_cms');
+define('dbname', $siteOrlocalMode ? 'beyourdi_dreamshuwu' : 'star_admin');
 define('dbFinance', 'beyourdi_financial');
 
 // Calculate SITEURL based on project root directory (where init.php lives)
@@ -25,7 +26,7 @@ $projectPath = '';
 if ($docRoot !== '' && strpos($initDir, $docRoot) === 0) {
     $projectPath = substr($initDir, strlen($docRoot));
 }
-define('SITEURL', $siteOrlocalMode ? 'https://cms.beyourdiary.com' : ('http://' . $localHost . $projectPath));
+define('SITEURL', $siteOrlocalMode ? 'https://dreamshuwu.beyourdiary.com' : ('http://' . $localHost . $projectPath));
 $SITEURL = SITEURL;
 define('ROOT', dirname(__FILE__));
 define('email_cc', "report@beyourdiary.com	");
@@ -180,10 +181,8 @@ define('LAZADA_ORDER_REQ', 'lazada_order_request');
 
 $isLocal = in_array($_SERVER['SERVER_NAME'] ?? '', ['localhost', '127.0.0.1'], true);
 
-if (!$isLocal) {
-	$connect = @mysqli_connect(dbhost, dbuser, dbpwd, dbname);
-	$finance_connect = @mysqli_connect(dbhost, dbuser, dbpwd, dbFinance);
-}
+//-- Error Page URL Constant --
+defined('URL_ERROR') || define('URL_ERROR', SITEURL . '/src/pages/error404.php');
 
 
 // This gets the absolute path to the directory containing init.php
@@ -211,6 +210,11 @@ defined('PWD_RESET') || define('PWD_RESET', 'password_resets');
 // -- User Dashboard Table Constant ---
 defined('USR_DASHBOARD') || define('USR_DASHBOARD', 'users_dashboard');
 
+// --- Audit Log Table Constant ---
+defined('AUDIT_LOG') || define('AUDIT_LOG', 'audit_log');
+
+// --- Novel Tags Table Constant ---
+defined('NOVEL_TAGS') || define('NOVEL_TAGS', 'novel_tag');
 // --- Application Constants ---
 defined('MIN_AGE_REQUIREMENT') || define('MIN_AGE_REQUIREMENT', 13);
 defined('MIN_PWD_LENGTH')      || define('MIN_PWD_LENGTH', 8);
@@ -225,42 +229,41 @@ defined('PWD_REGEX_PATTERN')   || define('PWD_REGEX_PATTERN', '^(?=.*[a-z])(?=.*
 
 // --- Environment Configuration ---
 // List of hostnames/IPs considered as local development environments
-defined('LOCAL_WHITELIST') || define('LOCAL_WHITELIST', ['127.0.0.1', '::1', 'localhost']);
+// Using comma-separated string for PHP 5.6 compatibility
+defined('LOCAL_WHITELIST') || define('LOCAL_WHITELIST', '127.0.0.1,::1,localhost');
 // Central variable for the company/website name used in emails and UI
 defined('WEBSITE_NAME') || define('WEBSITE_NAME', 'StarAdmin');
 // Site language setting
 defined('SITE_LANG') || define('SITE_LANG', 'zh-CN');
 
-$isLocalEnvironment = in_array($_SERVER['SERVER_NAME'] ?? '', ['localhost', '127.0.0.1'], true);
+// Use the constants already defined above
+$connHost = dbhost;
+$connUser = dbuser;
+$connPass = dbpwd;
+$connDb   = dbname;
 
-if ($isLocalEnvironment) {
-    // === USE LOCAL SETTINGS ===
-    $connHost = 'localhost';
-    $connUser = 'root';
-    $connPass = '';
-    $connDb   = 'star_admin'; 
-} else {
-    // === USE LIVE SETTINGS ===
-    // This runs only when uploaded to the live server
-    $connHost = defined('dbhost') ? dbhost : 'localhost';
-    $connUser = defined('dbuser') ? dbuser : 'root';
-    $connPass = defined('dbpwd')  ? dbpwd  : '';
-    $connDb   = defined('dbname') ? dbname : 'beyourdi_cms';
+// Parse host:port format (e.g. 127.0.0.1:3306)
+$connPort = 3306;
+if (strpos($connHost, ':') !== false) {
+    $connParts = explode(':', $connHost, 2);
+    $connHost = $connParts[0];
+    $connPort = (int) $connParts[1];
 }
 
 // 2. Establish connection
 try {
-    $conn = mysqli_connect($connHost, $connUser, $connPass, $connDb);
+    $conn = @mysqli_connect($connHost, $connUser, $connPass, $connDb, $connPort);
 } catch (mysqli_sql_exception $e) {
-    // If connection fails, show a clear error message
-    die("Database Connection Error (Mode: " . ($isLocalEnvironment ? 'Local' : 'Live') . "): " . $e->getMessage());
+    $conn = false;
 }
 
-// 3. Check connection object
-if (!$conn) {
-    die("System temporarily unavailable. Please try again later.");
+// 3. Check connection & Debug
+if (!$conn || mysqli_connect_errno()) {
+    if (!defined('SKIP_DB_CHECK')) {
+        header("Location: " . SITEURL . "/src/pages/error404.php");
+        exit();
+    }
 }
 
-// 4. Set Charset
 mysqli_set_charset($conn, 'utf8mb4');
 ?>

@@ -60,7 +60,8 @@ $profileComponents = [
 $sidebarItems = [
     ['label' => '首页', 'url' => URL_USER_DASHBOARD, 'icon' => 'fa-solid fa-house-user', 'active' => true],
     ['label' => '账号中心', 'url' => URL_HOME, 'icon' => 'fa-solid fa-id-card', 'active' => false],
-    ['label' => '写小说', 'url' => URL_AUTHOR_DASHBOARD, 'icon' => 'fa-solid fa-pen-nib', 'active' => false]
+    ['label' => '写小说', 'url' => URL_AUTHOR_DASHBOARD, 'icon' => 'fa-solid fa-pen-nib', 'active' => false],
+    ['label' => '小说标签', 'url' => URL_NOVEL_TAGS, 'icon' => 'fa-solid fa-tags', 'active' => false]
 ];
 
 // 5. Quick Actions Array
