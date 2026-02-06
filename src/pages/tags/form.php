@@ -4,27 +4,45 @@ require_once __DIR__ . '/../../../init.php';
 defined('URL_HOME') || require_once BASE_PATH . 'config/urls.php';
 require_once BASE_PATH . 'functions.php';
 
+// 1. Auth Check
 if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
-    header("Location: " . URL_LOGIN); exit();
+    // Use JS redirect if headers are potentially sent
+    echo "<script>window.location.href='" . URL_LOGIN . "';</script>";
+    exit();
 }
 
 $dbTable = defined('NOVEL_TAGS') ? NOVEL_TAGS : 'novel_tag';
-// [FIX] Use defined constant for robustness
-$listPageUrl = defined('URL_NOVEL_TAGS') ? URL_NOVEL_TAGS : 'index.php';
 
-// When included from the user dashboard, we only render the inner form card
+// 2. Context Detection & URL Setup
 $isEmbeddedTagForm = isset($EMBED_TAG_FORM_PAGE) && $EMBED_TAG_FORM_PAGE === true;
+
+if ($isEmbeddedTagForm) {
+    // If inside Dashboard, redirect back to Dashboard Tag List
+    $listPageUrl = URL_USER_DASHBOARD . '?view=tags';
+    // Ensure form posts back to Dashboard
+    $formActionUrl = URL_USER_DASHBOARD . '?view=tag_form'; 
+} else {
+    // If standalone, use the standard list URL
+    $listPageUrl = defined('URL_NOVEL_TAGS') ? URL_NOVEL_TAGS : 'index.php';
+    $formActionUrl = ''; // Post to self
+}
 
 $tagId = $_GET['id'] ?? null;
 $isEditMode = !empty($tagId);
+
+// Append ID to action URL if editing
+if ($isEditMode && $isEmbeddedTagForm) {
+    $formActionUrl .= '&id=' . intval($tagId);
+}
+
 $tagName = "";
-$message = ""; $msgType = "";
-// Keep full existing row for audit log old_value
+$message = ""; 
+$msgType = "";
 $existingTagRow = null;
 
 try {
+    // 3. Load Existing Data (For Edit Mode & Audit Log)
     if ($isEditMode) {
-        // Load full row so we can log old_value in audit log
         $stmt = $conn->prepare("SELECT id, name, created_at, updated_at, created_by, updated_by FROM " . $dbTable . " WHERE id = ?");
         $stmt->bind_param("i", $tagId);
         $stmt->execute();
@@ -32,20 +50,23 @@ try {
         if ($stmt->fetch()) {
             $tagName = $rowName;
             $existingTagRow = [
-                'id'         => $rowId,
-                'name'       => $rowName,
-                'created_at' => $rowCreatedAt,
-                'updated_at' => $rowUpdatedAt,
-                'created_by' => $rowCreatedBy,
-                'updated_by' => $rowUpdatedBy,
+                'id' => $rowId, 'name' => $rowName, 'created_at' => $rowCreatedAt,
+                'updated_at' => $rowUpdatedAt, 'created_by' => $rowCreatedBy, 'updated_by' => $rowUpdatedBy,
             ];
         } else {
             $stmt->close();
-            header("Location: " . $listPageUrl); exit();
+            // Redirect if ID not found
+            if ($isEmbeddedTagForm) {
+                echo "<script>window.location.href='$listPageUrl';</script>";
+            } else {
+                header("Location: " . $listPageUrl);
+            }
+            exit();
         }
         $stmt->close();
     }
 
+    // 4. Handle Form Submission (POST)
     if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $tagName = trim($_POST['tag_name'] ?? '');
         $currentUserId = $_SESSION['user_id'];
@@ -53,88 +74,58 @@ try {
         if (empty($tagName)) {
             $message = "标签名称不能为空"; $msgType = "danger";
         } else {
+            // Check for duplicates
             $sql = $isEditMode ? "SELECT id FROM $dbTable WHERE name = ? AND id != ?" : "SELECT id FROM $dbTable WHERE name = ?";
             $chk = $conn->prepare($sql);
-            if ($isEditMode) {
-                $chk->bind_param("si", $tagName, $tagId);
-            } else {
-                $chk->bind_param("s", $tagName);
-            }
+            if ($isEditMode) $chk->bind_param("si", $tagName, $tagId); else $chk->bind_param("s", $tagName);
             $chk->execute();
             $chk->store_result();
             
             if ($chk->num_rows > 0) {
                 $message = "标签 '<strong>" . htmlspecialchars($tagName) . "</strong>' 已存在"; $msgType = "danger";
             } else {
+                // Insert or Update
                 if ($isEditMode) {
-                    // Update tag name & track who last updated it
                     $stmt = $conn->prepare("UPDATE $dbTable SET name = ?, updated_by = ? WHERE id = ?");
                     $stmt->bind_param("sii", $tagName, $currentUserId, $tagId);
-                    $action = 'E'; $logMsg = "更新标签";
+                    $action = 'E'; $logMsg = "Updated Tag";
                 } else {
-                    // Insert new tag and track creator / last updater
                     $stmt = $conn->prepare("INSERT INTO $dbTable (name, created_by, updated_by) VALUES (?, ?, ?)");
                     $stmt->bind_param("sii", $tagName, $currentUserId, $currentUserId);
-                    $action = 'A'; $logMsg = "新增标签";
+                    $action = 'A'; $logMsg = "Added New Tag";
                 }
 
                 if ($stmt->execute()) {
-                    // Build old/new values for audit log
-                    $oldData = null;
+                    // Fetch new data for Audit Log
+                    $targetId = $isEditMode ? $tagId : $conn->insert_id;
                     $newData = null;
-
-                    if ($isEditMode) {
-                        // Old row from earlier select
-                        $oldData = $existingTagRow;
-
-                        // Reload updated row as new_value
-                        $reload = $conn->prepare("SELECT id, name, created_at, updated_at, created_by, updated_by FROM " . $dbTable . " WHERE id = ?");
-                        $reload->bind_param("i", $tagId);
-                        $reload->execute();
-                        $reload->bind_result($nId, $nName, $nCreatedAt, $nUpdatedAt, $nCreatedBy, $nUpdatedBy);
-                        if ($reload->fetch()) {
-                            $newData = [
-                                'id'         => $nId,
-                                'name'       => $nName,
-                                'created_at' => $nCreatedAt,
-                                'updated_at' => $nUpdatedAt,
-                                'created_by' => $nCreatedBy,
-                                'updated_by' => $nUpdatedBy,
-                            ];
-                        }
-                        $reload->close();
-                    } else {
-                        // For inserts, load the newly created row using insert_id
-                        $newId = $conn->insert_id;
-                        $reload = $conn->prepare("SELECT id, name, created_at, updated_at, created_by, updated_by FROM " . $dbTable . " WHERE id = ?");
-                        $reload->bind_param("i", $newId);
-                        $reload->execute();
-                        $reload->bind_result($nId, $nName, $nCreatedAt, $nUpdatedAt, $nCreatedBy, $nUpdatedBy);
-                        if ($reload->fetch()) {
-                            $newData = [
-                                'id'         => $nId,
-                                'name'       => $nName,
-                                'created_at' => $nCreatedAt,
-                                'updated_at' => $nUpdatedAt,
-                                'created_by' => $nCreatedBy,
-                                'updated_by' => $nUpdatedBy,
-                            ];
-                        }
-                        $reload->close();
+                    
+                    $reload = $conn->prepare("SELECT id, name, created_at, updated_at, created_by, updated_by FROM " . $dbTable . " WHERE id = ?");
+                    $reload->bind_param("i", $targetId);
+                    $reload->execute();
+                    $reload->bind_result($nId, $nName, $nCreatedAt, $nUpdatedAt, $nCreatedBy, $nUpdatedBy);
+                    if ($reload->fetch()) {
+                        $newData = ['id' => $nId, 'name' => $nName, 'created_at' => $nCreatedAt, 'updated_at' => $nUpdatedAt, 'created_by' => $nCreatedBy, 'updated_by' => $nUpdatedBy];
                     }
+                    $reload->close();
 
+                    // Log the Save Action
                     if (function_exists('logAudit')) {
                         logAudit([
-                            'page'          => 'Tag',
-                            'action'        => $action,
-                            'action_message'=> "$logMsg: $tagName",
-                            'query_table'   => $dbTable,
-                            'user_id'       => $currentUserId,
-                            'old_value'     => $oldData,
-                            'new_value'     => $newData,
+                            'page' => 'Tag Management', 'action' => $action,
+                            'action_message' => "$logMsg: $tagName",
+                            'query' => $isEditMode ? "UPDATE..." : "INSERT...",
+                            'query_table' => $dbTable,
+                            'user_id' => $currentUserId,
+                            'old_value' => $existingTagRow,
+                            'new_value' => $newData
                         ]);
                     }
-                    header("Location: $listPageUrl?msg=saved"); exit();
+                    
+                    // [CRITICAL FIX] Use JS Redirect to avoid "Headers already sent" error
+                    $redirectUrl = $listPageUrl . (strpos($listPageUrl, '?') !== false ? '&' : '?') . "msg=saved";
+                    echo "<script>window.location.href = '" . $redirectUrl . "';</script>";
+                    exit();
                 } else {
                     throw new Exception($stmt->error);
                 }
@@ -142,14 +133,32 @@ try {
             }
             $chk->close();
         }
+    } 
+    // 5. Handle Page View (GET) Audit Log
+    else {
+        // [FIX] Log that the user VIEWED the page
+        // We use a constant to prevent duplicate logs if included multiple times
+        if (!defined('TAG_FORM_VIEW_LOGGED')) {
+            define('TAG_FORM_VIEW_LOGGED', true);
+            if (function_exists('logAudit')) {
+                logAudit([
+                    'page' => 'Tag Management', 
+                    'action' => 'V',
+                    'action_message' => $isEditMode ? "Viewing Edit Tag Form: $tagName" : "Viewing Add Tag Form",
+                    'query_table' => $dbTable,
+                    'user_id' => $_SESSION['user_id']
+                ]);
+            }
+        }
     }
+
 } catch (Exception $e) {
-    $message = "Error: " . $e->getMessage(); $msgType = "danger";
+    $message = "System Error: " . $e->getMessage(); $msgType = "danger";
 }
 
 $pageTitle = ($isEditMode ? "编辑标签" : "新增标签") . " - " . WEBSITE_NAME;
 
-// If embedded in dashboard, only render the inner form card (no full HTML shell)
+// Render inner card if embedded (Dashboard mode)
 if ($isEmbeddedTagForm): ?>
     <div class="tag-container">
         <div class="card tag-card">
@@ -164,7 +173,7 @@ if ($isEmbeddedTagForm): ?>
                         <?php echo $message; ?> <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                     </div>
                 <?php endif; ?>
-                <form method="POST" autocomplete="off">
+                <form method="POST" action="<?php echo htmlspecialchars($formActionUrl); ?>" autocomplete="off">
                     <div class="mb-4">
                         <label class="form-label text-muted">标签名称</label>
                         <input type="text" class="form-control form-control-lg" name="tag_name" 
