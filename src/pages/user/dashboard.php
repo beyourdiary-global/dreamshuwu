@@ -15,40 +15,58 @@ $userTable = USR_LOGIN;
 $dashTable = USR_DASHBOARD;
 $auditPage = 'User Dashboard';
 
-// Define queries once at the top
 $userQuery = "SELECT name FROM " . $userTable . " WHERE id = ? LIMIT 1";
 $dashQuery = "SELECT avatar, level, following_count, followers_count FROM " . $dashTable . " WHERE user_id = ? LIMIT 1";
 
-// --- DATA FETCHING ---
+// --- DATA FETCHING (COMPATIBILITY FIXED) ---
 
 // Query 1: Basic Info
-// Use centralized variable
 $userStmt = $conn->prepare($userQuery);
 $userStmt->bind_param("i", $currentUserId);
 $userStmt->execute();
-$userRow = $userStmt->get_result()->fetch_assoc();
+
+// [FIX] Universal Fetch (Replaces get_result)
+$userRow = [];
+$meta = $userStmt->result_metadata();
+$row = []; $params = [];
+while ($field = $meta->fetch_field()) { $params[] = &$row[$field->name]; }
+call_user_func_array(array($userStmt, 'bind_result'), $params);
+if ($userStmt->fetch()) {
+    foreach($row as $key => $val) { $userRow[$key] = $val; }
+}
+$userStmt->close();
+// End Fix
 
 // Query 2: Dashboard Stats
-// Use centralized variable
 $dashStmt = $conn->prepare($dashQuery);
 $dashStmt->bind_param("i", $currentUserId);
 $dashStmt->execute();
-$dashRow = $dashStmt->get_result()->fetch_assoc();
+
+// [FIX] Universal Fetch (Replaces get_result)
+$dashRow = [];
+$meta = $dashStmt->result_metadata();
+$row = []; $params = [];
+while ($field = $meta->fetch_field()) { $params[] = &$row[$field->name]; }
+call_user_func_array(array($dashStmt, 'bind_result'), $params);
+if ($dashStmt->fetch()) {
+    foreach($row as $key => $val) { $dashRow[$key] = $val; }
+}
+$dashStmt->close();
+// End Fix
 
 // ---------------------------------------------------------
-// [NEW] Audit Log: View Dashboard
+// Audit Log: View Dashboard
 // ---------------------------------------------------------
-logAudit([
-    'page'           => $auditPage,
-    'action'         => 'V',             // V = View
-    'action_message' => 'User viewed dashboard',
-    'query'          => $dashQuery,      
-    'query_table'    => $dashTable,      
-    'user_id'        => $currentUserId
-]);
-// ---------------------------------------------------------
+if (function_exists('logAudit')) {
+    logAudit([
+        'page' => $auditPage, 'action' => 'V',
+        'action_message' => 'User viewed dashboard',
+        'query' => $dashQuery, 'query_table' => $dashTable,      
+        'user_id' => $currentUserId
+    ]);
+}
 
-// --- DATA PREPARATION (ALL ARRAYS) ---
+// --- DATA PREPARATION ---
 
 // 1. Prepare Raw Data
 $rawAvatar = !empty($dashRow['avatar']) ? URL_ASSETS . '/uploads/avatars/' . $dashRow['avatar'] : URL_ASSETS . '/images/default-avatar.png';
@@ -61,7 +79,7 @@ $statsArray = [
     ['label' => '粉丝', 'value' => intval($dashRow['followers_count'] ?? 0)]
 ];
 
-// 3. PROFILE COMPONENTS ARRAY (Loop the Card Content)
+// 3. PROFILE COMPONENTS ARRAY
 $profileComponents = [
     [
         'type' => 'avatar',
@@ -73,7 +91,7 @@ $profileComponents = [
         'url'   => URL_PROFILE,
         'name'  => $rawName,
         'level' => $rawLevel,
-        'stats' => $statsArray // Pass the stats array inside this component
+        'stats' => $statsArray 
     ]
 ];
 
@@ -99,13 +117,13 @@ $customCSS = "dashboard.css";
 <html lang="<?php echo defined('SITE_LANG') ? SITE_LANG : 'zh-CN'; ?>">
 <head>
     <?php require_once BASE_PATH . 'include/header.php'; ?>
+    <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/<?php echo $customCSS; ?>">
 </head>
 <body>
 
 <?php require_once BASE_PATH . 'common/menu/header.php'; ?>
 
 <div class="dashboard-container">
-    
     <aside class="dashboard-sidebar">
         <ul class="sidebar-menu">
             <?php foreach ($sidebarItems as $item): ?>
@@ -124,16 +142,12 @@ $customCSS = "dashboard.css";
     </aside>
 
     <main class="dashboard-main">
-        
         <div class="profile-card">
-            
             <?php foreach ($profileComponents as $component): ?>
-                
                 <?php if ($component['type'] === 'avatar'): ?>
                     <a href="<?php echo $component['url']; ?>" style="text-decoration:none; display:block;">
                         <img src="<?php echo htmlspecialchars($component['src']); ?>" alt="Avatar" class="profile-avatar">
                     </a>
-
                 <?php elseif ($component['type'] === 'info'): ?>
                     <div class="profile-info">
                         <h2>
@@ -142,18 +156,13 @@ $customCSS = "dashboard.css";
                             </a>
                             <span class="level-badge"><?php echo htmlspecialchars($component['level']); ?></span>
                         </h2>
-                        
                         <div class="profile-stats">
                             <?php foreach ($component['stats'] as $stat): ?>
-                                <span>
-                                    <?php echo $stat['label']; ?> 
-                                    <strong><?php echo $stat['value']; ?></strong>
-                                </span>
+                                <span><?php echo $stat['label']; ?> <strong><?php echo $stat['value']; ?></strong></span>
                             <?php endforeach; ?>
                         </div>
                     </div>
                 <?php endif; ?>
-
             <?php endforeach; ?>
 
             <a href="<?php echo URL_USER_SETTING; ?>" class="settings-btn">
@@ -172,9 +181,7 @@ $customCSS = "dashboard.css";
                 </a>
             <?php endforeach; ?>
         </div>
-
     </main>
 </div>
-
 </body>
 </html>
