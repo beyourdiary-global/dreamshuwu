@@ -2,9 +2,9 @@
 // 1. Database Credentials
 $dbhost     = '127.0.0.1';
 $dbport     = 3306;
-$dbUser = 'beyourdi_cms';
-$dbpwd = 'Byd1234@Global';
-$dbname   = 'beyourdi_dreamshuwu';
+$dbUser     = 'beyourdi_cms';
+$dbpwd      = 'Byd1234@Global';
+$dbname     = 'beyourdi_dreamshuwu';
 
 // 2. Connect to MySQL Server (Create DB if not exists)
 $conn = new mysqli($dbhost, $dbUser, $dbpwd, "", $dbport);
@@ -88,6 +88,17 @@ CREATE TABLE IF NOT EXISTS users_dashboard (
     bio VARCHAR(500) DEFAULT NULL COMMENT 'User biography or introduction',
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Last update timestamp',
     CONSTRAINT fk_users_dashboard FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+";
+
+// 5. Novel Tags (NEW)
+$tables['novel_tag'] = "
+CREATE TABLE IF NOT EXISTS novel_tag (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL UNIQUE COMMENT 'Tag Name (Unique)',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT 'Creation timestamp',
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Last update timestamp',
+    INDEX idx_tag_name (name) COMMENT 'Index for searching tags'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ";
 

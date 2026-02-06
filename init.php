@@ -213,6 +213,8 @@ defined('USR_DASHBOARD') || define('USR_DASHBOARD', 'users_dashboard');
 // --- Audit Log Table Constant ---
 defined('AUDIT_LOG') || define('AUDIT_LOG', 'audit_log');
 
+// --- Novel Tags Table Constant ---
+defined('NOVEL_TAGS') || define('NOVEL_TAGS', 'novel_tag');
 // --- Application Constants ---
 defined('MIN_AGE_REQUIREMENT') || define('MIN_AGE_REQUIREMENT', 13);
 defined('MIN_PWD_LENGTH')      || define('MIN_PWD_LENGTH', 8);
