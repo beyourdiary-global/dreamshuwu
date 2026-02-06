@@ -1,3 +1,4 @@
+// Global toggle function (called by onclick in HTML if needed)
 function togglePassword(inputId, btn) {
   const input = document.getElementById(inputId);
   if (!input) return;
@@ -61,12 +62,26 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    // --- UPDATED: Reusing the global regex pattern from header.php ---
-    const globalRegex = window.StarAdminConfig
-      ? window.StarAdminConfig.emailRegex
-      : null;
+    // --- UPDATED: Robust Regex Handling ---
+    // 1. Default fallback pattern (matches PHP constant)
+    let patternStr = "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$";
 
-    if (!globalRegex.test(emailVal)) {
+    // 2. Try to get pattern from Config
+    if (window.StarAdminConfig && window.StarAdminConfig.emailRegex) {
+      patternStr = window.StarAdminConfig.emailRegex;
+    }
+
+    // 3. Convert String to RegExp Object (Safe check)
+    let emailRegex;
+    try {
+      emailRegex = new RegExp(patternStr);
+    } catch (err) {
+      console.error("Invalid Email Regex:", err);
+      emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    }
+
+    // 4. Test
+    if (!emailRegex.test(emailVal)) {
       showError("INVALID_EMAIL");
       return;
     }

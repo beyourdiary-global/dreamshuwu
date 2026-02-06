@@ -1,9 +1,9 @@
 <?php
+// Path: src/pages/tags/index.php (3 levels deep)
 require_once __DIR__ . '/../../../init.php';
 defined('URL_HOME') || require_once BASE_PATH . 'config/urls.php';
 require_once BASE_PATH . 'functions.php';
 
-// Auth Check
 if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
     header("Location: " . URL_LOGIN);
     exit();
@@ -11,59 +11,56 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
 
 $dbTable = defined('NOVEL_TAGS') ? NOVEL_TAGS : 'novel_tag';
 
-// ==========================================
-//  API: DATA FETCH (Universal Fix)
-// ==========================================
 if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
-    if (!function_exists('json_encode')) die('{"error": "PHP JSON extension missing"}');
     header('Content-Type: application/json');
     
-    $search = $_GET['search']['value'] ?? '';
     $start  = $_GET['start'] ?? 0;
     $length = $_GET['length'] ?? 10;
+    $search = $_GET['search']['value'] ?? '';
 
     $sql = "SELECT id, name FROM " . $dbTable . " WHERE 1=1";
     $countSql = "SELECT COUNT(*) FROM " . $dbTable . " WHERE 1=1";
-    $params = []; $types = "";
+    
+    // Separate params for safety
+    $mainParams = []; $mainTypes = "";
+    $countParams = []; $countTypes = "";
 
     if (!empty($search)) {
-        $searchTerm = "%" . $search . "%";
+        $term = "%" . $search . "%";
         $sql .= " AND name LIKE ?";
         $countSql .= " AND name LIKE ?";
-        $params[] = $searchTerm; $types .= "s";
+        
+        $mainParams[] = $term; $countParams[] = $term;
+        $mainTypes .= "s"; $countTypes .= "s";
     }
 
+    // Sort & Limit (Main Query Only)
     $sql .= " ORDER BY created_at DESC LIMIT ?, ?";
-    $params[] = $start; $params[] = $length; $types .= "ii";
+    $mainParams[] = $start; $mainParams[] = $length; 
+    $mainTypes .= "ii";
 
-    // 1. Count Total (Universal Fetch)
+    // 1. Count
     $cStmt = $conn->prepare($countSql);
-    if (!empty($params) && count($params) > 2) $cStmt->bind_param(substr($types, 0, 1), $params[0]);
+    if (!empty($countParams)) $cStmt->bind_param($countTypes, ...$countParams);
     $cStmt->execute();
     $cStmt->bind_result($totalRecords);
     $cStmt->fetch();
     $cStmt->close();
 
-    // 2. Fetch Data (Universal Fetch)
+    // 2. Fetch Data
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param($types, ...$params);
+    if (!empty($mainParams)) $stmt->bind_param($mainTypes, ...$mainParams);
     $stmt->execute();
     
-    // Bind Result Variables Dynamic Loop
     $meta = $stmt->result_metadata();
-    $row = []; 
-    $bindParams = [];
-    while ($field = $meta->fetch_field()) {
-        $bindParams[] = &$row[$field->name];
-    }
-    call_user_func_array(array($stmt, 'bind_result'), $bindParams);
+    $row = []; $bindResult = [];
+    while ($field = $meta->fetch_field()) { $bindResult[] = &$row[$field->name]; }
+    call_user_func_array(array($stmt, 'bind_result'), $bindResult);
 
     $data = [];
     while ($stmt->fetch()) {
-        // Break reference
-        $safeRow = [];
-        foreach($row as $key => $val) { $safeRow[$key] = $val; }
-
+        $safeRow = []; foreach($row as $k => $v) { $safeRow[$k] = $v; }
+        
         $editUrl = "form.php?id=" . $safeRow['id'];
         $actions = '
             <a href="'.$editUrl.'" class="btn btn-sm btn-outline-primary btn-action" title="编辑"><i class="fa-solid fa-pen"></i></a>
@@ -77,9 +74,7 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
     exit();
 }
 
-// ==========================================
-//  API: DELETE ACTION
-// ==========================================
+// DELETE API
 if (isset($_POST['mode']) && $_POST['mode'] === 'delete') {
     header('Content-Type: application/json');
     $id = intval($_POST['id']);
@@ -101,7 +96,6 @@ if (isset($_POST['mode']) && $_POST['mode'] === 'delete') {
 
 $pageTitle = "小说标签 - " . WEBSITE_NAME;
 ?>
-
 <!DOCTYPE html>
 <html lang="<?php echo defined('SITE_LANG') ? SITE_LANG : 'zh-CN'; ?>">
 <head>
@@ -110,9 +104,7 @@ $pageTitle = "小说标签 - " . WEBSITE_NAME;
     <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/dataTables.bootstrap.min.css">
 </head>
 <body>
-
 <?php require_once BASE_PATH . 'common/menu/header.php'; ?>
-
 <div class="tag-container">
     <div class="card tag-card">
         <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
@@ -131,15 +123,12 @@ $pageTitle = "小说标签 - " . WEBSITE_NAME;
         </div>
     </div>
 </div>
-
 <a href="form.php" class="btn btn-primary btn-add-mobile"><i class="fa-solid fa-plus fa-lg"></i></a>
-
 <script src="<?php echo URL_ASSETS; ?>/js/jquery-3.6.0.min.js"></script>
 <script src="<?php echo URL_ASSETS; ?>/js/jquery.dataTables.min.js"></script>
 <script src="<?php echo URL_ASSETS; ?>/js/dataTables.bootstrap.min.js"></script>
 <script src="<?php echo URL_ASSETS; ?>/js/sweetalert2@11.js"></script>
 <script src="<?php echo URL_ASSETS; ?>/js/bootstrap.bundle.min.js"></script>
 <script src="<?php echo URL_ASSETS; ?>/js/tag.js"></script>
-
 </body>
 </html>
