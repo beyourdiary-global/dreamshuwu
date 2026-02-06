@@ -15,6 +15,12 @@ $userTable = USR_LOGIN;
 $dashTable = USR_DASHBOARD;
 $auditPage = 'User Dashboard';
 
+// Determine which section to show in the main area
+$currentView     = isset($_GET['view']) ? $_GET['view'] : 'home';
+$isTagListView   = ($currentView === 'tags');
+$isTagFormView   = ($currentView === 'tag_form');
+$isTagSection    = $isTagListView || $isTagFormView;
+
 $userQuery = "SELECT name FROM " . $userTable . " WHERE id = ? LIMIT 1";
 $dashQuery = "SELECT avatar, level, following_count, followers_count FROM " . $dashTable . " WHERE user_id = ? LIMIT 1";
 
@@ -97,21 +103,24 @@ $profileComponents = [
 
 // 4. Sidebar Array
 $sidebarItems = [
-    ['label' => '首页', 'url' => URL_USER_DASHBOARD, 'icon' => 'fa-solid fa-house-user', 'active' => true],
-    ['label' => '账号中心', 'url' => URL_HOME, 'icon' => 'fa-solid fa-id-card', 'active' => false],
-    ['label' => '写小说', 'url' => URL_AUTHOR_DASHBOARD, 'icon' => 'fa-solid fa-pen-nib', 'active' => false],
-    ['label' => '小说标签', 'url' => URL_NOVEL_TAGS, 'icon' => 'fa-solid fa-tags', 'active' => false]
+    ['label' => '首页',     'url' => URL_USER_DASHBOARD, 'icon' => 'fa-solid fa-house-user', 'active' => !$isTagSection],
+    ['label' => '账号中心', 'url' => URL_HOME,           'icon' => 'fa-solid fa-id-card',   'active' => false],
+    ['label' => '写小说',   'url' => URL_AUTHOR_DASHBOARD, 'icon' => 'fa-solid fa-pen-nib',  'active' => false],
+    ['label' => '小说标签', 'url' => URL_NOVEL_TAGS,     'icon' => 'fa-solid fa-tags',      'active' => $isTagSection]
 ];
 
 // 5. Quick Actions Array
 $quickActions = [
-    ['label' => '浏览历史', 'url' => URL_USER_HISTORY, 'icon' => 'fa-solid fa-clock-rotate-left', 'style' => ''],
-    ['label' => '我的消息', 'url' => URL_USER_MESSAGES, 'icon' => 'fa-solid fa-comment-dots', 'style' => ''],
-    ['label' => '写小说', 'url' => URL_AUTHOR_DASHBOARD, 'icon' => 'fa-solid fa-feather-pointed', 'style' => 'background: #eef2ff; color: #233dd2;']
+    ['label' => '浏览历史', 'url' => URL_USER_HISTORY,     'icon' => 'fa-solid fa-clock-rotate-left',    'style' => ''],
+    ['label' => '我的消息', 'url' => URL_USER_MESSAGES,    'icon' => 'fa-solid fa-comment-dots',         'style' => ''],
+    ['label' => '写小说',   'url' => URL_AUTHOR_DASHBOARD, 'icon' => 'fa-solid fa-feather-pointed',      'style' => 'background: #eef2ff; color: #233dd2;']
 ];
 
 $pageTitle = "个人中心 - " . WEBSITE_NAME;
-$customCSS = "dashboard.css"; 
+// When viewing any tag section, also load DataTables + tags CSS
+$customCSS = $isTagSection
+    ? ['dashboard.css', 'dataTables.bootstrap.min.css', 'tag.css']
+    : 'dashboard.css';
 ?>
 
 <!DOCTYPE html>
@@ -172,17 +181,51 @@ $customCSS = "dashboard.css";
             </a>
         </div>
 
-        <div class="quick-actions-grid">
-            <?php foreach ($quickActions as $action): ?>
-                <a href="<?php echo $action['url']; ?>" class="action-card">
-                    <div class="action-icon-wrapper" style="<?php echo $action['style']; ?>">
-                        <i class="<?php echo $action['icon']; ?>"></i>
-                    </div>
-                    <h4><?php echo $action['label']; ?></h4>
-                </a>
-            <?php endforeach; ?>
-        </div>
+        <?php if ($isTagListView): ?>
+            <!-- Embed Tag Management Page inside Dashboard -->
+            <div class="dashboard-tag-section">
+                <?php
+                // Flag for embedded rendering (no full HTML from tags/index.php)
+                $EMBED_TAGS_PAGE = true;
+                require BASE_PATH . 'src/pages/tags/index.php';
+                ?>
+            </div>
+        <?php elseif ($isTagFormView): ?>
+            <!-- Embed Tag Form Page inside Dashboard -->
+            <div class="dashboard-tag-section">
+                <?php
+                // Flag for embedded rendering (no full HTML from tags/form.php)
+                $EMBED_TAG_FORM_PAGE = true;
+                require BASE_PATH . 'src/pages/tags/form.php';
+                ?>
+            </div>
+        <?php else: ?>
+            <div class="quick-actions-grid">
+                <?php foreach ($quickActions as $action): ?>
+                    <a href="<?php echo $action['url']; ?>" class="action-card">
+                        <div class="action-icon-wrapper" style="<?php echo $action['style']; ?>">
+                            <i class="<?php echo $action['icon']; ?>"></i>
+                        </div>
+                        <h4><?php echo $action['label']; ?></h4>
+                    </a>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
     </main>
 </div>
+
+<?php if ($isTagListView): ?>
+    <!-- JS assets for embedded tag management (list) -->
+    <script src="<?php echo URL_ASSETS; ?>/js/jquery-3.6.0.min.js"></script>
+    <script src="<?php echo URL_ASSETS; ?>/js/jquery.dataTables.min.js"></script>
+    <script src="<?php echo URL_ASSETS; ?>/js/dataTables.bootstrap.min.js"></script>
+    <script src="<?php echo URL_ASSETS; ?>/js/sweetalert2@11.js"></script>
+    <script src="<?php echo URL_ASSETS; ?>/js/bootstrap.bundle.min.js"></script>
+    <script src="<?php echo URL_ASSETS; ?>/js/tag.js"></script>
+<?php elseif ($isTagFormView): ?>
+    <!-- JS assets for embedded tag form (no DataTables / tag.js needed) -->
+    <script src="<?php echo URL_ASSETS; ?>/js/bootstrap.bundle.min.js"></script>
+<?php endif; ?>
+
 </body>
 </html>

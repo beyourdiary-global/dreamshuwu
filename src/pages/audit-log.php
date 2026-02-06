@@ -12,8 +12,62 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
 $auditActions = ['V' => 'View', 'E' => 'Edit', 'A' => 'Add', 'D' => 'Delete'];
 
 if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
-    // [FIX] Removed the manual JSON check that was causing false positives
     header('Content-Type: application/json');
+
+    /**
+     * Safe JSON encoder shared with other pages.
+     */
+    if (!function_exists('safeJsonEncode')) {
+        function safeJsonEncode($data) {
+            if (function_exists('json_encode')) {
+                $flags = defined('JSON_UNESCAPED_UNICODE') ? JSON_UNESCAPED_UNICODE : 0;
+                return json_encode($data, $flags);
+            }
+
+            if (is_array($data)) {
+                $isAssoc = array_keys($data) !== range(0, count($data) - 1);
+                $items = [];
+                foreach ($data as $key => $value) {
+                    $encodedValue = safeJsonEncode($value);
+                    if ($isAssoc) {
+                        $items[] = '"' . addslashes((string)$key) . '":' . $encodedValue;
+                    } else {
+                        $items[] = $encodedValue;
+                    }
+                }
+                return $isAssoc ? '{' . implode(',', $items) . '}' : '[' . implode(',', $items) . ']';
+            } elseif (is_string($data)) {
+                return '"' . addslashes($data) . '"';
+            } elseif (is_bool($data)) {
+                return $data ? 'true' : 'false';
+            } elseif (is_null($data)) {
+                return 'null';
+            } else {
+                return (string)$data;
+            }
+        }
+    }
+
+    /**
+     * Error helper so DataTables always receives valid JSON instead of a PHP fatal.
+     */
+    if (!function_exists('sendAuditTableError')) {
+        function sendAuditTableError($message) {
+            $draw = isset($_GET['draw']) ? (int) $_GET['draw'] : 0;
+            echo safeJsonEncode([
+                "draw" => $draw,
+                "recordsTotal" => 0,
+                "recordsFiltered" => 0,
+                "data" => [],
+                "error" => $message,
+            ]);
+            exit();
+        }
+    }
+
+    if (!isset($conn) || !$conn) {
+        sendAuditTableError('Database connection is not available.');
+    }
 
     $sql = "SELECT * FROM " . AUDIT_LOG . " WHERE 1=1";
     $countSql = "SELECT COUNT(*) FROM " . AUDIT_LOG . " WHERE 1=1";
@@ -45,22 +99,31 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
         $mainTypes .= "s"; $countTypes .= "s";
     }
 
-    // [FIX] Safe Parameter Binding Helper
-    function bindDynamicParams($stmt, $types, $params) {
-        if (!empty($params)) {
-            $bindParams = [];
-            $bindParams[] = $types;
-            for ($i = 0; $i < count($params); $i++) {
-                $bindParams[] = &$params[$i];
+    // Safe Parameter Binding Helper (shared name but guarded)
+    if (!function_exists('bindDynamicParams')) {
+        function bindDynamicParams($stmt, $types, $params) {
+            if (!empty($params) && $stmt instanceof mysqli_stmt) {
+                $bindParams = [];
+                $bindParams[] = $types;
+                for ($i = 0; $i < count($params); $i++) {
+                    $bindParams[] = &$params[$i];
+                }
+                call_user_func_array(array($stmt, 'bind_param'), $bindParams);
             }
-            call_user_func_array(array($stmt, 'bind_param'), $bindParams);
         }
     }
 
     // 3. Count Query
     $countStmt = $conn->prepare($countSql);
+    if ($countStmt === false) {
+        error_log("Audit log count query prepare failed: " . $conn->error);
+        sendAuditTableError('System error while loading audit log.');
+    }
     bindDynamicParams($countStmt, $countTypes, $countParams);
-    $countStmt->execute();
+    if (!$countStmt->execute()) {
+        error_log("Audit log count query execute failed: " . $countStmt->error);
+        sendAuditTableError('System error while loading audit log.');
+    }
     $countStmt->bind_result($totalRecords);
     $countStmt->fetch();
     $countStmt->close();
@@ -81,8 +144,15 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
 
     // 5. Execute Main
     $stmt = $conn->prepare($sql);
+    if ($stmt === false) {
+        error_log("Audit log data query prepare failed: " . $conn->error);
+        sendAuditTableError('System error while loading audit log.');
+    }
     bindDynamicParams($stmt, $mainTypes, $mainParams);
-    $stmt->execute();
+    if (!$stmt->execute()) {
+        error_log("Audit log data query execute failed: " . $stmt->error);
+        sendAuditTableError('System error while loading audit log.');
+    }
     
     $results = [];
     $meta = $stmt->result_metadata();
@@ -117,21 +187,47 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
             case 'A': $badgeClass = 'success'; break;
         }
 
-        // [FIX] Ensure Action Text is never empty
+        // Ensure Action Text is never empty
         $actionLabel = $auditActions[$actCode] ?? $actCode;
         if (empty($actionLabel)) $actionLabel = "Record"; 
+
+        $createdAt = $cRow['created_at'] ?? null;
+        $dateStr = '';
+        $timeStr = '';
+        if (!empty($createdAt)) {
+            try {
+                $dt = new DateTime($createdAt);
+                $dateStr = $dt->format('Y-m-d');
+                $timeStr = $dt->format('H:i:s');
+            } catch (Exception $e) {
+                // Leave date/time empty if parsing fails
+            }
+        }
+
+        // Build details payload for expandable row (query + old/new values)
+        $details = [
+            'query' => $cRow['query'] ?? '',
+            'old'   => $cRow['old_value'] ?? null,
+            'new'   => $cRow['new_value'] ?? null,
+        ];
 
         $data[] = [
             'page'    => htmlspecialchars($cRow['page']),
             'action'  => '<span class="badge badge-custom badge-'.$badgeClass.'">' . htmlspecialchars($actionLabel) . '</span>',
             'message' => htmlspecialchars($cRow['action_message']),
             'user'    => htmlspecialchars(($userMap[$cRow['user_id']] ?? 'Unknown') . " (ID:" . $cRow['user_id'] . ")"),
-            'date'    => (new DateTime($cRow['created_at']))->format('Y-m-d'),
-            'time'    => (new DateTime($cRow['created_at']))->format('H:i:s')
+            'date'    => $dateStr,
+            'time'    => $timeStr,
+            'details' => $details,
         ];
     }
 
-    echo json_encode(["draw" => intval($_GET['draw']), "recordsTotal" => $totalRecords, "recordsFiltered" => $totalRecords, "data" => $data]);
+    echo safeJsonEncode([
+        "draw" => intval($_GET['draw'] ?? 0),
+        "recordsTotal" => (int) $totalRecords,
+        "recordsFiltered" => (int) $totalRecords,
+        "data" => $data
+    ]);
     exit();
 }
 
