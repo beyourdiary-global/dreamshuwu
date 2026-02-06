@@ -4,22 +4,25 @@ require_once __DIR__ . '/../../../init.php';
 defined('URL_HOME') || require_once BASE_PATH . 'config/urls.php';
 require_once BASE_PATH . 'functions.php';
 
-// 1. Auth Check
+// 1. Auth Check (Safe Redirect)
 if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
-    // Use JS redirect if headers are potentially sent
-    echo "<script>window.location.href='" . URL_LOGIN . "';</script>";
+    if (headers_sent()) {
+        echo "<script>window.location.href='" . URL_LOGIN . "';</script>";
+    } else {
+        header("Location: " . URL_LOGIN);
+    }
     exit();
 }
 
 $dbTable = defined('NOVEL_TAGS') ? NOVEL_TAGS : 'novel_tag';
 
-// 2. Context Detection & URL Setup
+// 2. Context Detection: Are we inside the Dashboard?
 $isEmbeddedTagForm = isset($EMBED_TAG_FORM_PAGE) && $EMBED_TAG_FORM_PAGE === true;
 
 if ($isEmbeddedTagForm) {
     // If inside Dashboard, redirect back to Dashboard Tag List
     $listPageUrl = URL_USER_DASHBOARD . '?view=tags';
-    // Ensure form posts back to Dashboard
+    // Ensure form posts back to Dashboard Tag Form view
     $formActionUrl = URL_USER_DASHBOARD . '?view=tag_form'; 
 } else {
     // If standalone, use the standard list URL
@@ -28,6 +31,7 @@ if ($isEmbeddedTagForm) {
 }
 
 $tagId = $_GET['id'] ?? null;
+$tagId = $tagId !== null ? (int) $tagId : null;
 $isEditMode = !empty($tagId);
 
 // Append ID to action URL if editing
@@ -55,8 +59,8 @@ try {
             ];
         } else {
             $stmt->close();
-            // Redirect if ID not found
-            if ($isEmbeddedTagForm) {
+            // Safe Redirect if ID not found
+            if ($isEmbeddedTagForm || headers_sent()) {
                 echo "<script>window.location.href='$listPageUrl';</script>";
             } else {
                 header("Location: " . $listPageUrl);
@@ -69,7 +73,16 @@ try {
     // 4. Handle Form Submission (POST)
     if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $tagName = trim($_POST['tag_name'] ?? '');
-        $currentUserId = $_SESSION['user_id'];
+        $postedTagId = isset($_POST['tag_id']) ? (int) $_POST['tag_id'] : null;
+        if ($postedTagId) {
+            $tagId = $postedTagId;
+            $isEditMode = true;
+        }
+        $currentUserId = isset($_SESSION['user_id']) ? (int) $_SESSION['user_id'] : 0;
+
+        if (!$conn || !($conn instanceof mysqli)) {
+            throw new Exception('Database connection is not available.');
+        }
 
         if (empty($tagName)) {
             $message = "标签名称不能为空"; $msgType = "danger";
@@ -77,6 +90,9 @@ try {
             // Check for duplicates
             $sql = $isEditMode ? "SELECT id FROM $dbTable WHERE name = ? AND id != ?" : "SELECT id FROM $dbTable WHERE name = ?";
             $chk = $conn->prepare($sql);
+            if (!$chk) {
+                throw new Exception($conn->error ?: 'Failed to prepare duplicate check.');
+            }
             if ($isEditMode) $chk->bind_param("si", $tagName, $tagId); else $chk->bind_param("s", $tagName);
             $chk->execute();
             $chk->store_result();
@@ -87,10 +103,16 @@ try {
                 // Insert or Update
                 if ($isEditMode) {
                     $stmt = $conn->prepare("UPDATE $dbTable SET name = ?, updated_by = ? WHERE id = ?");
+                    if (!$stmt) {
+                        throw new Exception($conn->error ?: 'Failed to prepare update statement.');
+                    }
                     $stmt->bind_param("sii", $tagName, $currentUserId, $tagId);
                     $action = 'E'; $logMsg = "Updated Tag";
                 } else {
                     $stmt = $conn->prepare("INSERT INTO $dbTable (name, created_by, updated_by) VALUES (?, ?, ?)");
+                    if (!$stmt) {
+                        throw new Exception($conn->error ?: 'Failed to prepare insert statement.');
+                    }
                     $stmt->bind_param("sii", $tagName, $currentUserId, $currentUserId);
                     $action = 'A'; $logMsg = "Added New Tag";
                 }
@@ -101,13 +123,15 @@ try {
                     $newData = null;
                     
                     $reload = $conn->prepare("SELECT id, name, created_at, updated_at, created_by, updated_by FROM " . $dbTable . " WHERE id = ?");
-                    $reload->bind_param("i", $targetId);
-                    $reload->execute();
-                    $reload->bind_result($nId, $nName, $nCreatedAt, $nUpdatedAt, $nCreatedBy, $nUpdatedBy);
-                    if ($reload->fetch()) {
-                        $newData = ['id' => $nId, 'name' => $nName, 'created_at' => $nCreatedAt, 'updated_at' => $nUpdatedAt, 'created_by' => $nCreatedBy, 'updated_by' => $nUpdatedBy];
+                    if ($reload) {
+                        $reload->bind_param("i", $targetId);
+                        $reload->execute();
+                        $reload->bind_result($nId, $nName, $nCreatedAt, $nUpdatedAt, $nCreatedBy, $nUpdatedBy);
+                        if ($reload->fetch()) {
+                            $newData = ['id' => $nId, 'name' => $nName, 'created_at' => $nCreatedAt, 'updated_at' => $nUpdatedAt, 'created_by' => $nCreatedBy, 'updated_by' => $nUpdatedBy];
+                        }
+                        $reload->close();
                     }
-                    $reload->close();
 
                     // Log the Save Action
                     if (function_exists('logAudit')) {
@@ -122,10 +146,14 @@ try {
                         ]);
                     }
                     
-                    // [CRITICAL FIX] Use JS Redirect to avoid "Headers already sent" error
+                    // [CRITICAL FIX] Use JS Redirect to fix "Headers already sent" / White Screen
                     $redirectUrl = $listPageUrl . (strpos($listPageUrl, '?') !== false ? '&' : '?') . "msg=saved";
-                    echo "<script>window.location.href = '" . $redirectUrl . "';</script>";
-                    exit();
+                    if (!headers_sent()) {
+                        header("Location: " . $redirectUrl);
+                    } else {
+                        echo "<script>window.location.href = '" . $redirectUrl . "';</script>";
+                    }
+                    exit(); // Stop execution immediately to ensure database save is final
                 } else {
                     throw new Exception($stmt->error);
                 }
@@ -137,7 +165,7 @@ try {
     // 5. Handle Page View (GET) Audit Log
     else {
         // [FIX] Log that the user VIEWED the page
-        // We use a constant to prevent duplicate logs if included multiple times
+        // Use a constant to ensure we don't log twice if file is included multiple times
         if (!defined('TAG_FORM_VIEW_LOGGED')) {
             define('TAG_FORM_VIEW_LOGGED', true);
             if (function_exists('logAudit')) {
@@ -174,6 +202,9 @@ if ($isEmbeddedTagForm): ?>
                     </div>
                 <?php endif; ?>
                 <form method="POST" action="<?php echo htmlspecialchars($formActionUrl); ?>" autocomplete="off">
+                    <?php if ($isEditMode): ?>
+                        <input type="hidden" name="tag_id" value="<?php echo (int) $tagId; ?>">
+                    <?php endif; ?>
                     <div class="mb-4">
                         <label class="form-label text-muted">标签名称</label>
                         <input type="text" class="form-control form-control-lg" name="tag_name" 
@@ -212,6 +243,9 @@ if ($isEmbeddedTagForm): ?>
                 </div>
             <?php endif; ?>
             <form method="POST" autocomplete="off">
+                <?php if ($isEditMode): ?>
+                    <input type="hidden" name="tag_id" value="<?php echo (int) $tagId; ?>">
+                <?php endif; ?>
                 <div class="mb-4">
                     <label class="form-label text-muted">标签名称</label>
                     <input type="text" class="form-control form-control-lg" name="tag_name" 
