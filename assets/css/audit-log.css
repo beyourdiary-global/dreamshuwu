@@ -1,47 +1,10 @@
-/* --- Custom Page Styles --- */
-
+/* =========================================
+   1. AUDIT PAGE LAYOUT
+   ========================================= */
 .audit-container {
   padding: 20px;
   max-width: 1400px;
   margin: 0 auto;
-}
-
-/* Badge Colors */
-.badge-info {
-  background-color: #0dcaf0;
-  color: #000;
-}
-.badge-warning {
-  background-color: #ffc107;
-  color: #000;
-}
-.badge-danger {
-  background-color: #dc3545;
-  color: #fff;
-}
-.badge-success {
-  background-color: #198754;
-  color: #fff;
-}
-
-/* JSON Pretty Print Styling */
-pre {
-  background: #f8f9fa;
-  padding: 10px;
-  border-radius: 5px;
-  border: 1px solid #dee2e6;
-  max-height: 250px;
-  overflow-y: auto;
-  font-size: 0.85em;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-}
-
-/* Expansion Row Styling */
-td.details-control {
-  cursor: pointer;
-  text-align: center;
-  color: #233dd2;
 }
 
 /* Card Header Icons */
@@ -50,132 +13,189 @@ td.details-control {
 }
 
 /* =========================================
-   MOBILE RESPONSIVE FIXES (Max Width 576px)
+   2. BADGE FIXES (Fixes Invisible Text)
+   ========================================= */
+.badge-custom {
+  padding: 6px 12px;
+  font-size: 12px;
+  border-radius: 4px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+/* Info (View) - Cyan background, Black Text */
+.badge-info {
+  background-color: #0dcaf0 !important;
+  color: #000000 !important;
+}
+
+/* Warning (Edit) - Yellow background, Black Text */
+.badge-warning {
+  background-color: #ffc107 !important;
+  color: #000000 !important;
+}
+
+/* Success (Add) - Green background, White Text */
+.badge-success {
+  background-color: #198754 !important;
+  color: #ffffff !important;
+}
+
+/* Danger (Delete) - Red background, White Text */
+.badge-danger {
+  background-color: #dc3545 !important;
+  color: #ffffff !important;
+}
+
+/* =========================================
+   3. PAGINATION FIXES (Fixes Previous/Next)
+   ========================================= */
+.dataTables_wrapper .dataTables_paginate {
+  float: right;
+  margin-top: 15px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 5px;
+}
+
+/* Base Button Style */
+.dataTables_wrapper .dataTables_paginate .paginate_button {
+  padding: 6px 12px;
+  margin-left: 0;
+  border: 1px solid #dee2e6;
+  background-color: #ffffff;
+  color: #0d6efd !important; /* Bootstrap Blue */
+  cursor: pointer;
+  text-decoration: none;
+  border-radius: 4px;
+  display: inline-block;
+  min-width: 30px;
+  text-align: center;
+}
+
+/* Hover State */
+.dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+  background-color: #e9ecef !important;
+  color: #0a58ca !important;
+  border-color: #dee2e6;
+}
+
+/* Active State (Current Page) */
+.dataTables_wrapper .dataTables_paginate .paginate_button.current {
+  background-color: #0d6efd !important;
+  color: #ffffff !important;
+  border-color: #0d6efd;
+}
+
+/* Disabled State (e.g., Previous on Page 1) */
+.dataTables_wrapper .dataTables_paginate .paginate_button.disabled {
+  color: #6c757d !important;
+  cursor: not-allowed;
+  background-color: #f8f9fa !important;
+  border-color: #dee2e6;
+  opacity: 0.6;
+}
+
+/* =========================================
+   4. EXPAND BUTTON (+/-) STYLES
+   ========================================= */
+td.dt-control {
+  text-align: center;
+  cursor: pointer;
+  vertical-align: middle;
+}
+
+/* Plus Icon (+) */
+td.dt-control:before {
+  content: "+";
+  display: inline-block;
+  color: white;
+  background-color: #0d6efd;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  line-height: 20px;
+  font-weight: bold;
+  text-align: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Minus Icon (-) when expanded */
+tr.shown td.dt-control:before {
+  content: "-";
+  background-color: #dc3545;
+}
+
+/* =========================================
+   5. DETAILS BOX STYLING (The Expanded Area)
+   ========================================= */
+.detail-box {
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid #dee2e6;
+  margin: 10px 0;
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.02);
+}
+
+.detail-box pre {
+  background: #ffffff;
+  border: 1px solid #e9ecef;
+  padding: 15px;
+  border-radius: 6px;
+  color: #d63384; /* Pinkish code color */
+  white-space: pre-wrap; /* Wrap long text */
+  word-wrap: break-word;
+  font-size: 0.85em;
+  max-height: 300px;
+  overflow-y: auto;
+  margin-top: 5px;
+}
+
+/* =========================================
+   6. MOBILE RESPONSIVE FIXES
    ========================================= */
 @media (max-width: 576px) {
-  /* 1. Reduce Container Padding */
   .audit-container {
     padding: 10px;
-    overflow-x: hidden; /* Prevent horizontal scroll on body */
+    overflow-x: hidden;
   }
   .card-body {
     padding: 10px;
   }
 
-  /* 2. FIX: Search Bar Overflow */
+  /* Fix Search Bar */
   .dataTables_wrapper .dataTables_filter {
     text-align: left !important;
     margin-top: 10px;
     margin-bottom: 10px;
     width: 100%;
   }
-
-  /* Turn the label into a vertical stack (Text top, Input bottom) */
   .dataTables_wrapper .dataTables_filter label {
     width: 100%;
-    display: flex !important; /* Use Flexbox */
-    flex-direction: column; /* Stack vertically */
-    align-items: flex-start; /* Align text to left */
-    gap: 5px; /* Space between text and box */
+    display: flex !important;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
   }
-
-  /* Force input to fit the container */
   .dataTables_wrapper .dataTables_filter input {
-    width: 100% !important; /* Fill width */
-    margin-left: 0 !important; /* Remove default spacing */
+    width: 100% !important;
+    margin-left: 0 !important;
     display: block !important;
-    box-sizing: border-box; /* Ensure padding doesn't increase width */
   }
 
-  /* 3. Adjust Table Cell Padding & Fonts */
-  table.dataTable.dtr-inline.collapsed > tbody > tr > td.dtr-control:before,
-  table.dataTable.dtr-inline.collapsed > tbody > tr > th.dtr-control:before {
-    top: 50%;
-    transform: translateY(-50%);
-    left: 5px;
-  }
-
+  /* Adjust Padding */
   table.dataTable > tbody > tr > td,
   table.dataTable > tbody > tr > th {
-    padding: 8px 5px !important;
+    padding: 10px 8px !important;
     font-size: 0.85rem;
   }
 
-  /* 4. Fix Badge Alignment */
-  .badge {
-    font-size: 0.75rem;
-    padding: 4px 6px;
-  }
-
-  /* 5. Ensure "Action" Badge doesn't wrap weirdly */
-  td {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 150px; /* Safety cap for text width */
-  }
-
-  /* Allow wrapping ONLY for the 'Details' expansion row */
-  tr.child td {
-    white-space: normal;
-    max-width: none;
-  }
-
-  /* 6. Fix "No data available" row */
+  /* Empty Row Fix */
   .dataTables_empty {
     text-align: center !important;
     padding: 20px !important;
     white-space: normal !important;
   }
-}
-
-/* =========================================
-   FIX: DataTables BS3 Pagination in BS5
-   ========================================= */
-
-/* 1. Reset the list style so they sit in a row */
-.dataTables_wrapper .pagination {
-  display: flex;
-  justify-content: flex-end;
-  list-style: none;
-  padding: 0;
-  margin-top: 10px;
-  gap: 5px; /* Space between buttons */
-}
-
-/* 2. Style the links to look like buttons */
-.dataTables_wrapper .pagination > li > a {
-  padding: 6px 12px;
-  border: 1px solid #dee2e6;
-  background-color: #fff;
-  color: #0d6efd; /* Bootstrap 5 Primary Blue */
-  text-decoration: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: all 0.2s;
-}
-
-/* 3. Hover Effect */
-.dataTables_wrapper .pagination > li > a:hover {
-  background-color: #e9ecef;
-  border-color: #dee2e6;
-  color: #0a58ca;
-}
-
-/* 4. Active Page (Blue Background) */
-.dataTables_wrapper .pagination > .active > a {
-  background-color: #0d6efd;
-  border-color: #0d6efd;
-  color: white;
-  font-weight: bold;
-}
-
-/* 5. Disabled Buttons (Previous/Next when not usable) */
-.dataTables_wrapper .pagination > .disabled > a {
-  color: #6c757d;
-  pointer-events: none;
-  background-color: #fff;
-  border-color: #dee2e6;
-  opacity: 0.6;
 }

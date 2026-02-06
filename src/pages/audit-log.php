@@ -8,72 +8,70 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
     header("Location: " . URL_LOGIN);
     exit();
 }
-//2. Array of Audit Actions for Filter Dropdown
+
 $auditActions = [
-    'V' => 'View',
-    'E' => 'Edit',
-    'A' => 'Add',
-    'D' => 'Delete'
+    'V' => 'View', 'E' => 'Edit', 'A' => 'Add', 'D' => 'Delete'
 ];
 
 // ==========================================
-//  BACKEND: JSON API Mode (for DataTable)
+//  BACKEND: JSON API Mode
 // ==========================================
 if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
-    // Ensure we don't crash if json_encode is missing
-    if (!function_exists('json_encode')) {
-        die('Error: PHP JSON extension is not enabled. Please enable it in cPanel.');
-    }
-
+    if (!function_exists('json_encode')) die('{"error": "PHP JSON extension is not enabled."}');
     header('Content-Type: application/json');
 
-    $columns = ['id', 'page', 'action', 'action_message', 'user_id', 'created_at', 'query', 'old_value', 'new_value', 'changes'];
+    // ---------------------------------------------------------
+    // QUERY 1: Fetch Audit Logs (No Joins)
+    // ---------------------------------------------------------
     
-    // Using AUDIT_LOG Constant
-    $sql = "SELECT a.*, u.name as user_name 
-            FROM " . AUDIT_LOG . " a 
-            LEFT JOIN " . USR_LOGIN . " u ON a.user_id = u.id";
-            
-    $whereSQL = " WHERE 1=1";
-    $params = [];
-    $types = "";
+    // Basic Select
+    $sql = "SELECT * FROM " . AUDIT_LOG . " WHERE 1=1";
+    $countSql = "SELECT COUNT(*) FROM " . AUDIT_LOG . " WHERE 1=1";
+    
+    $params = []; $types = "";
 
     // Search Logic
     if (!empty($_GET['search']['value'])) {
         $search = "%" . $_GET['search']['value'] . "%";
-        $whereSQL .= " AND (a.page LIKE ? OR a.action_message LIKE ? OR u.name LIKE ?)";
+        
+        // OPTIMIZATION: Use Subquery for Name Search instead of JOIN
+        $userSubQuery = "(SELECT id FROM " . USR_LOGIN . " WHERE name LIKE ?)";
+        
+        $clause = " AND (page LIKE ? OR action_message LIKE ? OR user_id IN $userSubQuery)";
+        
+        $sql .= $clause;
+        $countSql .= $clause;
+        
+        // Bind 3 params: page, message, user_name(subquery)
         array_push($params, $search, $search, $search);
         $types .= "sss";
     }
     
-    // Filter Logic
+    // Filter Action
     if (!empty($_GET['filter_action'])) {
-        $whereSQL .= " AND a.action = ?";
+        $clause = " AND action = ?";
+        $sql .= $clause;
+        $countSql .= $clause;
         array_push($params, $_GET['filter_action']);
         $types .= "s";
     }
 
-    // Count Total
-    $countSql = "SELECT COUNT(*) as count 
-                 FROM " . AUDIT_LOG . " a 
-                 LEFT JOIN " . USR_LOGIN . " u ON a.user_id = u.id " . $whereSQL;
-                 
+    // Execute Count
     $countStmt = $conn->prepare($countSql);
-    if (!empty($params)) {
-        $countStmt->bind_param($types, ...$params);
-    }
+    if (!empty($params)) $countStmt->bind_param($types, ...$params);
     $countStmt->execute();
-    $totalRecords = $countStmt->get_result()->fetch_assoc()['count'];
+    $countStmt->bind_result($totalRecords);
+    $countStmt->fetch();
+    $countStmt->close();
 
     // Sorting
-    if (isset($_GET['order'])) {
-        $columnIndex = $_GET['order'][0]['column'];
-        $columnName = $columns[$columnIndex] ?? 'created_at';
-        $dir = $_GET['order'][0]['dir'] === 'asc' ? 'ASC' : 'DESC';
-        $sql .= $whereSQL . " ORDER BY " . $columnName . " " . $dir;
-    } else {
-        $sql .= $whereSQL . " ORDER BY created_at DESC";
-    }
+    $sortCols = ['page', 'action', 'action_message', 'user_id', 'created_at', 'created_at']; 
+    $colIdx = $_GET['order'][0]['column'] ?? 5; 
+    $realColIdx = ($colIdx > 0) ? $colIdx - 1 : 4; 
+    $colName = $sortCols[$realColIdx] ?? 'created_at';
+    $dir = ($_GET['order'][0]['dir'] ?? 'desc') === 'asc' ? 'ASC' : 'DESC';
+    
+    $sql .= " ORDER BY " . $colName . " " . $dir;
 
     // Pagination
     $start = $_GET['start'] ?? 0;
@@ -82,120 +80,139 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
     array_push($params, $start, $length);
     $types .= "ii";
 
+    // Execute Main Query
     $stmt = $conn->prepare($sql);
-    if (!empty($params)) {
-        $stmt->bind_param($types, ...$params);
-    }
+    if (!empty($params)) $stmt->bind_param($types, ...$params);
     $stmt->execute();
-    $result = $stmt->get_result();
     
-    $data = [];
+    // Fetch Results into Array
+    $results = [];
+    $meta = $stmt->result_metadata();
+    $row = []; $bindParams = [];
+    while ($field = $meta->fetch_field()) { $bindParams[] = &$row[$field->name]; }
+    call_user_func_array(array($stmt, 'bind_result'), $bindParams);
+    
+    while ($stmt->fetch()) {
+        // Break references
+        $cRow = [];
+        foreach($row as $key => $val) { $cRow[$key] = $val; }
+        $results[] = $cRow;
+    }
+    $stmt->close();
 
-    while ($row = $result->fetch_assoc()) {
+    // ---------------------------------------------------------
+    // QUERY 2: Fetch User Names (Batch Fetch)
+    // ---------------------------------------------------------
+    
+    // 1. Collect User IDs
+    $userIds = [];
+    foreach ($results as $r) {
+        if (!empty($r['user_id'])) {
+            $userIds[] = (int)$r['user_id'];
+        }
+    }
+    $userIds = array_unique($userIds);
+    
+    // 2. Fetch Names Map
+    $userMap = [];
+    if (!empty($userIds)) {
+        // Safe integer list for IN clause
+        $idList = implode(',', $userIds);
+        $userSql = "SELECT id, name FROM " . USR_LOGIN . " WHERE id IN ($idList)";
+        $uRes = $conn->query($userSql);
+        if ($uRes) {
+            while ($uRow = $uRes->fetch_assoc()) {
+                $userMap[$uRow['id']] = $uRow['name'];
+            }
+        }
+    }
+
+    // ---------------------------------------------------------
+    // MERGE & OUTPUT
+    // ---------------------------------------------------------
+    $data = [];
+    foreach ($results as $cRow) {
         try {
-            $dt = new DateTime($row['created_at']);
+            $dt = new DateTime($cRow['created_at']);
             $dateStr = $dt->format('Y-m-d');
             $timeStr = $dt->format('H:i:s');
-        } catch (Exception $e) {
-            $dateStr = 'Invalid Date';
-            $timeStr = '';
-        }
+        } catch (Exception $e) { $dateStr = '-'; $timeStr = '-'; }
         
-        // Use the central $auditActions array here
-        $actionLabel = $auditActions[$row['action']] ?? $row['action'];
+        $actionLabel = $auditActions[$cRow['action']] ?? $cRow['action'];
+        
+        $badgeClass = match($cRow['action']) {
+            'V' => 'info', 'E' => 'warning', 'D' => 'danger', 'A' => 'success', default => 'secondary'
+        };
+
+        // Get Name from Map
+        $userName = $userMap[$cRow['user_id']] ?? 'Unknown';
 
         $data[] = [
-            htmlspecialchars($row['page']),
-            '<span class="badge badge-'. getActionColor($row['action']) .'">' . $actionLabel . '</span>',
-            htmlspecialchars($row['action_message']),
-            htmlspecialchars(($row['user_name'] ?? 'Unknown') . " (ID:" . $row['user_id'] . ")"),
-            $dateStr,
-            $timeStr,
-            // Hidden columns for Details Row
-            'query' => htmlspecialchars($row['query'] ?? ''),
-            'old_value' => $row['old_value'],
-            'new_value' => $row['new_value'],
-            'changes' => $row['changes']
+            'page'    => htmlspecialchars($cRow['page']),
+            'action'  => '<span class="badge badge-custom badge-'.$badgeClass.'">' . $actionLabel . '</span>',
+            'message' => htmlspecialchars($cRow['action_message']),
+            'user'    => htmlspecialchars($userName . " (ID:" . $cRow['user_id'] . ")"),
+            'date'    => $dateStr,
+            'time'    => $timeStr,
+            'details' => [
+                'query'   => $cRow['query'],
+                'old'     => $cRow['old_value'],
+                'new'     => $cRow['new_value'],
+                'changes' => $cRow['changes']
+            ]
         ];
     }
 
-    // Final Output using json_encode
-    // We added flags to handle special characters better
-    $jsonFlags = defined('JSON_UNESCAPED_UNICODE') ? JSON_UNESCAPED_UNICODE : 0;
     echo json_encode([
         "draw" => intval($_GET['draw']),
         "recordsTotal" => $totalRecords,
         "recordsFiltered" => $totalRecords, 
         "data" => $data
-    ], $jsonFlags);
+    ]);
     exit();
 }
 
-function getActionColor($code) {
-    switch($code) {
-        case 'V': return 'info';
-        case 'E': return 'warning';
-        case 'D': return 'danger';
-        case 'A': return 'success';
-        default: return 'secondary';
-    }
-}
-
 $pageTitle = "System Audit Log - " . WEBSITE_NAME;
-// CSS Loading Array
-$customCSS = [
-    "dataTables.bootstrap.min.css",
-    "responsive.bootstrap.min.css",
-    "buttons.bootstrap.min.css", 
-    "audit-log.css"
-];
 ?>
 
 <!DOCTYPE html>
 <html lang="<?php echo defined('SITE_LANG') ? SITE_LANG : 'zh-CN'; ?>">
 <head>
     <?php require_once BASE_PATH . 'include/header.php'; ?>
+    <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/dataTables.bootstrap.min.css">
+    <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/responsive.bootstrap.min.css">
+    <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/audit-log.css?v=<?php echo time(); ?>">
 </head>
 <body>
 
 <?php require_once BASE_PATH . 'common/menu/header.php'; ?>
 
-<div class="audit-container">
+<div class="container-fluid mt-4" style="max-width: 1400px;">
     <div class="card shadow-sm">
-        
-        <div class="card-header bg-white d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center py-3">
-            <h4 class="m-0 mb-2 mb-sm-0 text-nowrap">
-                <i class="fa-solid fa-file-shield text-primary"></i> System Audit Log
-            </h4>
-            
-            <div class="d-flex gap-2 align-items-center">
-                <label class="text-muted small mb-0 text-nowrap">Filter Action:</label>
-                
-                <select id="actionFilter" class="form-select form-select-sm" style="width: 200px;">
+        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+            <h4 class="m-0 text-primary"><i class="fa-solid fa-file-shield"></i> System Audit Log</h4>
+            <div class="d-flex align-items-center gap-2">
+                <label class="text-muted small m-0">Filter:</label>
+                <select id="actionFilter" class="form-select form-select-sm" style="width: 150px;">
                     <option value="">All Actions</option>
                     <?php foreach ($auditActions as $code => $label): ?>
-                        <option value="<?php echo htmlspecialchars($code); ?>">
-                            <?php echo htmlspecialchars($label); ?>
-                        </option>
+                        <option value="<?php echo htmlspecialchars($code); ?>"><?php echo htmlspecialchars($label); ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
         </div>
         
         <div class="card-body">
-            <table id="auditTable" 
-                   class="table table-striped table-hover dt-responsive nowrap" 
-                   style="width:100%"
-                   data-api-url="<?php echo $_SERVER['PHP_SELF']; ?>?mode=data">
+            <table id="auditTable" class="table table-hover w-100" data-api-url="<?php echo htmlspecialchars($_SERVER['PHP_SELF']); ?>?mode=data">
                 <thead>
                     <tr>
-                        <th class="all">Page</th>
-                        <th class="all">Action</th>
+                        <th style="width: 30px;"></th> 
+                        <th>Page</th>
+                        <th>Action</th>
                         <th>Message</th>
                         <th>User</th>
                         <th>Date</th>
                         <th>Time</th>
-                        <th class="none">Details</th>
                     </tr>
                 </thead>
             </table>
@@ -206,14 +223,8 @@ $customCSS = [
 <script src="<?php echo URL_ASSETS; ?>/js/jquery-3.6.0.min.js"></script>
 <script src="<?php echo URL_ASSETS; ?>/js/jquery.dataTables.min.js"></script>
 <script src="<?php echo URL_ASSETS; ?>/js/dataTables.bootstrap.min.js"></script>
-<script src="<?php echo URL_ASSETS; ?>/js/dataTables.responsive.min.js"></script>
-<script src="<?php echo URL_ASSETS; ?>/js/responsive.bootstrap.min.js"></script>
 
-<script src="<?php echo URL_ASSETS; ?>/js/dataTables.buttons.min.js"></script>
-<script src="<?php echo URL_ASSETS; ?>/js/buttons.bootstrap.min.js"></script>
-<script src="<?php echo URL_ASSETS; ?>/js/buttons.colVis.min.js"></script>
-
-<script src="<?php echo URL_ASSETS; ?>/js/audit-log.js"></script>
+<script src="<?php echo URL_ASSETS; ?>/js/audit-log.js?v=<?php echo time(); ?>"></script>
 
 </body>
 </html>
