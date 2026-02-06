@@ -1,17 +1,17 @@
 <?php
-// Path: src/pages/tags/index.php (3 levels deep)
+// Path: src/pages/tags/index.php
 require_once __DIR__ . '/../../../init.php';
 defined('URL_HOME') || require_once BASE_PATH . 'config/urls.php';
 require_once BASE_PATH . 'functions.php';
 
 if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
-    header("Location: " . URL_LOGIN);
-    exit();
+    header("Location: " . URL_LOGIN); exit();
 }
 
 $dbTable = defined('NOVEL_TAGS') ? NOVEL_TAGS : 'novel_tag';
 
 if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
+    // [FIX] Removed strict JSON check
     header('Content-Type: application/json');
     
     $start  = $_GET['start'] ?? 0;
@@ -21,7 +21,6 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
     $sql = "SELECT id, name FROM " . $dbTable . " WHERE 1=1";
     $countSql = "SELECT COUNT(*) FROM " . $dbTable . " WHERE 1=1";
     
-    // Separate params for safety
     $mainParams = []; $mainTypes = "";
     $countParams = []; $countTypes = "";
 
@@ -34,14 +33,26 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
         $mainTypes .= "s"; $countTypes .= "s";
     }
 
-    // Sort & Limit (Main Query Only)
-    $sql .= " ORDER BY created_at DESC LIMIT ?, ?";
+    // [FIX] Changed order to 'id' to be safe (prevents crash if created_at missing)
+    $sql .= " ORDER BY id DESC LIMIT ?, ?";
     $mainParams[] = $start; $mainParams[] = $length; 
     $mainTypes .= "ii";
 
+    // [FIX] Helper for Safe Parameter Binding
+    function bindDynamicParams($stmt, $types, $params) {
+        if (!empty($params)) {
+            $bindParams = [];
+            $bindParams[] = $types;
+            for ($i = 0; $i < count($params); $i++) {
+                $bindParams[] = &$params[$i];
+            }
+            call_user_func_array(array($stmt, 'bind_param'), $bindParams);
+        }
+    }
+
     // 1. Count
     $cStmt = $conn->prepare($countSql);
-    if (!empty($countParams)) $cStmt->bind_param($countTypes, ...$countParams);
+    bindDynamicParams($cStmt, $countTypes, $countParams);
     $cStmt->execute();
     $cStmt->bind_result($totalRecords);
     $cStmt->fetch();
@@ -49,7 +60,7 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
 
     // 2. Fetch Data
     $stmt = $conn->prepare($sql);
-    if (!empty($mainParams)) $stmt->bind_param($mainTypes, ...$mainParams);
+    bindDynamicParams($stmt, $mainTypes, $mainParams);
     $stmt->execute();
     
     $meta = $stmt->result_metadata();

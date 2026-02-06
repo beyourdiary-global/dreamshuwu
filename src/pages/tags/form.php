@@ -1,92 +1,78 @@
 <?php
+// Path: src/pages/tags/form.php
 require_once __DIR__ . '/../../../init.php';
 defined('URL_HOME') || require_once BASE_PATH . 'config/urls.php';
 require_once BASE_PATH . 'functions.php';
 
 if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
-    header("Location: " . URL_LOGIN);
-    exit();
+    header("Location: " . URL_LOGIN); exit();
 }
 
 $dbTable = defined('NOVEL_TAGS') ? NOVEL_TAGS : 'novel_tag';
-$listPageUrl = SITEURL . '/src/pages/tags/index.php'; 
+// [FIX] Use defined constant for robustness
+$listPageUrl = defined('URL_NOVEL_TAGS') ? URL_NOVEL_TAGS : 'index.php';
 
 $tagId = $_GET['id'] ?? null;
 $isEditMode = !empty($tagId);
 $tagName = "";
-$message = "";
-$msgType = "";
+$message = ""; $msgType = "";
 
-if ($isEditMode) {
-    $stmt = $conn->prepare("SELECT name FROM " . $dbTable . " WHERE id = ?");
-    $stmt->bind_param("i", $tagId);
-    $stmt->execute();
-    $stmt->bind_result($fetchedName);
-    if ($stmt->fetch()) {
-        $tagName = $fetchedName;
-    } else {
-        $stmt->close();
-        header("Location: " . $listPageUrl);
-        exit();
-    }
-    $stmt->close();
-}
-
-if ($_SERVER["REQUEST_METHOD"] === "POST") {
-    $tagName = trim($_POST['tag_name'] ?? '');
-    $currentUserId = $_SESSION['user_id'];
-
-    if (empty($tagName)) {
-        $message = "标签名称不能为空";
-        $msgType = "danger";
-    } else {
-        // Check for duplicates
-        if ($isEditMode) {
-            $checkStmt = $conn->prepare("SELECT id FROM " . $dbTable . " WHERE name = ? AND id != ?");
-            $checkStmt->bind_param("si", $tagName, $tagId);
+try {
+    if ($isEditMode) {
+        $stmt = $conn->prepare("SELECT name FROM " . $dbTable . " WHERE id = ?");
+        $stmt->bind_param("i", $tagId);
+        $stmt->execute();
+        $stmt->bind_result($fetchedName);
+        if ($stmt->fetch()) {
+            $tagName = $fetchedName;
         } else {
-            $checkStmt = $conn->prepare("SELECT id FROM " . $dbTable . " WHERE name = ?");
-            $checkStmt->bind_param("s", $tagName);
-        }
-        $checkStmt->execute();
-        $checkStmt->store_result();
-        
-        if ($checkStmt->num_rows > 0) {
-            $message = "标签 '<strong>" . htmlspecialchars($tagName) . "</strong>' 已存在";
-            $msgType = "danger";
-            $checkStmt->close();
-        } else {
-            $checkStmt->close();
-            
-            if ($isEditMode) {
-                $stmt = $conn->prepare("UPDATE " . $dbTable . " SET name = ? WHERE id = ?");
-                $stmt->bind_param("si", $tagName, $tagId);
-                $action = 'E'; $logMsg = "更新标签";
-            } else {
-                $stmt = $conn->prepare("INSERT INTO " . $dbTable . " (name) VALUES (?)");
-                $stmt->bind_param("s", $tagName);
-                $action = 'A'; $logMsg = "新增标签";
-            }
-
-            if ($stmt->execute()) {
-                if (function_exists('logAudit')) {
-                    logAudit([
-                        'page' => 'Tag Management', 'action' => $action,
-                        'action_message' => $logMsg . ": " . $tagName,
-                        'query' => $isEditMode ? "UPDATE..." : "INSERT...", 
-                        'query_table' => $dbTable,
-                        'new_value' => ['name' => $tagName], 'user_id' => $currentUserId
-                    ]);
-                }
-                header("Location: " . $listPageUrl . "?msg=saved");
-                exit();
-            } else {
-                $message = "系统错误: " . $stmt->error;
-                $msgType = "danger";
-            }
             $stmt->close();
+            header("Location: " . $listPageUrl); exit();
+        }
+        $stmt->close();
+    }
+
+    if ($_SERVER["REQUEST_METHOD"] === "POST") {
+        $tagName = trim($_POST['tag_name'] ?? '');
+        $currentUserId = $_SESSION['user_id'];
+
+        if (empty($tagName)) {
+            $message = "标签名称不能为空"; $msgType = "danger";
+        } else {
+            $sql = $isEditMode ? "SELECT id FROM $dbTable WHERE name = ? AND id != ?" : "SELECT id FROM $dbTable WHERE name = ?";
+            $chk = $conn->prepare($sql);
+            if ($isEditMode) $chk->bind_param("si", $tagName, $tagId); else $chk->bind_param("s", $tagName);
+            $chk->execute();
+            $chk->store_result();
+            
+            if ($chk->num_rows > 0) {
+                $message = "标签 '<strong>" . htmlspecialchars($tagName) . "</strong>' 已存在"; $msgType = "danger";
+            } else {
+                if ($isEditMode) {
+                    $stmt = $conn->prepare("UPDATE $dbTable SET name = ? WHERE id = ?");
+                    $stmt->bind_param("si", $tagName, $tagId);
+                    $action = 'E'; $logMsg = "更新标签";
+                } else {
+                    $stmt = $conn->prepare("INSERT INTO $dbTable (name) VALUES (?)");
+                    $stmt->bind_param("s", $tagName);
+                    $action = 'A'; $logMsg = "新增标签";
+                }
+
+                if ($stmt->execute()) {
+                    if (function_exists('logAudit')) {
+                        logAudit(['page'=>'Tag','action'=>$action,'action_message'=>"$logMsg: $tagName",'query_table'=>$dbTable,'user_id'=>$currentUserId]);
+                    }
+                    header("Location: $listPageUrl?msg=saved"); exit();
+                } else {
+                    throw new Exception($stmt->error);
+                }
+                $stmt->close();
+            }
+            $chk->close();
         }
     }
+} catch (Exception $e) {
+    $message = "Error: " . $e->getMessage(); $msgType = "danger";
 }
 
 $pageTitle = ($isEditMode ? "编辑标签" : "新增标签") . " - " . WEBSITE_NAME;
@@ -109,8 +95,7 @@ $pageTitle = ($isEditMode ? "编辑标签" : "新增标签") . " - " . WEBSITE_N
         <div class="card-body">
             <?php if ($message): ?>
                 <div class="alert alert-<?php echo $msgType; ?> alert-dismissible fade show">
-                    <?php echo $message; ?>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    <?php echo $message; ?> <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 </div>
             <?php endif; ?>
             <form method="POST" autocomplete="off">
