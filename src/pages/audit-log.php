@@ -3,156 +3,106 @@ require_once __DIR__ . '/../../init.php';
 require_once BASE_PATH . 'config/urls.php';
 require_once BASE_PATH . 'functions.php';
 
-// 1. Auth Check
 if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
     header("Location: " . URL_LOGIN);
     exit();
 }
 
-$auditActions = [
-    'V' => 'View', 'E' => 'Edit', 'A' => 'Add', 'D' => 'Delete'
-];
+$auditActions = ['V' => 'View', 'E' => 'Edit', 'A' => 'Add', 'D' => 'Delete'];
 
-// ==========================================
-//  BACKEND: JSON API Mode
-// ==========================================
 if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
-    if (!function_exists('json_encode')) {
-        die('{"error": "PHP JSON extension is not enabled."}');
-    }
     header('Content-Type: application/json');
 
-    // ---------------------------------------------------------
-    // QUERY 1: Fetch Audit Logs
-    // ---------------------------------------------------------
-    
+    // 1. Base Queries
     $sql = "SELECT * FROM " . AUDIT_LOG . " WHERE 1=1";
     $countSql = "SELECT COUNT(*) FROM " . AUDIT_LOG . " WHERE 1=1";
     
-    $params = []; 
-    $types = "";
+    // separate arrays to prevent index mismatch errors
+    $mainParams = []; $mainTypes = "";
+    $countParams = []; $countTypes = "";
 
-    // Search Logic
+    // 2. Search Logic
     if (!empty($_GET['search']['value'])) {
         $search = "%" . $_GET['search']['value'] . "%";
-        
-        // Subquery for Name Search
         $userSubQuery = "(SELECT id FROM " . USR_LOGIN . " WHERE name LIKE ?)";
-        
         $clause = " AND (page LIKE ? OR action_message LIKE ? OR user_id IN $userSubQuery)";
         
         $sql .= $clause;
         $countSql .= $clause;
         
-        array_push($params, $search, $search, $search);
-        $types .= "sss";
+        // Add to both param sets
+        $searchParams = [$search, $search, $search];
+        $searchTypes = "sss";
+        
+        foreach($searchParams as $p) { $mainParams[] = $p; $countParams[] = $p; }
+        $mainTypes .= $searchTypes; $countTypes .= $searchTypes;
     }
     
-    // Filter Action
+    // 3. Filter Action
     if (!empty($_GET['filter_action'])) {
         $clause = " AND action = ?";
         $sql .= $clause;
         $countSql .= $clause;
-        array_push($params, $_GET['filter_action']);
-        $types .= "s";
+        
+        $mainParams[] = $_GET['filter_action']; $countParams[] = $_GET['filter_action'];
+        $mainTypes .= "s"; $countTypes .= "s";
     }
 
-    // --- HELPER: SAFE DYNAMIC BINDING ---
-    // This fixes the "Cannot pass parameter 2 by reference" Fatal Error
-    function bindDynamicParams($stmt, $types, $params) {
-        if (!empty($params)) {
-            $bindParams = [];
-            $bindParams[] = $types;
-            // Loop and create references for each parameter
-            for ($i = 0; $i < count($params); $i++) {
-                $bindParams[] = &$params[$i];
-            }
-            call_user_func_array(array($stmt, 'bind_param'), $bindParams);
-        }
-    }
-
-    // 1. Execute Count
+    // 4. Execute Count Query
     $countStmt = $conn->prepare($countSql);
-    bindDynamicParams($countStmt, $types, $params);
+    if (!empty($countParams)) {
+        $countStmt->bind_param($countTypes, ...$countParams);
+    }
     $countStmt->execute();
     $countStmt->bind_result($totalRecords);
     $countStmt->fetch();
     $countStmt->close();
 
-    // 2. Sorting
+    // 5. Sorting & Pagination (Only for Main Query)
     $sortCols = ['page', 'action', 'action_message', 'user_id', 'created_at', 'created_at']; 
     $colIdx = $_GET['order'][0]['column'] ?? 5; 
     $realColIdx = ($colIdx > 0) ? $colIdx - 1 : 4; 
     $colName = $sortCols[$realColIdx] ?? 'created_at';
     $dir = ($_GET['order'][0]['dir'] ?? 'desc') === 'asc' ? 'ASC' : 'DESC';
-    
     $sql .= " ORDER BY " . $colName . " " . $dir;
 
-    // 3. Pagination
     $start = $_GET['start'] ?? 0;
     $length = $_GET['length'] ?? 10;
     $sql .= " LIMIT ?, ?";
-    array_push($params, $start, $length);
-    $types .= "ii";
+    $mainParams[] = $start; $mainParams[] = $length;
+    $mainTypes .= "ii";
 
-    // 4. Execute Main Query
+    // 6. Execute Main Query
     $stmt = $conn->prepare($sql);
-    bindDynamicParams($stmt, $types, $params);
+    if (!empty($mainParams)) {
+        $stmt->bind_param($mainTypes, ...$mainParams);
+    }
     $stmt->execute();
     
-    // Fetch Results
+    // Universal Fetch Loop
     $results = [];
     $meta = $stmt->result_metadata();
-    $row = []; 
-    $bindResultParams = [];
-    while ($field = $meta->fetch_field()) { 
-        $bindResultParams[] = &$row[$field->name]; 
-    }
-    call_user_func_array(array($stmt, 'bind_result'), $bindResultParams);
-    
+    $row = []; $bindResult = [];
+    while ($field = $meta->fetch_field()) { $bindResult[] = &$row[$field->name]; }
+    call_user_func_array(array($stmt, 'bind_result'), $bindResult);
     while ($stmt->fetch()) {
-        $cRow = [];
-        foreach($row as $key => $val) { $cRow[$key] = $val; }
+        $cRow = []; foreach($row as $k => $v) { $cRow[$k] = $v; }
         $results[] = $cRow;
     }
     $stmt->close();
 
-    // ---------------------------------------------------------
-    // QUERY 2: Fetch User Names (Batch)
-    // ---------------------------------------------------------
-    
-    $userIds = [];
-    foreach ($results as $r) {
-        if (!empty($r['user_id'])) $userIds[] = (int)$r['user_id'];
-    }
-    $userIds = array_unique($userIds);
-    
+    // 7. Get User Names
+    $userIds = array_unique(array_column($results, 'user_id'));
     $userMap = [];
     if (!empty($userIds)) {
-        $idList = implode(',', $userIds);
-        $userSql = "SELECT id, name FROM " . USR_LOGIN . " WHERE id IN ($idList)";
-        $uRes = $conn->query($userSql);
-        if ($uRes) {
-            while ($uRow = $uRes->fetch_assoc()) {
-                $userMap[$uRow['id']] = $uRow['name'];
-            }
-        }
+        $idList = implode(',', array_map('intval', $userIds));
+        $uRes = $conn->query("SELECT id, name FROM " . USR_LOGIN . " WHERE id IN ($idList)");
+        while ($uRow = $uRes->fetch_assoc()) $userMap[$uRow['id']] = $uRow['name'];
     }
 
-    // ---------------------------------------------------------
-    // MERGE & OUTPUT
-    // ---------------------------------------------------------
+    // 8. Output Data
     $data = [];
     foreach ($results as $cRow) {
-        try {
-            $dt = new DateTime($cRow['created_at']);
-            $dateStr = $dt->format('Y-m-d');
-            $timeStr = $dt->format('H:i:s');
-        } catch (Exception $e) { $dateStr = '-'; $timeStr = '-'; }
-        
-        $actionLabel = $auditActions[$cRow['action']] ?? $cRow['action'];
-        
-        // PHP 7 Compatible Switch
         $badgeClass = 'secondary';
         switch ($cRow['action']) {
             case 'V': $badgeClass = 'info'; break;
@@ -161,36 +111,28 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
             case 'A': $badgeClass = 'success'; break;
         }
 
-        $userName = $userMap[$cRow['user_id']] ?? 'Unknown';
-
         $data[] = [
             'page'    => htmlspecialchars($cRow['page']),
-            'action'  => '<span class="badge badge-custom badge-'.$badgeClass.'">' . $actionLabel . '</span>',
+            'action'  => '<span class="badge badge-custom badge-'.$badgeClass.'">' . ($auditActions[$cRow['action']] ?? $cRow['action']) . '</span>',
             'message' => htmlspecialchars($cRow['action_message']),
-            'user'    => htmlspecialchars($userName . " (ID:" . $cRow['user_id'] . ")"),
-            'date'    => $dateStr,
-            'time'    => $timeStr,
+            'user'    => htmlspecialchars(($userMap[$cRow['user_id']] ?? 'Unknown') . " (ID:" . $cRow['user_id'] . ")"),
+            'date'    => (new DateTime($cRow['created_at']))->format('Y-m-d'),
+            'time'    => (new DateTime($cRow['created_at']))->format('H:i:s'),
             'details' => [
-                'query'   => $cRow['query'],
-                'old'     => $cRow['old_value'],
-                'new'     => $cRow['new_value'],
+                'query' => $cRow['query'], 
+                'old' => $cRow['old_value'], 
+                'new' => $cRow['new_value'], 
                 'changes' => $cRow['changes']
             ]
         ];
     }
 
-    echo json_encode([
-        "draw" => intval($_GET['draw']),
-        "recordsTotal" => $totalRecords,
-        "recordsFiltered" => $totalRecords, 
-        "data" => $data
-    ]);
+    echo json_encode(["draw" => intval($_GET['draw']), "recordsTotal" => $totalRecords, "recordsFiltered" => $totalRecords, "data" => $data]);
     exit();
 }
 
 $pageTitle = "System Audit Log - " . WEBSITE_NAME;
 ?>
-
 <!DOCTYPE html>
 <html lang="<?php echo defined('SITE_LANG') ? SITE_LANG : 'zh-CN'; ?>">
 <head>
@@ -200,9 +142,7 @@ $pageTitle = "System Audit Log - " . WEBSITE_NAME;
     <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/audit-log.css?v=<?php echo time(); ?>">
 </head>
 <body>
-
 <?php require_once BASE_PATH . 'common/menu/header.php'; ?>
-
 <div class="container-fluid mt-4" style="max-width: 1400px;">
     <div class="card shadow-sm">
         <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
@@ -211,36 +151,20 @@ $pageTitle = "System Audit Log - " . WEBSITE_NAME;
                 <label class="text-muted small m-0">Filter:</label>
                 <select id="actionFilter" class="form-select form-select-sm" style="width: 150px;">
                     <option value="">All Actions</option>
-                    <?php foreach ($auditActions as $code => $label): ?>
-                        <option value="<?php echo htmlspecialchars($code); ?>"><?php echo htmlspecialchars($label); ?></option>
-                    <?php endforeach; ?>
+                    <?php foreach ($auditActions as $code => $label): echo "<option value='$code'>$label</option>"; endforeach; ?>
                 </select>
             </div>
         </div>
-        
         <div class="card-body">
             <table id="auditTable" class="table table-hover w-100" data-api-url="<?php echo htmlspecialchars($_SERVER['PHP_SELF']); ?>?mode=data">
-                <thead>
-                    <tr>
-                        <th style="width: 30px;"></th> 
-                        <th>Page</th>
-                        <th>Action</th>
-                        <th>Message</th>
-                        <th>User</th>
-                        <th>Date</th>
-                        <th>Time</th>
-                    </tr>
-                </thead>
+                <thead><tr><th style="width: 30px;"></th><th>Page</th><th>Action</th><th>Message</th><th>User</th><th>Date</th><th>Time</th></tr></thead>
             </table>
         </div>
     </div>
 </div>
-
 <script src="<?php echo URL_ASSETS; ?>/js/jquery-3.6.0.min.js"></script>
 <script src="<?php echo URL_ASSETS; ?>/js/jquery.dataTables.min.js"></script>
 <script src="<?php echo URL_ASSETS; ?>/js/dataTables.bootstrap.min.js"></script>
-
 <script src="<?php echo URL_ASSETS; ?>/js/audit-log.js?v=<?php echo time(); ?>"></script>
-
 </body>
 </html>
