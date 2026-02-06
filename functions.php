@@ -106,6 +106,7 @@ function sendPasswordResetEmail($email, $resetLink) {
             .header { background: #233dd2; color: white; padding: 20px; text-align: center; border-radius: 5px; }
             .content { padding: 20px; background: #f9f9f9; }
             .footer { font-size: 12px; color: #999; margin-top: 20px; }
+            .footer p { margin: 5px 0; }
             a.btn { display: inline-block; background: #233dd2; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 15px 0; }
         </style>
     </head>
@@ -122,7 +123,7 @@ function sendPasswordResetEmail($email, $resetLink) {
                 <p style='color: #999; font-size: 14px;'><strong>重要：</strong>此链接有效期为 30 分钟。如果您没有提出此请求，请忽略此邮件。</p>
             </div>
             <div class='footer'>
-                <p>© " . date('Y') . " StarAdmin. 版权所有。</p>
+                <p>© " . date('Y') . " " . WEBSITE_NAME . ". 版权所有。</p>
             </div>
         </div>
     </body>
@@ -132,43 +133,145 @@ function sendPasswordResetEmail($email, $resetLink) {
 }
 
 /**
- * Helper: Handle Image Upload
- * Returns array: ['success' => bool, 'filename' => string|null, 'message' => string]
+ * Logs a database operation to the audit_log table.
  */
-function uploadImage($fileInput, $targetDir, $maxSizeMB = 2) {
-    // 1. Check for upload errors
-    if (!isset($fileInput) || $fileInput['error'] !== UPLOAD_ERR_OK) {
-        return ['success' => false, 'message' => '没有文件被上传或上传出错'];
+function logAudit($params) {
+    global $conn;
+
+    // 1. Set Defaults
+    $page        = $params['page'] ?? 'Unknown';
+    $action      = $params['action'] ?? 'V';
+    $message     = $params['action_message'] ?? '';
+    $query       = $params['query'] ?? '';
+    $table       = $params['query_table'] ?? '';
+    $userId      = $params['user_id'] ?? 0;
+    
+    // Arrays for JSON columns
+    $oldData     = $params['old_value'] ?? null;
+    $newData     = $params['new_value'] ?? null;
+    $changes     = null;
+
+    // 2. Calculate Changes (Improved Logic: From -> To)
+    if ($action === 'E' && is_array($oldData) && is_array($newData)) {
+        $changes = [];
+        foreach ($newData as $key => $value) {
+            // Check if key exists in old data AND is different
+            if (array_key_exists($key, $oldData) && $oldData[$key] !== $value) {
+                $changes[$key] = [
+                    'from' => $oldData[$key],
+                    'to'   => $value
+                ];
+            }
+        }
+        // If no actual changes found, set to null
+        if (empty($changes)) {
+            $changes = null;
+        }
     }
 
-    // 2. Validate Size
-    if ($fileInput['size'] > $maxSizeMB * 1024 * 1024) {
-        return ['success' => false, 'message' => "文件大小不能超过 {$maxSizeMB}MB"];
+    // 3. JSON Encode (WITH SAFETY CHECK)
+    // This fixes the "Call to undefined function json_encode" error
+    if (function_exists('json_encode')) {
+        // Use standard JSON encode if server supports it
+        $flags = defined('JSON_UNESCAPED_UNICODE') ? JSON_UNESCAPED_UNICODE : 0;
+        
+        $jsonOld     = !empty($oldData) ? json_encode($oldData, $flags) : null;
+        $jsonNew     = !empty($newData) ? json_encode($newData, $flags) : null;
+        $jsonChanges = !empty($changes) ? json_encode($changes, $flags) : null;
+    } else {
+        // FALLBACK: If JSON extension is disabled, send NULL to avoid crash
+        // IMPORTANT: You should enable the "json" extension in CPanel
+        $jsonOld     = null;
+        $jsonNew     = null;
+        $jsonChanges = null;
     }
 
-    // 3. Validate Extension
-    $fileName = $fileInput['name'];
-    $fileExt = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
-    $allowedExts = ['jpg', 'jpeg', 'png'];
+    // 4. Prepare SQL
+    $sql = "INSERT INTO " . AUDIT_LOG . " 
+            (page, action, action_message, query, query_table, 
+             old_value, new_value, changes, user_id, 
+             created_at, updated_at, created_by, updated_by) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ?, ?)";
 
-    if (!in_array($fileExt, $allowedExts)) {
-        return ['success' => false, 'message' => '仅支持 JPG, JPEG, PNG 格式'];
+    $stmt = $conn->prepare($sql);
+
+    if ($stmt) {
+        $stmt->bind_param(
+            "ssssssssiii", 
+            $page, $action, $message, $query, $table, 
+            $jsonOld, $jsonNew, $jsonChanges, $userId, $userId, $userId
+        );
+        $stmt->execute();
+        $stmt->close();
+    } else {
+        error_log("Audit Log SQL Error: " . $conn->error);
+    }
+}
+
+/**
+ * Secure Image Upload Function
+ * Handles avatar uploads safely.
+ * * @param array $file The $_FILES['input_name'] array
+ * @param string $targetDir The directory to save the file
+ * @return array ['success' => bool, 'message' => string, 'filename' => string]
+ */
+function uploadImage($file, $targetDir) {
+    // 1. Check for basic upload errors
+    if ($file['error'] !== UPLOAD_ERR_OK) {
+        $errorMessages = [
+            UPLOAD_ERR_INI_SIZE   => '文件大小超过服务器限制',
+            UPLOAD_ERR_FORM_SIZE  => '文件大小超过表单限制',
+            UPLOAD_ERR_PARTIAL    => '文件上传不完整',
+            UPLOAD_ERR_NO_FILE    => '没有选择文件',
+            UPLOAD_ERR_NO_TMP_DIR => '临时文件夹丢失',
+            UPLOAD_ERR_CANT_WRITE => '无法写入文件',
+            UPLOAD_ERR_EXTENSION  => '文件上传被扩展程序停止',
+        ];
+        $msg = $errorMessages[$file['error']] ?? '未知上传错误';
+        return ['success' => false, 'message' => $msg];
     }
 
-    // 4. Create Directory if not exists
+    // 2. Validate Image Extension
+    $allowedTypes = ['jpg', 'jpeg', 'png'];
+    $fileExt = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+    
+    if (!in_array($fileExt, $allowedTypes)) {
+        return ['success' => false, 'message' => '只允许上传 JPG 和 PNG 格式的图片'];
+    }
+
+    // 3. Validate Mime Type (Security Check)
+    // If finfo_open doesn't exist (some shared hosts), we skip this or use a fallback
+    if (function_exists('finfo_open')) {
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mime = finfo_file($finfo, $file['tmp_name']);
+        finfo_close($finfo);
+        
+        $allowedMimes = ['image/jpeg', 'image/png'];
+        if (!in_array($mime, $allowedMimes)) {
+            return ['success' => false, 'message' => '文件内容无效 (MIME mismatch)'];
+        }
+    }
+
+    // 4. Generate Safe Filename
+    $newFilename = uniqid('av_') . '.' . $fileExt;
+    
+    // Ensure the target directory ends with a slash
+    $targetDir = rtrim($targetDir, '/') . '/';
+    $targetPath = $targetDir . $newFilename;
+
+    // 5. Create Directory if missing
     if (!is_dir($targetDir)) {
-        mkdir($targetDir, 0755, true);
+        // Try to create directory with permissions
+        if (!mkdir($targetDir, 0755, true)) {
+            return ['success' => false, 'message' => '无法创建上传目录 (权限不足)'];
+        }
     }
 
-    // 5. Generate Unique Name and Move
-    // Using uniqid() ensures filenames are unique and harder to guess
-    $newFileName = uniqid('img_', true) . '.' . $fileExt;
-    $destPath = $targetDir . $newFileName;
-
-    if (move_uploaded_file($fileInput['tmp_name'], $destPath)) {
-        return ['success' => true, 'filename' => $newFileName, 'message' => '上传成功'];
+    // 6. Move File
+    if (move_uploaded_file($file['tmp_name'], $targetPath)) {
+        return ['success' => true, 'filename' => $newFilename];
     }
 
-    return ['success' => false, 'message' => '文件移动失败，请检查文件夹权限'];
+    return ['success' => false, 'message' => '无法保存文件 (Move failed)'];
 }
 ?>

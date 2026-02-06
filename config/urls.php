@@ -32,4 +32,6 @@ defined('URL_AUTHOR_DASHBOARD') || define('URL_AUTHOR_DASHBOARD', SITEURL . '/sr
 
 // --- 6. Novel Management ---
 defined('URL_NOVEL_TAGS') || define('URL_NOVEL_TAGS', SITEURL . '/src/pages/tags/index.php');
+// --  6. Audit Log Page ---
+defined('URL_AUDIT_LOG') || define('URL_AUDIT_LOG', SITEURL . '/src/pages/audit-log.php');
 ?>

@@ -10,7 +10,7 @@ $msgType = "";
 $validToken = false;
 $email = "";
 
-$token = $_GET['token'] ?? '';
+$token = $_POST['token'] ?? ($_GET['token'] ?? '');
 
 if (empty($token)) {
     $message = "无效的访问链接";
@@ -21,11 +21,14 @@ if (empty($token)) {
     $stmt = $conn->prepare("SELECT email FROM " . PWD_RESET . " WHERE token = ? AND expires_at > ? LIMIT 1");
     $stmt->bind_param("ss", $token, $currentDate);
     $stmt->execute();
-    $result = $stmt->get_result();
-
-    if ($row = $result->fetch_assoc()) {
+    
+    // [FIX] Universal Fetch (Replaces get_result)
+    // We bind the result to a variable instead of fetching an object
+    $stmt->bind_result($fetchedEmail);
+    
+    if ($stmt->fetch()) {
         $validToken = true;
-        $email = $row['email'];
+        $email = $fetchedEmail;
     } else {
         $message = "重置链接已失效，请重新申请";
         $msgType = "danger";
@@ -91,6 +94,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $validToken) {
                 <?php if ($validToken): ?>
                 <p class="subtext text-center text-muted">请为您的账号设置一个新的安全密码</p>
                 <form id="resetForm" method="POST" autocomplete="off" novalidate>
+                    <input type="hidden" name="token" value="<?php echo htmlspecialchars($token); ?>">
                     
                     <div class="form-floating mb-3 position-relative">
                         <input type="password" class="form-control" id="new_password" name="new_password" placeholder="New Password" required style="padding-right: 60px;">
@@ -131,6 +135,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $validToken) {
 
 <script src="<?php echo URL_ASSETS; ?>/js/login-script.js"></script>
 
-<script src="<?php echo URL_ASSETS; ?>/js/reset-password-script.js?v=<?php echo $resetScriptVersion; ?>"></script>
+<script src="<?php echo URL_ASSETS; ?>/js/reset-password-script.js?v=<?php echo time(); ?>"></script>
 </body>
 </html>

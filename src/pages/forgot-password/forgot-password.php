@@ -8,6 +8,10 @@ $pageTitle = "忘记密码 - " . WEBSITE_NAME;
 $message = "";
 $msgType = ""; // 'success', 'danger', or 'warning'
 
+// [FIX] Convert Constant String to Array safely
+$local_whitelist = defined('LOCAL_WHITELIST') ? explode(',', LOCAL_WHITELIST) : ['127.0.0.1', '::1', 'localhost'];
+$isLocal = in_array($_SERVER['SERVER_NAME'], $local_whitelist);
+
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $email = trim($_POST['email'] ?? "");
 
@@ -19,7 +23,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $message = "请输入有效邮箱";
         $msgType = "danger";
     } else {
-        // 2. Check if email exists in User table (Using USR_LOGIN constant)
+        // 2. Check if email exists in User table
         $stmt = $conn->prepare("SELECT id FROM " . USR_LOGIN . " WHERE email = ? LIMIT 1");
         $stmt->bind_param("s", $email);
         $stmt->execute();
@@ -31,10 +35,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         } else {
             // 3. Generate Token & Expiry (30 mins)
             $token = bin2hex(random_bytes(32)); 
-            $expires_at = date("Y-m-d H:i:s", strtotime('+30 minutes'));
+            // Use time() for safer timestamp calculation
+            $expires_at = date("Y-m-d H:i:s", time() + 1800); 
 
-            // 4. Store in PWD_RESET table (Using Constant)
-            // Delete old tokens for this email first
+            // 4. Store in PWD_RESET table
+            // Delete old tokens first
             $delStmt = $conn->prepare("DELETE FROM " . PWD_RESET . " WHERE email = ?");
             $delStmt->bind_param("s", $email);
             $delStmt->execute();
@@ -44,23 +49,21 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $insertStmt->bind_param("sss", $email, $token, $expires_at);
             
             if ($insertStmt->execute()) {
-                // 5. Send Email Logic using helper function
+                // 5. Send Email Logic
                 $resetLink = URL_RESET_PWD . "?token=" . $token;
                 
-                // Send Email with Localhost Fallback
+                // Try to send email
                 $mailSent = sendPasswordResetEmail($email, $resetLink);
 
-                if ($mailSent) {
-                    $message = "重置链接已发送，请检查您的邮箱";
+                // [LOGIC IMPROVED]
+                // If Localhost OR Email Failed, show the link directly for debugging
+                if ($mailSent && !$isLocal) {
+                    $message = "重置链接已发送，请检查您的邮箱 (含垃圾箱)";
                     $msgType = "success";
                 } else {
-                    if (in_array($_SERVER['SERVER_NAME'], LOCAL_WHITELIST, true)) {
-                        $message = "<strong>本地测试模式:</strong><br><a href='" . $resetLink . "'>[点击这里重置密码]</a>";
-                        $msgType = "warning";
-                    } else {
-                        $message = "邮件发送失败，请联系管理员";
-                        $msgType = "danger";
-                    }
+                    // Fallback for Localhost or Failed Email
+                    $message = "<strong>调试模式 (Email发送失败或本地环境):</strong><br>请点击此链接重置密码:<br><a href='" . $resetLink . "'>[点击这里重置密码]</a>";
+                    $msgType = "warning";
                 }
             } else {
                 $message = "系统错误，请稍后再试";
@@ -89,8 +92,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
                 <?php if (!empty($message)): ?>
                     <div class="alert alert-<?php echo $msgType; ?> alert-dismissible fade show text-break" role="alert">
-                        <?php echo ($msgType === 'warning') ? $message : htmlspecialchars($message); ?>
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        <?php echo $message; ?>
+                        <button type="button" class="btn-close" data-bs-dismiss=\"alert\" aria-label="Close"></button>
                     </div>
                 <?php endif; ?>
 

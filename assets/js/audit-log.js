@@ -1,125 +1,99 @@
 $(document).ready(function () {
-  const tableElement = $("#auditTable");
-  const apiUrl = tableElement.data("api-url");
+  // 1. Helper to Format Details (Child Row)
+  function format(d) {
+    if (!d.details) return "";
+    var det = d.details;
+    var html = '<div class="detail-box">';
 
-  // Safety Check
-  if (!$.fn.DataTable) {
-    console.error("DataTables library not found.");
-    return;
-  }
-
-  var table = tableElement.DataTable({
-    processing: true,
-    serverSide: true,
-    ajax: {
-      url: apiUrl,
-      data: function (d) {
-        d.filter_action = $("#actionFilter").val();
-      },
-    },
-    // Bootstrap 3 Grid Structure for Controls
-    dom:
-      "<'row'<'col-sm-12 col-md-6'B><'col-sm-12 col-md-6'f>>" +
-      "<'row'<'col-sm-12'tr>>" +
-      "<'row'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
-    buttons: [
-      {
-        extend: "colvis",
-        text: '<i class="fa-solid fa-columns"></i> Columns',
-        // [FIX] Changed 'btn-outline-secondary' (BS5) to 'btn-default' (BS3)
-        className: "btn btn-sm btn-default",
-        columns: ":not(.dtr-control):not(.none)",
-      },
-    ],
-    responsive: {
-      details: {
-        type: "column",
-        target: 0,
-      },
-    },
-    columns: [
-      // Index 0: Expand Button (+)
-      {
-        className: "dtr-control",
-        orderable: false,
-        data: null,
-        defaultContent: "",
-        responsivePriority: 1,
-      },
-      // Index 1: Page
-      { data: 0, responsivePriority: 1 },
-      // Index 2: Action
-      { data: 1, responsivePriority: 1 },
-      // Index 3: Message
-      { data: 2, responsivePriority: 3 },
-      // Index 4: User
-      { data: 3, responsivePriority: 4 },
-      // Index 5: Date
-      { data: 4, responsivePriority: 2 },
-      // Index 6: Time
-      { data: 5, responsivePriority: 5 },
-      // Index 7: Details
-      {
-        className: "none",
-        orderable: false,
-        data: null,
-        render: function (data) {
-          return formatDetails(data);
-        },
-      },
-    ],
-    // [VERIFIED] Date is at Index 5, Time is at Index 6. This is CORRECT.
-    order: [
-      [5, "desc"],
-      [6, "desc"],
-    ],
-    pageLength: 10,
-  });
-
-  $("#actionFilter").change(function () {
-    table.draw();
-  });
-
-  function formatDetails(d) {
-    function safeJson(str) {
-      if (!str) return "<em>None</em>";
-      try {
-        return JSON.stringify(JSON.parse(str), null, 2);
-      } catch (e) {
-        return str;
-      }
+    // Show Query if available
+    if (det.query) {
+      html +=
+        '<div class="mb-3"><strong><i class="fa-solid fa-database"></i> SQL Query:</strong>';
+      html += "<pre>" + det.query + "</pre></div>";
     }
 
-    var html =
-      '<div class="row" style="padding: 15px; background: #f9f9f9; border-top: 1px solid #ddd;">';
+    // Try parsing JSON if strings
+    var oldV = det.old,
+      newV = det.new;
+    try {
+      if (typeof oldV === "string")
+        oldV = JSON.stringify(JSON.parse(oldV), null, 2);
+    } catch (e) {}
+    try {
+      if (typeof newV === "string")
+        newV = JSON.stringify(JSON.parse(newV), null, 2);
+    } catch (e) {}
 
-    html += '<div class="col-xs-12 mb-2">';
-    html += '<strong><i class="fa-solid fa-database"></i> SQL Query:</strong>';
-    html +=
-      '<div style="background: #fff; padding: 10px; border: 1px solid #ccc; border-radius: 4px; margin-top: 5px; word-wrap: break-word;"><code>' +
-      (d.query || "N/A") +
-      "</code></div>";
-    html += "</div>";
-
-    if (d.changes) {
-      html += '<div class="col-xs-12">';
-      html +=
-        '<strong><i class="fa-solid fa-pen-to-square"></i> Specific Changes:</strong>';
-      html += "<pre>" + safeJson(d.changes) + "</pre>";
-      html += "</div>";
-    } else {
-      // Use col-sm-6 for side-by-side on tablet/desktop, col-xs-12 for mobile
-      html += '<div class="col-xs-12 col-sm-6">';
-      html +=
-        "<strong>Old Value:</strong><pre>" + safeJson(d.old_value) + "</pre>";
-      html += "</div>";
-      html += '<div class="col-xs-12 col-sm-6">';
-      html +=
-        "<strong>New Value:</strong><pre>" + safeJson(d.new_value) + "</pre>";
+    // Show Changes if available
+    if (oldV || newV) {
+      html += '<div class="row">';
+      if (oldV) {
+        html +=
+          '<div class="col-xs-12 col-md-6"><strong><i class="fa-solid fa-minus-circle text-danger"></i> Old Value:</strong>';
+        html += "<pre>" + oldV + "</pre></div>";
+      }
+      if (newV) {
+        html +=
+          '<div class="col-xs-12 col-md-6"><strong><i class="fa-solid fa-plus-circle text-success"></i> New Value:</strong>';
+        html += "<pre>" + newV + "</pre></div>";
+      }
       html += "</div>";
     }
 
     html += "</div>";
     return html;
   }
+
+  // 2. Initialize DataTable
+  var tableUrl = $("#auditTable").data("api-url");
+  var table = $("#auditTable").DataTable({
+    processing: true,
+    serverSide: true,
+    responsive: true,
+    ajax: {
+      url: tableUrl,
+      data: function (d) {
+        d.filter_action = $("#actionFilter").val();
+      },
+    },
+    columns: [
+      {
+        className: "dt-control",
+        orderable: false,
+        data: null,
+        defaultContent: "",
+        width: "30px",
+      },
+      { data: "page" },
+      { data: "action" },
+      { data: "message" },
+      { data: "user" },
+      { data: "date" },
+      { data: "time" },
+    ],
+    order: [[5, "desc"]], // Sort by Date by default
+    language: {
+      emptyTable: "No logs found",
+      processing: "<i class='fa fa-spinner fa-spin'></i> Loading...",
+    },
+  });
+
+  // 3. Handle Filter
+  $("#actionFilter").on("change", function () {
+    table.draw();
+  });
+
+  // 4. Handle Expand Click
+  $("#auditTable tbody").on("click", "td.dt-control", function () {
+    var tr = $(this).closest("tr");
+    var row = table.row(tr);
+
+    if (row.child.isShown()) {
+      row.child.hide();
+      tr.removeClass("shown");
+    } else {
+      row.child(format(row.data())).show();
+      tr.addClass("shown");
+    }
+  });
 });
