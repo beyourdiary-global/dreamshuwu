@@ -17,24 +17,26 @@ $auditActions = [
 //  BACKEND: JSON API Mode
 // ==========================================
 if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
-    if (!function_exists('json_encode')) die('{"error": "PHP JSON extension is not enabled."}');
+    if (!function_exists('json_encode')) {
+        die('{"error": "PHP JSON extension is not enabled."}');
+    }
     header('Content-Type: application/json');
 
     // ---------------------------------------------------------
-    // QUERY 1: Fetch Audit Logs (No Joins)
+    // QUERY 1: Fetch Audit Logs
     // ---------------------------------------------------------
     
-    // Basic Select
     $sql = "SELECT * FROM " . AUDIT_LOG . " WHERE 1=1";
     $countSql = "SELECT COUNT(*) FROM " . AUDIT_LOG . " WHERE 1=1";
     
-    $params = []; $types = "";
+    $params = []; 
+    $types = "";
 
     // Search Logic
     if (!empty($_GET['search']['value'])) {
         $search = "%" . $_GET['search']['value'] . "%";
         
-        // OPTIMIZATION: Use Subquery for Name Search instead of JOIN
+        // Subquery for Name Search
         $userSubQuery = "(SELECT id FROM " . USR_LOGIN . " WHERE name LIKE ?)";
         
         $clause = " AND (page LIKE ? OR action_message LIKE ? OR user_id IN $userSubQuery)";
@@ -42,7 +44,6 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
         $sql .= $clause;
         $countSql .= $clause;
         
-        // Bind 3 params: page, message, user_name(subquery)
         array_push($params, $search, $search, $search);
         $types .= "sss";
     }
@@ -56,15 +57,29 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
         $types .= "s";
     }
 
-    // Execute Count
+    // --- HELPER: SAFE DYNAMIC BINDING ---
+    // This fixes the "Cannot pass parameter 2 by reference" Fatal Error
+    function bindDynamicParams($stmt, $types, $params) {
+        if (!empty($params)) {
+            $bindParams = [];
+            $bindParams[] = $types;
+            // Loop and create references for each parameter
+            for ($i = 0; $i < count($params); $i++) {
+                $bindParams[] = &$params[$i];
+            }
+            call_user_func_array(array($stmt, 'bind_param'), $bindParams);
+        }
+    }
+
+    // 1. Execute Count
     $countStmt = $conn->prepare($countSql);
-    if (!empty($params)) $countStmt->bind_param($types, ...$params);
+    bindDynamicParams($countStmt, $types, $params);
     $countStmt->execute();
     $countStmt->bind_result($totalRecords);
     $countStmt->fetch();
     $countStmt->close();
 
-    // Sorting
+    // 2. Sorting
     $sortCols = ['page', 'action', 'action_message', 'user_id', 'created_at', 'created_at']; 
     $colIdx = $_GET['order'][0]['column'] ?? 5; 
     $realColIdx = ($colIdx > 0) ? $colIdx - 1 : 4; 
@@ -73,27 +88,29 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
     
     $sql .= " ORDER BY " . $colName . " " . $dir;
 
-    // Pagination
+    // 3. Pagination
     $start = $_GET['start'] ?? 0;
     $length = $_GET['length'] ?? 10;
     $sql .= " LIMIT ?, ?";
     array_push($params, $start, $length);
     $types .= "ii";
 
-    // Execute Main Query
+    // 4. Execute Main Query
     $stmt = $conn->prepare($sql);
-    if (!empty($params)) $stmt->bind_param($types, ...$params);
+    bindDynamicParams($stmt, $types, $params);
     $stmt->execute();
     
-    // Fetch Results into Array
+    // Fetch Results
     $results = [];
     $meta = $stmt->result_metadata();
-    $row = []; $bindParams = [];
-    while ($field = $meta->fetch_field()) { $bindParams[] = &$row[$field->name]; }
-    call_user_func_array(array($stmt, 'bind_result'), $bindParams);
+    $row = []; 
+    $bindResultParams = [];
+    while ($field = $meta->fetch_field()) { 
+        $bindResultParams[] = &$row[$field->name]; 
+    }
+    call_user_func_array(array($stmt, 'bind_result'), $bindResultParams);
     
     while ($stmt->fetch()) {
-        // Break references
         $cRow = [];
         foreach($row as $key => $val) { $cRow[$key] = $val; }
         $results[] = $cRow;
@@ -101,22 +118,17 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
     $stmt->close();
 
     // ---------------------------------------------------------
-    // QUERY 2: Fetch User Names (Batch Fetch)
+    // QUERY 2: Fetch User Names (Batch)
     // ---------------------------------------------------------
     
-    // 1. Collect User IDs
     $userIds = [];
     foreach ($results as $r) {
-        if (!empty($r['user_id'])) {
-            $userIds[] = (int)$r['user_id'];
-        }
+        if (!empty($r['user_id'])) $userIds[] = (int)$r['user_id'];
     }
     $userIds = array_unique($userIds);
     
-    // 2. Fetch Names Map
     $userMap = [];
     if (!empty($userIds)) {
-        // Safe integer list for IN clause
         $idList = implode(',', $userIds);
         $userSql = "SELECT id, name FROM " . USR_LOGIN . " WHERE id IN ($idList)";
         $uRes = $conn->query($userSql);
@@ -140,11 +152,15 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
         
         $actionLabel = $auditActions[$cRow['action']] ?? $cRow['action'];
         
-        $badgeClass = match($cRow['action']) {
-            'V' => 'info', 'E' => 'warning', 'D' => 'danger', 'A' => 'success', default => 'secondary'
-        };
+        // PHP 7 Compatible Switch
+        $badgeClass = 'secondary';
+        switch ($cRow['action']) {
+            case 'V': $badgeClass = 'info'; break;
+            case 'E': $badgeClass = 'warning'; break;
+            case 'D': $badgeClass = 'danger'; break;
+            case 'A': $badgeClass = 'success'; break;
+        }
 
-        // Get Name from Map
         $userName = $userMap[$cRow['user_id']] ?? 'Unknown';
 
         $data[] = [

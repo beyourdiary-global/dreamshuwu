@@ -1,16 +1,4 @@
 <?php
-// Enable error display FIRST (before any code that might fail)
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-
-// Show fatal errors (blank page fix)
-register_shutdown_function(function () {
-    $err = error_get_last();
-    if ($err && in_array($err['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR], true)) {
-        echo "<pre style='color:red; font-family:monospace;'>FATAL: {$err['message']} in {$err['file']} on line {$err['line']}</pre>";
-    }
-});
-
 session_start();
 // $livemode = false; // true = test link, false = live link
 // Auto-detect local environment
@@ -260,14 +248,6 @@ if (strpos($connHost, ':') !== false) {
     $connPort = (int) $connParts[1];
 }
 
-// --- TEMPORARY LIVE DEBUGGING ---
-$debug_mode = true; // Set to true only for debugging
-
-if ($debug_mode) {
-    error_reporting(E_ALL);
-    ini_set('display_errors', 1);
-}
-
 // 2. Establish connection
 try {
     $conn = @mysqli_connect($connHost, $connUser, $connPass, $connDb, $connPort);
@@ -277,21 +257,6 @@ try {
 
 // 3. Check connection & Debug
 if (!$conn || mysqli_connect_errno()) {
-    if ($debug_mode) {
-        echo "<div style='background:#fee; border:2px solid red; padding:20px; margin:20px; font-family:sans-serif;'>";
-        echo "<h2 style='color:red;'>⚠️ Database Debug Information</h2>";
-        echo "<b>Current Mode:</b> " . ($isLocalEnvironment ? 'Local' : 'Live (Server)') . "<br>";
-        echo "<b>Attempted Host:</b> " . $connHost . "<br>";
-        echo "<b>Attempted User:</b> " . $connUser . "<br>";
-        echo "<b>Attempted DB:</b> " . $connDb . "<br>";
-        echo "<b>Error Message:</b> " . mysqli_connect_error() . "<br>";
-        echo "<b>SITEURL:</b> " . SITEURL . "<br>";
-        echo "<hr>";
-        echo "<i>Check if the Database User is added to the Database in CPanel.</i>";
-        echo "</div>";
-        die("Stopping redirect for debugging..."); // This prevents the redirect to error404.php
-    }
-    
     if (!defined('SKIP_DB_CHECK')) {
         header("Location: " . SITEURL . "/src/pages/error404.php");
         exit();

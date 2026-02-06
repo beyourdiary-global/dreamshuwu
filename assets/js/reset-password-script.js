@@ -12,6 +12,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const globalPwdRegex = window.StarAdminConfig
     ? window.StarAdminConfig.pwdRegex
     : null;
+  const fallbackPwdRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
 
   const showError = (msg) => {
     clientError.textContent = msg;
@@ -24,8 +25,9 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   const isStrong = (pwd) => {
-    // Reusing the centralized regex pattern
-    return pwdRegex.test(pwd);
+    // Reuse centralized regex if available, otherwise fallback
+    const regex = globalPwdRegex || fallbackPwdRegex;
+    return regex.test(pwd);
   };
 
   const updateStrength = () => {
