@@ -132,17 +132,20 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
 }
 
 $pageTitle = "System Audit Log - " . WEBSITE_NAME;
+$customCSS = [
+    'dataTables.bootstrap.min.css',
+    'responsive.bootstrap.min.css',
+    'audit-log.css?v=' . time()
+];
 ?>
 <!DOCTYPE html>
 <html lang="<?php echo defined('SITE_LANG') ? SITE_LANG : 'zh-CN'; ?>">
 <head>
     <?php require_once BASE_PATH . 'include/header.php'; ?>
-    <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/dataTables.bootstrap.min.css">
-    <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/responsive.bootstrap.min.css">
-    <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/audit-log.css?v=<?php echo time(); ?>">
 </head>
 <body>
 <?php require_once BASE_PATH . 'common/menu/header.php'; ?>
+
 <div class="container-fluid mt-4" style="max-width: 1400px;">
     <div class="card shadow-sm">
         <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">

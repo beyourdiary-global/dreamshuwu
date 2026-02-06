@@ -118,7 +118,6 @@ $customCSS = "dashboard.css";
 <html lang="<?php echo defined('SITE_LANG') ? SITE_LANG : 'zh-CN'; ?>">
 <head>
     <?php require_once BASE_PATH . 'include/header.php'; ?>
-    <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/<?php echo $customCSS; ?>">
 </head>
 <body>
 

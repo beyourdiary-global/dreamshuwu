@@ -102,6 +102,31 @@ CREATE TABLE IF NOT EXISTS novel_tag (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ";
 
+$tables['novel_category'] = "
+CREATE TABLE IF NOT EXISTS novel_category (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL UNIQUE COMMENT 'Category Name',
+    created_by BIGINT NOT NULL,
+    updated_by BIGINT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_cat_name (name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+";
+
+// 7. Category <-> Tag (Many-to-Many)
+// NOTE: 'tag_id' type MUST match 'novel_tag.id' exactly (INT vs BIGINT)
+$tables['category_tag'] = "
+CREATE TABLE IF NOT EXISTS category_tag (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    category_id BIGINT NOT NULL,
+    tag_id BIGINT NOT NULL, 
+    CONSTRAINT fk_cat_id FOREIGN KEY (category_id) REFERENCES novel_category(id) ON DELETE CASCADE,
+    CONSTRAINT fk_tag_id FOREIGN KEY (tag_id) REFERENCES novel_tag(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_cat_tag (category_id, tag_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+";
+
 // 4. Run Queries
 
 foreach ($tables as $name => $sql) {

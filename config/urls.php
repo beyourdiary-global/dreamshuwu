@@ -13,7 +13,6 @@ defined('URL_RESET_PWD')  || define('URL_RESET_PWD', SITEURL . '/src/pages/forgo
 
 // --- 3. Main Pages (Assuming located in src/pages/) ---
 defined('URL_HOME')       || define('URL_HOME', SITEURL . '/src/pages/Home.php');
-defined('URL_CATEGORIES') || define('URL_CATEGORIES', SITEURL . '/src/pages/categories.php');
 defined('URL_RANKING')    || define('URL_RANKING', SITEURL . '/src/pages/ranking.php');
 defined('URL_BOOKSHELF')  || define('URL_BOOKSHELF', SITEURL . '/src/pages/bookshelf.php');
 defined('URL_SEARCH')     || define('URL_SEARCH', SITEURL . '/src/pages/search.php');
@@ -30,8 +29,15 @@ defined('URL_USER_MESSAGES')  || define('URL_USER_MESSAGES', SITEURL . '/src/pag
 // --- 5. Author Dashboard ---
 defined('URL_AUTHOR_DASHBOARD') || define('URL_AUTHOR_DASHBOARD', SITEURL . '/src/pages/author/dashboard.php');
 
-// --- 6. Novel Management ---
-defined('URL_NOVEL_TAGS') || define('URL_NOVEL_TAGS', SITEURL . '/src/pages/tags/index.php');
 // --  6. Audit Log Page ---
 defined('URL_AUDIT_LOG') || define('URL_AUDIT_LOG', SITEURL . '/src/pages/audit-log.php');
+
+// --- 6. Novel Management (Tags) ---
+defined('URL_NOVEL_TAGS') || define('URL_NOVEL_TAGS', SITEURL . '/src/pages/tags/index.php'); // List Page
+defined('URL_TAGS_ADD')   || define('URL_TAGS_ADD',   SITEURL . '/src/pages/tags/form.php');  // Form Page
+
+// --- 7. Category Management ---
+defined('URL_CATEGORIES')   || define('URL_CATEGORIES', SITEURL . '/src/pages/category/index.php'); // List Page
+defined('URL_CAT_ADD')    || define('URL_CAT_ADD',  SITEURL . '/src/pages/category/form.php');  // Form Page
+
 ?>

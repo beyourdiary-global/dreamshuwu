@@ -1,4 +1,5 @@
 <?php
+// Path: src/pages/tags/form.php
 require_once __DIR__ . '/../../../init.php';
 defined('URL_HOME') || require_once BASE_PATH . 'config/urls.php';
 require_once BASE_PATH . 'functions.php';
@@ -9,7 +10,9 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
 }
 
 $dbTable = defined('NOVEL_TAGS') ? NOVEL_TAGS : 'novel_tag';
-$listPageUrl = SITEURL . '/src/pages/tags/index.php'; 
+
+// [UPDATED] Use URL_NOVEL_TAGS constant instead of hardcoded string
+$listPageUrl = URL_NOVEL_TAGS; 
 
 $tagId = $_GET['id'] ?? null;
 $isEditMode = !empty($tagId);
@@ -95,7 +98,6 @@ $pageTitle = ($isEditMode ? "编辑标签" : "新增标签") . " - " . WEBSITE_N
 <html lang="<?php echo defined('SITE_LANG') ? SITE_LANG : 'zh-CN'; ?>">
 <head>
     <?php require_once BASE_PATH . 'include/header.php'; ?>
-    <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/tag.css">
 </head>
 <body>
 <?php require_once BASE_PATH . 'common/menu/header.php'; ?>
