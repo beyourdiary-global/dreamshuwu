@@ -207,13 +207,29 @@ $stmt->close();
 if (isset($_POST['mode']) && $_POST['mode'] === 'delete') {
     // Start output buffering to capture any stray output
     ob_start();
-    
+
     // Set JSON response header
     header('Content-Type: application/json; charset=utf-8');
-    
+
     // Disable error display for production, but log all errors
     ini_set('display_errors', '0');
     error_reporting(E_ALL);
+    $debug = isset($_POST['debug']) && $_POST['debug'] === '1';
+    $traceId = uniqid('tag-del-', true);
+    error_log("[{$traceId}] delete request start");
+    register_shutdown_function(function () use ($traceId, $debug) {
+        $error = error_get_last();
+        if ($error && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR], true)) {
+            if (ob_get_length()) {
+                ob_clean();
+            }
+            $payload = ['success' => false, 'message' => 'System error', 'trace_id' => $traceId];
+            if ($debug) {
+                $payload['fatal'] = $error['message'];
+            }
+            echo json_encode($payload);
+        }
+    });
     
     // Validate database connection
     if (!isset($conn) || !($conn instanceof mysqli)) {
@@ -221,10 +237,14 @@ if (isset($_POST['mode']) && $_POST['mode'] === 'delete') {
         if (ob_get_length()) {
             ob_clean();
         }
-        echo json_encode([
+        $payload = [
             'success' => false, 
             'message' => 'Database connection is not available.'
-        ]);
+        ];
+        if ($debug) {
+            $payload['trace_id'] = $traceId;
+        }
+        echo json_encode($payload);
         exit();
     }
     
@@ -237,10 +257,14 @@ if (isset($_POST['mode']) && $_POST['mode'] === 'delete') {
         if (ob_get_length()) {
             ob_clean();
         }
-        echo json_encode([
+        $payload = [
             'success' => false, 
             'message' => 'Invalid tag ID.'
-        ]);
+        ];
+        if ($debug) {
+            $payload['trace_id'] = $traceId;
+        }
+        echo json_encode($payload);
         exit();
     }
     
@@ -274,10 +298,14 @@ if (isset($_POST['mode']) && $_POST['mode'] === 'delete') {
         if (ob_get_length()) {
             ob_clean();
         }
-        echo json_encode([
+        $payload = [
             'success' => false, 
             'message' => 'Error preparing delete statement.'
-        ]);
+        ];
+        if ($debug) {
+            $payload['trace_id'] = $traceId;
+        }
+        echo json_encode($payload);
         exit();
     }
     
@@ -285,12 +313,11 @@ if (isset($_POST['mode']) && $_POST['mode'] === 'delete') {
     
     // Execute deletion
     if ($stmt->execute()) {
-        // Log audit trail with proper error handling
+        // Log audit trail with robust error handling
         $auditLogged = false;
         $auditError = null;
-        
+
         if (function_exists('logAudit')) {
-            // Prepare audit data
             $auditData = [
                 'page'           => $auditPage,
                 'action'         => 'D',
@@ -301,43 +328,48 @@ if (isset($_POST['mode']) && $_POST['mode'] === 'delete') {
                 'old_value'      => $oldData,
                 'new_value'      => null,
             ];
-            
-            // Log audit with error handling
+
+            set_error_handler(function ($severity, $message, $file, $line) {
+                throw new ErrorException($message, 0, $severity, $file, $line);
+            });
             try {
                 logAudit($auditData);
                 $auditLogged = true;
-            } catch (Exception $e) {
+            } catch (Throwable $e) {
                 $auditError = $e->getMessage();
                 error_log("Audit log error: " . $auditError);
-                // Continue even if audit fails - deletion was successful
             }
+            restore_error_handler();
         }
-        
-        // Clean output buffer
+
         if (ob_get_length()) {
             ob_clean();
         }
-        
-        // Prepare success response
+
         $response = ['success' => true];
-        
-        // Add warning if audit failed
         if (!$auditLogged && !empty($auditError)) {
-            $response['warning'] = 'Audit logging failed (tag was deleted successfully)';
+            $response['warning'] = 'Audit logging failed';
         }
-        
+        if ($debug) {
+            $response['trace_id'] = $traceId;
+        }
+
         echo json_encode($response);
-        
+
     } else {
         // Delete failed
         error_log("Delete tag execute failed: " . $stmt->error);
         if (ob_get_length()) {
             ob_clean();
         }
-        echo json_encode([
+        $payload = [
             'success' => false, 
             'message' => 'Error deleting tag from database.'
-        ]);
+        ];
+        if ($debug) {
+            $payload['trace_id'] = $traceId;
+        }
+        echo json_encode($payload);
     }
     
     $stmt->close();
