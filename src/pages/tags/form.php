@@ -37,6 +37,9 @@ if ($isEmbeddedTagForm) {
 $tagId = $_GET['id'] ?? null;
 $tagId = $tagId !== null ? (int) $tagId : null;
 $isEditMode = !empty($tagId);
+$viewQuery = $isEditMode
+    ? "SELECT id, name, created_at, updated_at, created_by, updated_by FROM $dbTable WHERE id = ?"
+    : "SELECT id, name FROM $dbTable";
 
 // Append ID to action URL if editing
 if ($isEditMode && $isEmbeddedTagForm) {

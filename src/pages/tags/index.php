@@ -195,8 +195,11 @@ if ($isAjaxRequest) {
 // DELETE API
 if (isset($_POST['mode']) && $_POST['mode'] === 'delete') {
     header('Content-Type: application/json');
+    ini_set('display_errors', '0');
+    error_reporting(E_ALL);
     $id = intval($_POST['id']);
     $tagName = $_POST['name'] ?? 'Unknown';
+    $currentUserId = $_SESSION['user_id'] ?? 0;
 
     // 1. Load existing row so we can log old_value in audit trail
     $oldData = null;
@@ -230,7 +233,7 @@ if (isset($_POST['mode']) && $_POST['mode'] === 'delete') {
             'action_message' => 'Deleted Tag: ' . $tagName,
             'query'          => $deleteQuery,
             'query_table'    => $dbTable,
-            'user_id'        => $_SESSION['user_id'],
+            'user_id'        => $currentUserId,
             'old_value'      => $oldData,
             'new_value'      => null,
         ]);
