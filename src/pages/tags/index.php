@@ -197,6 +197,10 @@ if (isset($_POST['mode']) && $_POST['mode'] === 'delete') {
     header('Content-Type: application/json');
     ini_set('display_errors', '0');
     error_reporting(E_ALL);
+    if (!isset($conn) || !($conn instanceof mysqli)) {
+        echo json_encode(['success' => false, 'message' => 'Database connection is not available.']);
+        exit();
+    }
     $id = intval($_POST['id']);
     $tagName = $_POST['name'] ?? 'Unknown';
     $currentUserId = $_SESSION['user_id'] ?? 0;
@@ -224,6 +228,10 @@ if (isset($_POST['mode']) && $_POST['mode'] === 'delete') {
 
     // 2. Perform the actual delete
     $stmt = $conn->prepare($deleteQuery);
+    if ($stmt === false) {
+        echo json_encode(['success' => false, 'message' => 'Error preparing delete statement.']);
+        exit();
+    }
     $stmt->bind_param("i", $id);
     
     if ($stmt->execute()) {
