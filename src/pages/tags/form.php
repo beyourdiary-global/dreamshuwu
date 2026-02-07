@@ -15,6 +15,10 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
 }
 
 $dbTable = defined('NOVEL_TAGS') ? NOVEL_TAGS : 'novel_tag';
+$auditPage = 'Tag Management';
+$insertQuery = "INSERT INTO $dbTable (name, created_by, updated_by) VALUES (?, ?, ?)";
+$updateQuery = "UPDATE $dbTable SET name = ?, updated_by = ? WHERE id = ?";
+$viewQuery = '';
 
 // 2. Context Detection: Are we inside the Dashboard?
 $isEmbeddedTagForm = isset($EMBED_TAG_FORM_PAGE) && $EMBED_TAG_FORM_PAGE === true;
@@ -102,14 +106,14 @@ try {
             } else {
                 // Insert or Update
                 if ($isEditMode) {
-                    $stmt = $conn->prepare("UPDATE $dbTable SET name = ?, updated_by = ? WHERE id = ?");
+                    $stmt = $conn->prepare($updateQuery);
                     if (!$stmt) {
                         throw new Exception($conn->error ?: 'Failed to prepare update statement.');
                     }
                     $stmt->bind_param("sii", $tagName, $currentUserId, $tagId);
                     $action = 'E'; $logMsg = "Updated Tag";
                 } else {
-                    $stmt = $conn->prepare("INSERT INTO $dbTable (name, created_by, updated_by) VALUES (?, ?, ?)");
+                    $stmt = $conn->prepare($insertQuery);
                     if (!$stmt) {
                         throw new Exception($conn->error ?: 'Failed to prepare insert statement.');
                     }
@@ -134,17 +138,16 @@ try {
                     }
 
                     // Log the Save Action
-                    if (function_exists('logAudit')) {
-                        logAudit([
-                            'page' => 'Tag Management', 'action' => $action,
-                            'action_message' => "$logMsg: $tagName",
-                            'query' => $isEditMode ? "UPDATE..." : "INSERT...",
-                            'query_table' => $dbTable,
-                            'user_id' => $currentUserId,
-                            'old_value' => $existingTagRow,
-                            'new_value' => $newData
-                        ]);
-                    }
+                    logAudit([
+                        'page'           => $auditPage,
+                        'action'         => $action,
+                        'action_message' => "$logMsg: $tagName",
+                        'query'          => $isEditMode ? $updateQuery : $insertQuery,
+                        'query_table'    => $dbTable,
+                        'user_id'        => $currentUserId,
+                        'old_value'      => $existingTagRow,
+                        'new_value'      => $newData
+                    ]);
                     
                     // [CRITICAL FIX] Use JS Redirect to fix "Headers already sent" / White Screen
                     $redirectUrl = $listPageUrl . (strpos($listPageUrl, '?') !== false ? '&' : '?') . "msg=saved";
@@ -164,19 +167,18 @@ try {
     } 
     // 5. Handle Page View (GET) Audit Log
     else {
-        // [FIX] Log that the user VIEWED the page
+        // Log that the user VIEWED the page
         // Use a constant to ensure we don't log twice if file is included multiple times
         if (!defined('TAG_FORM_VIEW_LOGGED')) {
             define('TAG_FORM_VIEW_LOGGED', true);
-            if (function_exists('logAudit')) {
-                logAudit([
-                    'page' => 'Tag Management', 
-                    'action' => 'V',
-                    'action_message' => $isEditMode ? "Viewing Edit Tag Form: $tagName" : "Viewing Add Tag Form",
-                    'query_table' => $dbTable,
-                    'user_id' => $_SESSION['user_id']
-                ]);
-            }
+            logAudit([
+                'page'           => $auditPage,
+                'action'         => 'V',
+                'action_message' => $isEditMode ? "Viewing Edit Tag Form: $tagName" : "Viewing Add Tag Form",
+                'query'          => $viewQuery,
+                'query_table'    => $dbTable,
+                'user_id'        => $_SESSION['user_id']
+            ]);
         }
     }
 

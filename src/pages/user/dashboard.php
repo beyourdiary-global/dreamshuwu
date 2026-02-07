@@ -172,14 +172,14 @@ $customCSS = $isTagSection ? ['dashboard.css', 'dataTables.bootstrap.min.css', '
             <div class="dashboard-tag-section">
                 <?php
                 $EMBED_TAGS_PAGE = true;
-                require BASE_PATH . URL_NOVEL_TAGS_API;
+                require BASE_PATH . PATH_NOVEL_TAGS_INDEX;
                 ?>
             </div>
         <?php elseif ($isTagFormView): ?>
             <div class="dashboard-tag-section">
                 <?php
                 $EMBED_TAG_FORM_PAGE = true;
-                require BASE_PATH . URL_NOVEL_TAGS_FORM;
+                require BASE_PATH . PATH_NOVEL_TAGS_FORM;
                 ?>
             </div>
         <?php else: ?>
