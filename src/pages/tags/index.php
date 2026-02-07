@@ -95,7 +95,10 @@ if ($isAjaxRequest) {
     
     $start  = $_GET['start'] ?? 0;
     $length = $_GET['length'] ?? 10;
-    $search = $_GET['search']['value'] ?? '';
+    $search = '';
+    if (isset($_GET['search']) && is_array($_GET['search']) && isset($_GET['search']['value'])) {
+        $search = $_GET['search']['value'];
+    }
 
     $sql = "SELECT id, name FROM " . $dbTable . " WHERE 1=1";
     $countSql = "SELECT COUNT(*) FROM " . $dbTable . " WHERE 1=1";
