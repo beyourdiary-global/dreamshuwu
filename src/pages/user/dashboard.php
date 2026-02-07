@@ -31,7 +31,6 @@ $userStmt = $conn->prepare($userQuery);
 $userStmt->bind_param("i", $currentUserId);
 $userStmt->execute();
 
-// [FIX] Universal Fetch (Replaces get_result)
 $userRow = [];
 $meta = $userStmt->result_metadata();
 $row = []; $params = [];
@@ -41,14 +40,12 @@ if ($userStmt->fetch()) {
     foreach($row as $key => $val) { $userRow[$key] = $val; }
 }
 $userStmt->close();
-// End Fix
 
 // Query 2: Dashboard Stats
 $dashStmt = $conn->prepare($dashQuery);
 $dashStmt->bind_param("i", $currentUserId);
 $dashStmt->execute();
 
-// [FIX] Universal Fetch (Replaces get_result)
 $dashRow = [];
 $meta = $dashStmt->result_metadata();
 $row = []; $params = [];
@@ -58,11 +55,8 @@ if ($dashStmt->fetch()) {
     foreach($row as $key => $val) { $dashRow[$key] = $val; }
 }
 $dashStmt->close();
-// End Fix
 
-// ---------------------------------------------------------
 // Audit Log: View Dashboard
-// ---------------------------------------------------------
 if (function_exists('logAudit')) {
     logAudit([
         'page' => $auditPage, 'action' => 'V',
@@ -73,19 +67,15 @@ if (function_exists('logAudit')) {
 }
 
 // --- DATA PREPARATION ---
-
-// 1. Prepare Raw Data
 $rawAvatar = !empty($dashRow['avatar']) ? URL_ASSETS . '/uploads/avatars/' . $dashRow['avatar'] : URL_ASSETS . '/images/default-avatar.png';
 $rawName   = $userRow['name'] ?? $_SESSION['user_name'];
 $rawLevel  = 'Lv' . ($dashRow['level'] ?? 1);
 
-// 2. Profile Stats Array
 $statsArray = [
     ['label' => '关注', 'value' => intval($dashRow['following_count'] ?? 0)],
     ['label' => '粉丝', 'value' => intval($dashRow['followers_count'] ?? 0)]
 ];
 
-// 3. PROFILE COMPONENTS ARRAY
 $profileComponents = [
     [
         'type' => 'avatar',
@@ -101,7 +91,6 @@ $profileComponents = [
     ]
 ];
 
-// 4. Sidebar Array
 $sidebarItems = [
     ['label' => '首页',     'url' => URL_USER_DASHBOARD, 'icon' => 'fa-solid fa-house-user', 'active' => !$isTagSection],
     ['label' => '账号中心', 'url' => URL_HOME,           'icon' => 'fa-solid fa-id-card',   'active' => false],
@@ -109,7 +98,6 @@ $sidebarItems = [
     ['label' => '小说标签', 'url' => URL_NOVEL_TAGS,     'icon' => 'fa-solid fa-tags',      'active' => $isTagSection]
 ];
 
-// 5. Quick Actions Array
 $quickActions = [
     ['label' => '浏览历史', 'url' => URL_USER_HISTORY,     'icon' => 'fa-solid fa-clock-rotate-left',    'style' => ''],
     ['label' => '我的消息', 'url' => URL_USER_MESSAGES,    'icon' => 'fa-solid fa-comment-dots',         'style' => ''],
@@ -117,10 +105,7 @@ $quickActions = [
 ];
 
 $pageTitle = "个人中心 - " . WEBSITE_NAME;
-// When viewing any tag section, also load DataTables + tags CSS
-$customCSS = $isTagSection
-    ? ['dashboard.css', 'dataTables.bootstrap.min.css', 'tag.css']
-    : 'dashboard.css';
+$customCSS = $isTagSection ? ['dashboard.css', 'dataTables.bootstrap.min.css', 'tag.css'] : 'dashboard.css';
 ?>
 
 <!DOCTYPE html>
@@ -143,7 +128,7 @@ $customCSS = $isTagSection
                 </li>
             <?php endforeach; ?>
             <li style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 10px;">
-                <a href="<?php echo URL_LOGOUT; ?>" style="color: #d9534f;">
+                <a href="<?php echo URL_LOGOUT; ?>" class="logout-btn" style="color: #d9534f;">
                     <i class="fa-solid fa-right-from-bracket"></i> 登出
                 </a>
             </li>
@@ -151,6 +136,8 @@ $customCSS = $isTagSection
     </aside>
 
     <main class="dashboard-main">
+        
+        <?php if (!$isTagSection): ?>
         <div class="profile-card">
             <?php foreach ($profileComponents as $component): ?>
                 <?php if ($component['type'] === 'avatar'): ?>
@@ -179,23 +166,20 @@ $customCSS = $isTagSection
                 <i class="fa-solid fa-chevron-right mobile-icon"></i>
             </a>
         </div>
+        <?php endif; ?>
 
         <?php if ($isTagListView): ?>
-            <!-- Embed Tag Management Page inside Dashboard -->
             <div class="dashboard-tag-section">
                 <?php
-                // Flag for embedded rendering (no full HTML from tags/index.php)
                 $EMBED_TAGS_PAGE = true;
-                require BASE_PATH . 'src/pages/tags/index.php';
+                require BASE_PATH . URL_NOVEL_TAGS_API;
                 ?>
             </div>
         <?php elseif ($isTagFormView): ?>
-            <!-- Embed Tag Form Page inside Dashboard -->
             <div class="dashboard-tag-section">
                 <?php
-                // Flag for embedded rendering (no full HTML from tags/form.php)
                 $EMBED_TAG_FORM_PAGE = true;
-                require BASE_PATH . 'src/pages/tags/form.php';
+                require BASE_PATH . URL_NOVEL_TAGS_FORM;
                 ?>
             </div>
         <?php else: ?>
@@ -214,7 +198,6 @@ $customCSS = $isTagSection
 </div>
 
 <?php if ($isTagListView): ?>
-    <!-- JS assets for embedded tag management (list) -->
     <script src="<?php echo URL_ASSETS; ?>/js/jquery-3.6.0.min.js"></script>
     <script src="<?php echo URL_ASSETS; ?>/js/jquery.dataTables.min.js"></script>
     <script src="<?php echo URL_ASSETS; ?>/js/dataTables.bootstrap.min.js"></script>
@@ -222,9 +205,14 @@ $customCSS = $isTagSection
     <script src="<?php echo URL_ASSETS; ?>/js/bootstrap.bundle.min.js"></script>
     <script src="<?php echo URL_ASSETS; ?>/js/tag.js"></script>
 <?php elseif ($isTagFormView): ?>
-    <!-- JS assets for embedded tag form (no DataTables / tag.js needed) -->
+    <script src="<?php echo URL_ASSETS; ?>/js/bootstrap.bundle.min.js"></script>
+<?php else: ?>
+    <script src="<?php echo URL_ASSETS; ?>/js/jquery-3.6.0.min.js"></script>
+    <script src="<?php echo URL_ASSETS; ?>/js/sweetalert2@11.js"></script>
     <script src="<?php echo URL_ASSETS; ?>/js/bootstrap.bundle.min.js"></script>
 <?php endif; ?>
+
+<script src="<?php echo URL_ASSETS; ?>/js/login-script.js"></script>
 
 </body>
 </html>
