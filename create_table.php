@@ -104,6 +104,33 @@ CREATE TABLE IF NOT EXISTS novel_tag (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ";
 
+// ======================================================
+// 5. UPDATE: Add missing columns to existing tables
+// ======================================================
+echo "<hr><strong>Checking for Updates...</strong><br>";
+
+// Check 'created_by' in novel_tag
+$check = $conn->query("SHOW COLUMNS FROM novel_tag LIKE 'created_by'");
+if ($check && $check->num_rows == 0) {
+    $sql = "ALTER TABLE novel_tag ADD COLUMN created_by BIGINT DEFAULT NULL";
+    if ($conn->query($sql) === TRUE) {
+        echo "Updated 'novel_tag': Added 'created_by' column.<br>";
+    } else {
+        echo "Error adding 'created_by': " . $conn->error . "<br>";
+    }
+}
+
+// Check 'updated_by' in novel_tag
+$check = $conn->query("SHOW COLUMNS FROM novel_tag LIKE 'updated_by'");
+if ($check && $check->num_rows == 0) {
+    $sql = "ALTER TABLE novel_tag ADD COLUMN updated_by BIGINT DEFAULT NULL";
+    if ($conn->query($sql) === TRUE) {
+        echo "Updated 'novel_tag': Added 'updated_by' column.<br>";
+    } else {
+        echo "Error adding 'updated_by': " . $conn->error . "<br>";
+    }
+}
+
 // 4. Run Queries
 
 foreach ($tables as $name => $sql) {
