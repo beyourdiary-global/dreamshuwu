@@ -33,9 +33,11 @@ defined('URL_AUTHOR_DASHBOARD') || define('URL_AUTHOR_DASHBOARD', SITEURL . '/sr
 // --- 6. Novel Management ---
 // UI entry for novel tags (rendered inside user dashboard)
 defined('URL_NOVEL_TAGS') || define('URL_NOVEL_TAGS', SITEURL . '/src/pages/user/dashboard.php?view=tags');
-// Backend API endpoint for tags (DataTables + delete)
-defined('URL_NOVEL_TAGS_API') || define('URL_NOVEL_TAGS_API', '/src/pages/tags/index.php');
-defined('URL_NOVEL_TAGS_FORM') || define('URL_NOVEL_TAGS_FORM', '/src/pages/tags/form.php');
+// Backend API endpoint for tags (DataTables + delete) - must be full URL for AJAX
+defined('URL_NOVEL_TAGS_API') || define('URL_NOVEL_TAGS_API', SITEURL . '/src/pages/tags/index.php');
+// File path constant for require statements (no SITEURL, no leading slash)
+defined('PATH_NOVEL_TAGS_INDEX') || define('PATH_NOVEL_TAGS_INDEX', 'src/pages/tags/index.php');
+defined('PATH_NOVEL_TAGS_FORM') || define('PATH_NOVEL_TAGS_FORM', 'src/pages/tags/form.php');
 
 // --  7. Audit Log Page ---
 defined('URL_AUDIT_LOG') || define('URL_AUDIT_LOG', SITEURL . '/src/pages/audit-log.php');

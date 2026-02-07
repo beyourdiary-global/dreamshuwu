@@ -13,7 +13,12 @@ function togglePassword(inputId, btn) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  // 1. Get Elements
   const form = document.getElementById("loginForm");
+
+  // [CRITICAL FIX] Stop right here if we are not on the login page
+  if (!form) return;
+
   const email = document.getElementById("email");
   const password = document.getElementById("password");
   const btn = document.getElementById("loginBtn");
@@ -33,13 +38,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const showError = (code) => {
     // The server might return the actual message or an error code
-    errorBox.textContent = messages[code] || code || messages.LOGIN_FAILED;
+    // We check if errorBox has a specific span for text (based on your PHP) or use textContent directly
+    const errorText = errorBox.querySelector(".error-text") || errorBox;
+    errorText.textContent = messages[code] || code || messages.LOGIN_FAILED;
     errorBox.style.display = "block";
   };
 
   const clearError = () => {
-    errorBox.textContent = "";
-    errorBox.style.display = "none";
+    if (errorBox) {
+      errorBox.style.display = "none";
+      const errorText = errorBox.querySelector(".error-text") || errorBox;
+      errorText.textContent = "";
+    }
   };
 
   if (toggle) {

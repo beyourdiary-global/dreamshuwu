@@ -4,15 +4,32 @@ require_once __DIR__ . '/../../../init.php';
 defined('URL_HOME') || require_once BASE_PATH . 'config/urls.php';
 require_once BASE_PATH . 'functions.php';
 
-if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
-    header("Location: " . URL_LOGIN); exit();
-}
-
 $dbTable = defined('NOVEL_TAGS') ? NOVEL_TAGS : 'novel_tag';
+$auditPage = 'Tag Management';
+$deleteQuery = "DELETE FROM " . $dbTable . " WHERE id = ?";
 // When included from the user dashboard, we only render the inner tag card
 $isEmbeddedInDashboard = isset($EMBED_TAGS_PAGE) && $EMBED_TAGS_PAGE === true;
 
-if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
+// For AJAX requests, return JSON error instead of redirecting
+$isAjaxRequest = isset($_GET['mode']) && $_GET['mode'] === 'data';
+$isDeleteRequest = isset($_POST['mode']) && $_POST['mode'] === 'delete';
+
+if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
+    if ($isAjaxRequest || $isDeleteRequest) {
+        header('Content-Type: application/json');
+        echo json_encode([
+            'draw' => intval($_GET['draw'] ?? 0),
+            'recordsTotal' => 0,
+            'recordsFiltered' => 0,
+            'data' => [],
+            'error' => 'Session expired. Please login again.'
+        ]);
+        exit();
+    }
+    header("Location: " . URL_LOGIN); exit();
+}
+
+if ($isAjaxRequest) {
     header('Content-Type: application/json');
 
     /**
@@ -197,22 +214,20 @@ if (isset($_POST['mode']) && $_POST['mode'] === 'delete') {
     }
 
     // 2. Perform the actual delete
-    $stmt = $conn->prepare("DELETE FROM " . $dbTable . " WHERE id = ?");
+    $stmt = $conn->prepare($deleteQuery);
     $stmt->bind_param("i", $id);
     
     if ($stmt->execute()) {
-        if (function_exists('logAudit')) {
-            logAudit([
-                'page'           => 'Tag List',
-                'action'         => 'D',
-                'action_message' => 'Deleted Tag: ' . $tagName,
-                'query'          => "DELETE FROM " . $dbTable . " WHERE id = ?",
-                'query_table'    => $dbTable,
-                'user_id'        => $_SESSION['user_id'],
-                'old_value'      => $oldData,
-                'new_value'      => null,
-            ]);
-        }
+        logAudit([
+            'page'           => $auditPage,
+            'action'         => 'D',
+            'action_message' => 'Deleted Tag: ' . $tagName,
+            'query'          => $deleteQuery,
+            'query_table'    => $dbTable,
+            'user_id'        => $_SESSION['user_id'],
+            'old_value'      => $oldData,
+            'new_value'      => null,
+        ]);
         echo json_encode(['success' => true]);
     } else {
         echo json_encode(['success' => false, 'message' => 'Error deleting tag.']);
