@@ -61,7 +61,12 @@ if ($isAjaxRequest) {
                 }
                 return $isAssoc ? '{' . implode(',', $items) . '}' : '[' . implode(',', $items) . ']';
             } elseif (is_string($data)) {
-                return '"' . addslashes($data) . '"';
+                $escaped = str_replace(
+                    ["\\", "\"", "\n", "\r", "\t", "\f", "\b"],
+                    ["\\\\", "\\\"", "\\n", "\\r", "\\t", "\\f", "\\b"],
+                    $data
+                );
+                return '"' . $escaped . '"';
             } elseif (is_bool($data)) {
                 return $data ? 'true' : 'false';
             } elseif (is_null($data)) {
@@ -172,10 +177,8 @@ if ($isAjaxRequest) {
         
         // Always route tag edit through the user dashboard (embedded form)
         $editUrl = URL_USER_DASHBOARD . '?view=tag_form&id=' . $safeRow['id'];
-        $actions = '
-            <a href="'.$editUrl.'" class="btn btn-sm btn-outline-primary btn-action" title="编辑"><i class="fa-solid fa-pen"></i></a>
-            <button class="btn btn-sm btn-outline-danger btn-action delete-btn" data-id="'.$safeRow['id'].'" data-name="'.htmlspecialchars($safeRow['name']).'" title="删除"><i class="fa-solid fa-trash"></i></button>
-        ';
+        $actions = '<a href="' . $editUrl . '" class="btn btn-sm btn-outline-primary btn-action" title="编辑"><i class="fa-solid fa-pen"></i></a>'
+            . '<button class="btn btn-sm btn-outline-danger btn-action delete-btn" data-id="' . $safeRow['id'] . '" data-name="' . htmlspecialchars($safeRow['name']) . '" title="删除"><i class="fa-solid fa-trash"></i></button>';
         $data[] = [htmlspecialchars($safeRow['name']), $actions];
     }
     $stmt->close();
