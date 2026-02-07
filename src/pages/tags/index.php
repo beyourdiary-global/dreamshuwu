@@ -166,42 +166,32 @@ if ($isAjaxRequest) {
     $cStmt->fetch();
     $cStmt->close();
 
-    // 2. Fetch paginated data
-    $stmt = $conn->prepare($sql);
-    if ($stmt === false) {
-        error_log("Tag list data query prepare failed: " . $conn->error);
-        sendTagTableError('System error while loading tag list.');
-    }
-    bindDynamicParams($stmt, $mainTypes, $mainParams);
-    if (!$stmt->execute()) {
-        error_log("Tag list data query execute failed: " . $stmt->error);
-        sendTagTableError('System error while loading tag list.');
-    }
-    
-    // Bind results dynamically
-    $meta = $stmt->result_metadata();
-    $row = []; 
-    $bindResult = [];
-    while ($field = $meta->fetch_field()) { 
-        $bindResult[] = &$row[$field->name]; 
-    }
-    call_user_func_array(array($stmt, 'bind_result'), $bindResult);
+// 2. Fetch paginated data
+$stmt = $conn->prepare($sql);
+if ($stmt === false) {
+    error_log("Tag list data query prepare failed: " . $conn->error);
+    sendTagTableError('System error while loading tag list.');
+}
+bindDynamicParams($stmt, $mainTypes, $mainParams);
+if (!$stmt->execute()) {
+    error_log("Tag list data query execute failed: " . $stmt->error);
+    sendTagTableError('System error while loading tag list.');
+}
 
-    // Build data array for DataTables
-    $data = [];
-    while ($stmt->fetch()) {
-        $safeRow = []; 
-        foreach($row as $k => $v) { 
-            $safeRow[$k] = $v; 
-        }
-        
-        // Always route tag edit through the user dashboard (embedded form)
-        $editUrl = URL_USER_DASHBOARD . '?view=tag_form&id=' . $safeRow['id'];
-        $actions = '<a href="' . $editUrl . '" class="btn btn-sm btn-outline-primary btn-action" title="编辑"><i class="fa-solid fa-pen"></i></a>'
-            . '<button class="btn btn-sm btn-outline-danger btn-action delete-btn" data-id="' . $safeRow['id'] . '" data-name="' . htmlspecialchars($safeRow['name']) . '" title="删除"><i class="fa-solid fa-trash"></i></button>';
-        $data[] = [htmlspecialchars($safeRow['name']), $actions];
-    }
-    $stmt->close();
+// Bind result to individual variables
+$stmt->bind_result($id, $name); // id first, then name - matches SELECT order
+
+// Build data array for DataTables
+$data = [];
+while ($stmt->fetch()) {
+    // Directly use the bound variables - no copy needed
+    $editUrl = URL_USER_DASHBOARD . '?view=tag_form&id=' . $id;
+    $actions = '<a href="' . $editUrl . '" class="btn btn-sm btn-outline-primary btn-action" title="Edit"><i class="fa-solid fa-pen"></i></a>'
+        . '<button class="btn btn-sm btn-outline-danger btn-action delete-btn" data-id="' . $id . '" data-name="' . htmlspecialchars($name) . '" title="Delete"><i class="fa-solid fa-trash"></i></button>';
+    $data[] = [htmlspecialchars($name), $actions];
+}
+
+$stmt->close();
 
     // Return JSON response for DataTables
     echo safeJsonEncode([
