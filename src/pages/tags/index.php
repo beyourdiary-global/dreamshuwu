@@ -217,41 +217,49 @@ if (isset($_POST['mode']) && $_POST['mode'] === 'delete') {
     // Use the SAME json encoding as everywhere else
     if (!function_exists('jsonEncodeWrapper')) {
         function jsonEncodeWrapper($data) {
-            // Use safeJsonEncode if it exists, otherwise use built-in json_encode
+            // Use safeJsonEncode if it exists, otherwise use built-in json_encode if available
             if (function_exists('safeJsonEncode')) {
                 return safeJsonEncode($data);
             }
-            return json_encode($data, JSON_UNESCAPED_UNICODE);
+            if (function_exists('json_encode')) {
+                $flags = defined('JSON_UNESCAPED_UNICODE') ? JSON_UNESCAPED_UNICODE : 0;
+                return json_encode($data, $flags);
+            }
+            return 'null';
         }
     }
     
     // Simple error response helper
-    function sendDeleteError($message, $debug = false, $traceId = '') {
-        if (ob_get_length()) {
-            ob_clean();
+    if (!function_exists('sendDeleteError')) {
+        function sendDeleteError($message, $debug = false, $traceId = '') {
+            if (ob_get_length()) {
+                ob_clean();
+            }
+            $payload = ['success' => false, 'message' => $message];
+            if ($debug && $traceId) {
+                $payload['trace_id'] = $traceId;
+            }
+            echo jsonEncodeWrapper($payload);
+            exit();
         }
-        $payload = ['success' => false, 'message' => $message];
-        if ($debug && $traceId) {
-            $payload['trace_id'] = $traceId;
-        }
-        echo jsonEncodeWrapper($payload);
-        exit();
     }
     
     // Simple success response helper
-    function sendDeleteSuccess($auditLogged = true, $debug = false, $traceId = '') {
-        if (ob_get_length()) {
-            ob_clean();
+    if (!function_exists('sendDeleteSuccess')) {
+        function sendDeleteSuccess($auditLogged = true, $debug = false, $traceId = '') {
+            if (ob_get_length()) {
+                ob_clean();
+            }
+            $response = ['success' => true];
+            if (!$auditLogged) {
+                $response['warning'] = 'Audit logging failed';
+            }
+            if ($debug && $traceId) {
+                $response['trace_id'] = $traceId;
+            }
+            echo jsonEncodeWrapper($response);
+            exit();
         }
-        $response = ['success' => true];
-        if (!$auditLogged) {
-            $response['warning'] = 'Audit logging failed';
-        }
-        if ($debug && $traceId) {
-            $response['trace_id'] = $traceId;
-        }
-        echo jsonEncodeWrapper($response);
-        exit();
     }
     
     // Disable error display
@@ -304,13 +312,6 @@ if (isset($_POST['mode']) && $_POST['mode'] === 'delete') {
         
         if (function_exists('logAudit')) {
             try {
-                // IMPORTANT: Ensure old_value is properly serializable
-                $auditOldValue = null;
-                if ($oldData) {
-                    // Convert to string to avoid encoding issues
-                    $auditOldValue = json_encode($oldData);
-                }
-                
                 logAudit([
                     'page'           => $auditPage,
                     'action'         => 'D',
@@ -318,7 +319,7 @@ if (isset($_POST['mode']) && $_POST['mode'] === 'delete') {
                     'query'          => $deleteQuery,
                     'query_table'    => $dbTable,
                     'user_id'        => $currentUserId,
-                    'old_value'      => $auditOldValue, // Pre-encoded as string
+                    'old_value'      => $oldData,
                     'new_value'      => null,
                 ]);
                 $auditLogged = true;
