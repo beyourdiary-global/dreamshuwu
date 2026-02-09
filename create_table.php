@@ -24,6 +24,31 @@ if ($conn->query($sql) === TRUE) {
 $conn->select_db($dbname);
 echo "<hr>";
 
+// Changing INT to BIGINT for novel_tag table
+echo "<strong>Checking & Fixing Existing Tables...</strong><br>";
+
+// 1. Disable FK Checks to allow modification
+$conn->query("SET FOREIGN_KEY_CHECKS = 0");
+
+// 2. Fix 'novel_tag' ID type (INT -> BIGINT)
+if ($conn->query("ALTER TABLE novel_tag MODIFY id BIGINT AUTO_INCREMENT") === TRUE) {
+    echo " - Fixed 'novel_tag' ID to BIGINT.<br>";
+} else {
+    // It might fail if table doesn't exist yet, which is fine
+    echo " - Note: Could not alter 'novel_tag' (Table might not exist yet).<br>";
+}
+
+// 3. Fix 'novel_category' ID type (INT -> BIGINT)
+if ($conn->query("ALTER TABLE novel_category MODIFY id BIGINT AUTO_INCREMENT") === TRUE) {
+    echo " - Fixed 'novel_category' ID to BIGINT.<br>";
+} else {
+    echo " - Note: Could not alter 'novel_category' (Table might not exist yet).<br>";
+}
+
+// 4. Re-enable FK Checks
+$conn->query("SET FOREIGN_KEY_CHECKS = 1");
+echo "<hr>";
+
 // 3. Define Table SQL (Order matters for Foreign Keys!)
 
 $tables = [];
@@ -91,7 +116,7 @@ CREATE TABLE IF NOT EXISTS users_dashboard (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ";
 
-// 5. Novel Tags (NEW)
+// 5. Novel Tags
 $tables['novel_tag'] = "
 CREATE TABLE IF NOT EXISTS novel_tag (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -101,6 +126,30 @@ CREATE TABLE IF NOT EXISTS novel_tag (
     created_by BIGINT,
     updated_by BIGINT,
     INDEX (name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+";
+
+$tables['novel_category'] = "
+CREATE TABLE IF NOT EXISTS novel_category (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL UNIQUE COMMENT 'Category name, e.g., Modern Romance',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT 'Record creation timestamp',
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Record last updated timestamp',
+    created_by BIGINT NOT NULL COMMENT 'User ID who created the category',
+    updated_by BIGINT NOT NULL COMMENT 'User ID who last updated the category',
+    INDEX idx_cat_name (name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+";
+
+// 7. Category <-> Tag (Many-to-Many)
+$tables['category_tag'] = "
+CREATE TABLE IF NOT EXISTS category_tag (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    category_id BIGINT NOT NULL,
+    tag_id BIGINT NOT NULL, 
+    CONSTRAINT fk_cat_id FOREIGN KEY (category_id) REFERENCES novel_category(id) ON DELETE CASCADE,
+    CONSTRAINT fk_tag_id FOREIGN KEY (tag_id) REFERENCES novel_tag(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_cat_tag (category_id, tag_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ";
 

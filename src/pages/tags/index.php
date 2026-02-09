@@ -6,14 +6,15 @@ require_once BASE_PATH . 'functions.php';
 
 $dbTable = defined('NOVEL_TAGS') ? NOVEL_TAGS : 'novel_tag';
 $auditPage = 'Tag Management';
+$viewQuery = '$viewQuery = "SELECT id, name FROM " . $dbTable;';
 $deleteQuery = "DELETE FROM " . $dbTable . " WHERE id = ?";
-// When included from the user dashboard, we only render the inner tag card
 $isEmbeddedInDashboard = isset($EMBED_TAGS_PAGE) && $EMBED_TAGS_PAGE === true;
 
-// For AJAX requests, return JSON error instead of redirecting
+// Request Type Detection
 $isAjaxRequest = isset($_GET['mode']) && $_GET['mode'] === 'data';
 $isDeleteRequest = isset($_POST['mode']) && $_POST['mode'] === 'delete';
 
+// 1. Auth Check
 if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
     if ($isAjaxRequest || $isDeleteRequest) {
         header('Content-Type: application/json');
@@ -26,78 +27,84 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
         ]);
         exit();
     }
-    header("Location: " . URL_LOGIN); exit();
+    header("Location: " . URL_LOGIN); 
+    exit();
 }
 
+// 2. Helper Functions
+if (!function_exists('safeJsonEncode')) {
+    function safeJsonEncode($data) {
+        if (function_exists('json_encode')) {
+            $flags = defined('JSON_UNESCAPED_UNICODE') ? JSON_UNESCAPED_UNICODE : 0;
+            return json_encode($data, $flags);
+        }
+        return '[]';
+    }
+}
+
+if (!function_exists('jsonEncodeWrapper')) {
+    function jsonEncodeWrapper($data) {
+        return safeJsonEncode($data);
+    }
+}
+
+if (!function_exists('sendTagTableError')) {
+    function sendTagTableError($message) {
+        $draw = isset($_GET['draw']) ? (int) $_GET['draw'] : 0;
+        echo safeJsonEncode([
+            "draw" => $draw,
+            "recordsTotal" => 0,
+            "recordsFiltered" => 0,
+            "data" => [],
+            "error" => $message,
+        ]);
+        exit();
+    }
+}
+
+if (!function_exists('sendDeleteSuccess')) {
+    function sendDeleteSuccess($auditLogged = true, $debug = false, $traceId = '') {
+        while (ob_get_level()) { ob_end_clean(); }
+        $response = ['success' => true];
+        if (!$auditLogged) $response['warning'] = 'Audit logging failed';
+        if ($debug && $traceId) $response['trace_id'] = $traceId;
+        echo jsonEncodeWrapper($response);
+        exit();
+    }
+}
+
+if (!function_exists('sendDeleteError')) {
+    function sendDeleteError($message, $debug = false, $traceId = '') {
+        while (ob_get_level()) { ob_end_clean(); }
+        $payload = ['success' => false, 'message' => $message];
+        if ($debug && $traceId) $payload['trace_id'] = $traceId;
+        echo jsonEncodeWrapper($payload);
+        exit();
+    }
+}
+
+if (!function_exists('bindDynamicParams')) {
+    function bindDynamicParams($stmt, $types, $params) {
+        if (!empty($params) && $stmt instanceof mysqli_stmt) {
+            $bindParams = [];
+            $bindParams[] = $types;
+            for ($i = 0; $i < count($params); $i++) {
+                $bindParams[] = &$params[$i];
+            }
+            call_user_func_array(array($stmt, 'bind_param'), $bindParams);
+        }
+    }
+}
+
+// 3. API: List Data (GET)
 if ($isAjaxRequest) {
     header('Content-Type: application/json');
-
-    /**
-     * Safe JSON encoder that works even if the json extension is disabled.
-     */
-    if (!function_exists('safeJsonEncode')) {
-        function safeJsonEncode($data) {
-            if (function_exists('json_encode')) {
-                $flags = defined('JSON_UNESCAPED_UNICODE') ? JSON_UNESCAPED_UNICODE : 0;
-                return json_encode($data, $flags);
-            }
-
-            // Minimal manual encoder (supports nested arrays, strings, numbers, bool, null)
-            if (is_array($data)) {
-                // IMPORTANT: Empty arrays must always be encoded as [] (not {})
-                if ($data === []) {
-                    return '[]';
-                }
-
-                $isAssoc = array_keys($data) !== range(0, count($data) - 1);
-                $items = [];
-                foreach ($data as $key => $value) {
-                    $encodedValue = safeJsonEncode($value);
-                    if ($isAssoc) {
-                        $items[] = '"' . addslashes((string)$key) . '":' . $encodedValue;
-                    } else {
-                        $items[] = $encodedValue;
-                    }
-                }
-                return $isAssoc ? '{' . implode(',', $items) . '}' : '[' . implode(',', $items) . ']';
-            } elseif (is_string($data)) {
-                $escaped = str_replace(
-                    ["\\", "\"", "\n", "\r", "\t", "\f", "\b"],
-                    ["\\\\", "\\\"", "\\n", "\\r", "\\t", "\\f", "\\b"],
-                    $data
-                );
-                return '"' . $escaped . '"';
-            } elseif (is_bool($data)) {
-                return $data ? 'true' : 'false';
-            } elseif (is_null($data)) {
-                return 'null';
-            } else {
-                return (string)$data;
-            }
-        }
-    }
-
-    /**
-     * Unified error response helper for DataTables.
-     */
-    if (!function_exists('sendTagTableError')) {
-        function sendTagTableError($message) {
-            $draw = isset($_GET['draw']) ? (int) $_GET['draw'] : 0;
-            echo safeJsonEncode([
-                "draw" => $draw,
-                "recordsTotal" => 0,
-                "recordsFiltered" => 0,
-                "data" => [],
-                "error" => $message,
-            ]);
-            exit();
-        }
-    }
 
     if (!isset($conn) || !$conn) {
         sendTagTableError('Database connection is not available.');
     }
     
+    // Get DataTables parameters
     $start  = $_GET['start'] ?? 0;
     $length = $_GET['length'] ?? 10;
     $search = '';
@@ -105,81 +112,51 @@ if ($isAjaxRequest) {
         $search = $_GET['search']['value'];
     }
 
+    // Build SQL queries
     $sql = "SELECT id, name FROM " . $dbTable . " WHERE 1=1";
     $countSql = "SELECT COUNT(*) FROM " . $dbTable . " WHERE 1=1";
     
-    $mainParams = []; $mainTypes = "";
-    $countParams = []; $countTypes = "";
+    $mainParams = []; 
+    $mainTypes = "";
+    $countParams = []; 
+    $countTypes = "";
 
+    // Add search condition if provided
     if (!empty($search)) {
         $term = "%" . $search . "%";
         $sql .= " AND name LIKE ?";
         $countSql .= " AND name LIKE ?";
-        
         $mainParams[] = $term; $countParams[] = $term;
         $mainTypes .= "s"; $countTypes .= "s";
     }
 
-    // Order by ID (safe even if created_at column doesn't exist)
     $sql .= " ORDER BY id DESC LIMIT ?, ?";
     $mainParams[] = $start; $mainParams[] = $length; 
     $mainTypes .= "ii";
 
-    // Helper for Safe Parameter Binding
-    if (!function_exists('bindDynamicParams')) {
-        function bindDynamicParams($stmt, $types, $params) {
-            if (!empty($params) && $stmt instanceof mysqli_stmt) {
-                $bindParams = [];
-                $bindParams[] = $types;
-                for ($i = 0; $i < count($params); $i++) {
-                    $bindParams[] = &$params[$i];
-                }
-                call_user_func_array(array($stmt, 'bind_param'), $bindParams);
-            }
-        }
-    }
-
-    // 1. Count
+    // Count
     $cStmt = $conn->prepare($countSql);
-    if ($cStmt === false) {
-        error_log("Tag list count query prepare failed: " . $conn->error);
-        sendTagTableError('System error while loading tag list.');
-    }
+    if ($cStmt === false) sendTagTableError('System error while loading tag list.');
     bindDynamicParams($cStmt, $countTypes, $countParams);
-    if (!$cStmt->execute()) {
-        error_log("Tag list count query execute failed: " . $cStmt->error);
-        sendTagTableError('System error while loading tag list.');
-    }
+    if (!$cStmt->execute()) sendTagTableError('System error while loading tag list.');
     $cStmt->bind_result($totalRecords);
     $cStmt->fetch();
     $cStmt->close();
 
-    // 2. Fetch Data
+    // Data
     $stmt = $conn->prepare($sql);
-    if ($stmt === false) {
-        error_log("Tag list data query prepare failed: " . $conn->error);
-        sendTagTableError('System error while loading tag list.');
-    }
+    if ($stmt === false) sendTagTableError('System error while loading tag list.');
     bindDynamicParams($stmt, $mainTypes, $mainParams);
-    if (!$stmt->execute()) {
-        error_log("Tag list data query execute failed: " . $stmt->error);
-        sendTagTableError('System error while loading tag list.');
-    }
+    if (!$stmt->execute()) sendTagTableError('System error while loading tag list.');
     
-    $meta = $stmt->result_metadata();
-    $row = []; $bindResult = [];
-    while ($field = $meta->fetch_field()) { $bindResult[] = &$row[$field->name]; }
-    call_user_func_array(array($stmt, 'bind_result'), $bindResult);
+    $stmt->bind_result($id, $name);
 
     $data = [];
     while ($stmt->fetch()) {
-        $safeRow = []; foreach($row as $k => $v) { $safeRow[$k] = $v; }
-        
-        // Always route tag edit through the user dashboard (embedded form)
-        $editUrl = URL_USER_DASHBOARD . '?view=tag_form&id=' . $safeRow['id'];
-        $actions = '<a href="' . $editUrl . '" class="btn btn-sm btn-outline-primary btn-action" title="编辑"><i class="fa-solid fa-pen"></i></a>'
-            . '<button class="btn btn-sm btn-outline-danger btn-action delete-btn" data-id="' . $safeRow['id'] . '" data-name="' . htmlspecialchars($safeRow['name']) . '" title="删除"><i class="fa-solid fa-trash"></i></button>';
-        $data[] = [htmlspecialchars($safeRow['name']), $actions];
+        $editUrl = URL_USER_DASHBOARD . '?view=tag_form&id=' . $id;
+        $actions = '<a href="' . $editUrl . '" class="btn btn-sm btn-outline-primary btn-action" title="Edit"><i class="fa-solid fa-pen"></i></a>'
+            . '<button class="btn btn-sm btn-outline-danger btn-action delete-btn" data-id="' . $id . '" data-name="' . htmlspecialchars($name) . '" title="Delete"><i class="fa-solid fa-trash"></i></button>';
+        $data[] = [htmlspecialchars($name), $actions];
     }
     $stmt->close();
 
@@ -192,80 +169,119 @@ if ($isAjaxRequest) {
     exit();
 }
 
-// DELETE API
-if (isset($_POST['mode']) && $_POST['mode'] === 'delete') {
-    header('Content-Type: application/json');
+// 4. API: Delete (POST)
+if ($isDeleteRequest) {
+    while (ob_get_level()) { ob_end_clean(); }
+    ob_start();
+    header('Content-Type: application/json; charset=utf-8');
+    
     ini_set('display_errors', '0');
     error_reporting(E_ALL);
+
+    $debug = isset($_POST['debug']) && $_POST['debug'] === '1';
+    $traceId = uniqid('tag-del-', true);
+    
     if (!isset($conn) || !($conn instanceof mysqli)) {
-        echo json_encode(['success' => false, 'message' => 'Database connection is not available.']);
-        exit();
+        sendDeleteError('Database connection is not available.', $debug, $traceId);
     }
-    $id = intval($_POST['id']);
+    
+    $id = intval($_POST['id'] ?? 0);
     $tagName = $_POST['name'] ?? 'Unknown';
     $currentUserId = $_SESSION['user_id'] ?? 0;
-
-    // 1. Load existing row so we can log old_value in audit trail
+    
+    if ($id <= 0) sendDeleteError('Invalid tag ID.', $debug, $traceId);
+    
+    // Audit Data Load
     $oldData = null;
     $selectSql = "SELECT id, name, created_at, updated_at, created_by, updated_by FROM " . $dbTable . " WHERE id = ?";
     if ($sel = $conn->prepare($selectSql)) {
         $sel->bind_param("i", $id);
         if ($sel->execute()) {
-            $sel->bind_result($rId, $rName, $rCreatedAt, $rUpdatedAt, $rCreatedBy, $rUpdatedBy);
-            if ($sel->fetch()) {
+            $sel->store_result(); // [CRITICAL FIX]
+            if ($sel->num_rows > 0) {
+                $sel->bind_result($rId, $rName, $rCr, $rUp, $rCb, $rUb);
+                $sel->fetch();
                 $oldData = [
-                    'id'         => $rId,
-                    'name'       => $rName,
-                    'created_at' => $rCreatedAt,
-                    'updated_at' => $rUpdatedAt,
-                    'created_by' => $rCreatedBy,
-                    'updated_by' => $rUpdatedBy,
+                    'id' => $rId, 'name' => $rName, 'created_at' => $rCr, 
+                    'updated_at' => $rUp, 'created_by' => $rCb, 'updated_by' => $rUb
                 ];
             }
         }
         $sel->close();
     }
 
-    // 2. Perform the actual delete
-    $stmt = $conn->prepare($deleteQuery);
-    if ($stmt === false) {
-        echo json_encode(['success' => false, 'message' => 'Error preparing delete statement.']);
-        exit();
+    // Fallback: still log something useful even if old row can't be loaded
+    if (empty($oldData)) {
+        $oldData = [
+            'id' => $id,
+            'name' => $tagName,
+        ];
     }
+    
+    // Execute Delete
+    $stmt = $conn->prepare($deleteQuery);
+    if ($stmt === false) sendDeleteError('Error preparing delete statement.', $debug, $traceId);
     $stmt->bind_param("i", $id);
     
+    // Execute deletion
     if ($stmt->execute()) {
-        logAudit([
-            'page'           => $auditPage,
-            'action'         => 'D',
-            'action_message' => 'Deleted Tag: ' . $tagName,
-            'query'          => $deleteQuery,
-            'query_table'    => $dbTable,
-            'user_id'        => $currentUserId,
-            'old_value'      => $oldData,
-            'new_value'      => null,
-        ]);
-        echo json_encode(['success' => true]);
+        $auditLogged = false;
+        if (function_exists('logAudit')) {
+            try {
+                logAudit([
+                    'page'           => $auditPage,
+                    'action'         => 'D',
+                    'action_message' => 'Deleted Tag: ' . $tagName,
+                    'query'          => $deleteQuery,
+                    'query_table'    => $dbTable,
+                    'user_id'        => $currentUserId,
+                    'old_value'      => $oldData,
+                    'new_value'      => null,
+                ]);
+                $auditLogged = true;
+            } catch (Exception $e) { 
+                // Ignore audit error
+            }
+        }
+        $stmt->close();
+        sendDeleteSuccess($auditLogged, $debug, $traceId);
     } else {
-        echo json_encode(['success' => false, 'message' => 'Error deleting tag.']);
+        $stmt->close();
+        sendDeleteError('Error deleting tag from database.', $debug, $traceId);
     }
+    
     exit();
 }
 
+// 5. Audit Log (View) & HTML Render
 $pageTitle = "小说标签 - " . WEBSITE_NAME;
 
-// If embedded in dashboard, only render the inner card markup (no full HTML shell)
+// [NEW] Log that user viewed this page
+if (function_exists('logAudit')) {
+    logAudit([
+        'page'           => $auditPage,
+        'action'         => 'V',
+        'action_message' => 'User viewed Tag List',
+        'query'          => $viewQuery,
+        'query_table'    => $dbTable,
+        'user_id'        => $_SESSION['user_id']
+    ]);
+}
+
 if ($isEmbeddedInDashboard): ?>
     <div class="tag-container">
         <div class="card tag-card">
             <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
                 <h4 class="m-0 text-primary"><i class="fa-solid fa-tags"></i> 标签管理</h4>
-                <a href="<?php echo URL_USER_DASHBOARD; ?>?view=tag_form" class="btn btn-primary desktop-add-btn"><i class="fa-solid fa-plus"></i> 新增标签</a>
+                <a href="<?php echo URL_USER_DASHBOARD; ?>?view=tag_form" class="btn btn-primary desktop-add-btn">
+                    <i class="fa-solid fa-plus"></i> 新增标签
+                </a>
             </div>
             <div class="card-body">
                 <?php if (isset($_GET['msg']) && $_GET['msg'] == 'saved'): ?>
                     <div class="alert alert-success alert-dismissible fade show">
-                        标签保存成功！ <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        标签保存成功！ 
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                     </div>
                 <?php endif; ?>
                 <table
@@ -284,13 +300,12 @@ if ($isEmbeddedInDashboard): ?>
             </div>
         </div>
     </div>
-    <a href="<?php echo URL_USER_DASHBOARD; ?>?view=tag_form" class="btn btn-primary btn-add-mobile"><i class="fa-solid fa-plus fa-lg"></i></a>
 <?php else: ?>
 <!DOCTYPE html>
 <html lang="<?php echo defined('SITE_LANG') ? SITE_LANG : 'zh-CN'; ?>">
 <head>
     <?php require_once BASE_PATH . 'include/header.php'; ?>
-    <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/tag.css">
+    <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/global.css">
     <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/dataTables.bootstrap.min.css">
 </head>
 <body>
@@ -299,12 +314,15 @@ if ($isEmbeddedInDashboard): ?>
     <div class="card tag-card">
         <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
             <h4 class="m-0 text-primary"><i class="fa-solid fa-tags"></i> 标签管理</h4>
-            <a href="<?php echo URL_USER_DASHBOARD; ?>?view=tag_form" class="btn btn-primary desktop-add-btn"><i class="fa-solid fa-plus"></i> 新增标签</a>
+            <a href="<?php echo URL_USER_DASHBOARD; ?>?view=tag_form" class="btn btn-primary desktop-add-btn">
+                <i class="fa-solid fa-plus"></i> 新增标签
+            </a>
         </div>
         <div class="card-body">
             <?php if (isset($_GET['msg']) && $_GET['msg'] == 'saved'): ?>
-                <div class="alert alert-success alert-dismissible fade show">
-                    标签保存成功！ <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    <div class="alert alert-success alert-dismissible fade show">
+                        标签保存成功！ 
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 </div>
             <?php endif; ?>
             <table
@@ -315,15 +333,14 @@ if ($isEmbeddedInDashboard): ?>
             >
                 <thead>
                 <tr>
-                    <th>标签名称</th>
-                    <th style="width:100px;">操作</th>
+                        <th>标签名称</th>
+                        <th style="width:100px;">操作</th>
                 </tr>
                 </thead>
             </table>
         </div>
     </div>
 </div>
-<a href="<?php echo URL_USER_DASHBOARD; ?>?view=tag_form" class="btn btn-primary btn-add-mobile"><i class="fa-solid fa-plus fa-lg"></i></a>
 <script src="<?php echo URL_ASSETS; ?>/js/jquery-3.6.0.min.js"></script>
 <script src="<?php echo URL_ASSETS; ?>/js/jquery.dataTables.min.js"></script>
 <script src="<?php echo URL_ASSETS; ?>/js/dataTables.bootstrap.min.js"></script>

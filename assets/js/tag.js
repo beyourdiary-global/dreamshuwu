@@ -17,7 +17,7 @@ $(document).ready(function () {
     columns: [{ data: 0 }, { data: 1, orderable: false }],
     order: [],
     dom:
-      "<'row'<'col-sm-6'f><'col-sm-6 text-end'>>" +
+      "<'row'<'col-sm-12 d-flex justify-content-end'f>>" +
       "<'row'<'col-sm-12'tr>>" +
       "<'row'<'col-sm-5'i><'col-sm-7'p>>",
 
@@ -30,7 +30,7 @@ $(document).ready(function () {
       sInfoEmpty: "显示第 0 至 0 项结果，共 0 项",
       sInfoFiltered: "(由 _MAX_ 项结果过滤)",
       sInfoPostFix: "",
-      sSearch: "搜索:",
+      sSearch: "",
       sUrl: "",
       sEmptyTable: "表中数据为空",
       sLoadingRecords: "载入中...",
@@ -67,11 +67,18 @@ $(document).ready(function () {
           data: { mode: "delete", id: id, name: name },
           dataType: "json",
           success: function (res) {
-            if (res.success) {
+            // Add a check to ensure res is not null or undefined
+            if (res && res.success) {
               Swal.fire("删除成功！", "", "success");
               table.ajax.reload();
             } else {
-              Swal.fire("错误", res.message, "error");
+              // Provide a default error message if res or res.success is missing
+              // or use res.message if it exists and res is not null
+              Swal.fire(
+                "错误",
+                res ? res.message || "未知错误" : "服务器返回空响应",
+                "error",
+              );
             }
           },
           error: function () {

@@ -15,45 +15,6 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
     header('Content-Type: application/json');
 
     /**
-     * Safe JSON encoder shared with other pages.
-     */
-    if (!function_exists('safeJsonEncode')) {
-        function safeJsonEncode($data) {
-            if (function_exists('json_encode')) {
-                $flags = defined('JSON_UNESCAPED_UNICODE') ? JSON_UNESCAPED_UNICODE : 0;
-                return json_encode($data, $flags);
-            }
-
-            if (is_array($data)) {
-                // IMPORTANT: Empty arrays must always be encoded as [] (not {})
-                if ($data === []) {
-                    return '[]';
-                }
-
-                $isAssoc = array_keys($data) !== range(0, count($data) - 1);
-                $items = [];
-                foreach ($data as $key => $value) {
-                    $encodedValue = safeJsonEncode($value);
-                    if ($isAssoc) {
-                        $items[] = '"' . addslashes((string)$key) . '":' . $encodedValue;
-                    } else {
-                        $items[] = $encodedValue;
-                    }
-                }
-                return $isAssoc ? '{' . implode(',', $items) . '}' : '[' . implode(',', $items) . ']';
-            } elseif (is_string($data)) {
-                return '"' . addslashes($data) . '"';
-            } elseif (is_bool($data)) {
-                return $data ? 'true' : 'false';
-            } elseif (is_null($data)) {
-                return 'null';
-            } else {
-                return (string)$data;
-            }
-        }
-    }
-
-    /**
      * Error helper so DataTables always receives valid JSON instead of a PHP fatal.
      */
     if (!function_exists('sendAuditTableError')) {

@@ -1,9 +1,41 @@
 $(document).ready(function () {
+  // Keep pagination compact on small screens
+  if (
+    $.fn &&
+    $.fn.dataTable &&
+    $.fn.dataTable.ext &&
+    $.fn.dataTable.ext.pager
+  ) {
+    $.fn.dataTable.ext.pager.numbers_length = 4;
+  }
+
   // 1. Helper to Format Details (Child Row)
   function format(d) {
     if (!d.details) return "";
     var det = d.details;
     var html = '<div class="detail-box">';
+
+    var isSmall = window.matchMedia("(max-width: 767px)").matches;
+
+    // Mobile-only: show a full record summary because columns are hidden
+    if (isSmall) {
+      html +=
+        '<div class="mb-2"><strong>Page:</strong> ' + (d.page || "") + "</div>";
+      html +=
+        '<div class="mb-2"><strong>Action:</strong> ' +
+        (d.action || "") +
+        "</div>";
+      html +=
+        '<div class="mb-2"><strong>Message:</strong> ' +
+        (d.message || "") +
+        "</div>";
+      html +=
+        '<div class="mb-2"><strong>User:</strong> ' + (d.user || "") + "</div>";
+      html +=
+        '<div class="mb-2"><strong>Date:</strong> ' + (d.date || "") + "</div>";
+      html +=
+        '<div class="mb-3"><strong>Time:</strong> ' + (d.time || "") + "</div>";
+    }
 
     // Show Query if available
     if (det.query) {
@@ -72,10 +104,30 @@ $(document).ready(function () {
       { data: "time" },
     ],
     order: [[5, "desc"]], // Sort by Date by default
+    pagingType: "simple_numbers",
     language: {
       emptyTable: "No logs found",
       processing: "<i class='fa fa-spinner fa-spin'></i> Loading...",
     },
+  });
+
+  function applyMobileColumnVisibility() {
+    var isSmall = window.matchMedia("(max-width: 767px)").matches;
+    // Keep: [0]=details button, [1]=Page, [2]=Action
+    // Hide on small: Message/User/Date/Time
+    table.column(3).visible(!isSmall, false);
+    table.column(4).visible(!isSmall, false);
+    table.column(5).visible(!isSmall, false);
+    table.column(6).visible(!isSmall, false);
+    table.columns.adjust().draw(false);
+  }
+
+  // Apply once on load and keep in sync on resize
+  applyMobileColumnVisibility();
+  var resizeTimer;
+  $(window).on("resize", function () {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(applyMobileColumnVisibility, 150);
   });
 
   // 3. Handle Filter
