@@ -215,13 +215,18 @@ defined('AUDIT_LOG') || define('AUDIT_LOG', 'audit_log');
 
 // --- Novel Tags Table Constant ---
 defined('NOVEL_TAGS') || define('NOVEL_TAGS', 'novel_tag');
+
+// --- Novel Category Tables ---
+defined('NOVEL_CATEGORY') || define('NOVEL_CATEGORY', 'novel_category');
+defined('CATEGORY_TAG')   || define('CATEGORY_TAG', 'category_tag');
+
 // --- Application Constants ---
 defined('MIN_AGE_REQUIREMENT') || define('MIN_AGE_REQUIREMENT', 13);
 defined('MIN_PWD_LENGTH')      || define('MIN_PWD_LENGTH', 8);
 
 // --- Email Configuration ---
 defined('MAIL_FROM')      || define('MAIL_FROM', 'report@beyourdiary.com');
-defined('MAIL_FROM_NAME') || define('MAIL_FROM_NAME', 'StarAdmin Support');
+defined('MAIL_FROM_NAME') || define('MAIL_FROM_NAME', 'Dreamshuwu Support');
 
 // --- Regex Patterns for Validation ---
 defined('EMAIL_REGEX_PATTERN') || define('EMAIL_REGEX_PATTERN', '^[^\s@]+@[^\s@]+\.[^\s@]+$');
@@ -232,7 +237,7 @@ defined('PWD_REGEX_PATTERN')   || define('PWD_REGEX_PATTERN', '^(?=.*[a-z])(?=.*
 // Using comma-separated string for PHP 5.6 compatibility
 defined('LOCAL_WHITELIST') || define('LOCAL_WHITELIST', '127.0.0.1,::1,localhost');
 // Central variable for the company/website name used in emails and UI
-defined('WEBSITE_NAME') || define('WEBSITE_NAME', 'StarAdmin');
+defined('WEBSITE_NAME') || define('WEBSITE_NAME', 'Dreamshuwu');
 // Site language setting
 defined('SITE_LANG') || define('SITE_LANG', 'zh-CN');
 

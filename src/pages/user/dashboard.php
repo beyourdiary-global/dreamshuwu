@@ -10,63 +10,59 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
 }
 
 $currentUserId = $_SESSION['user_id'];
-
 $userTable = USR_LOGIN;
 $dashTable = USR_DASHBOARD;
 $auditPage = 'User Dashboard';
 
-// Determine which section to show in the main area
+// --- VIEW LOGIC ---
 $currentView     = isset($_GET['view']) ? $_GET['view'] : 'home';
+
+// Tag Views
 $isTagListView   = ($currentView === 'tags');
 $isTagFormView   = ($currentView === 'tag_form');
 $isTagSection    = $isTagListView || $isTagFormView;
 
+// [NEW] Category Views
+$isCatListView   = ($currentView === 'categories');
+$isCatFormView   = ($currentView === 'cat_form');
+$isCatSection    = $isCatListView || $isCatFormView;
+
+// Data Fetching
 $userQuery = "SELECT name FROM " . $userTable . " WHERE id = ? LIMIT 1";
 $dashQuery = "SELECT avatar, level, following_count, followers_count FROM " . $dashTable . " WHERE user_id = ? LIMIT 1";
 
-// --- DATA FETCHING (COMPATIBILITY FIXED) ---
-
-// Query 1: Basic Info
 $userStmt = $conn->prepare($userQuery);
 $userStmt->bind_param("i", $currentUserId);
 $userStmt->execute();
-
-$userRow = [];
-$meta = $userStmt->result_metadata();
-$row = []; $params = [];
+$userRow = []; $meta = $userStmt->result_metadata(); $row = []; $params = [];
 while ($field = $meta->fetch_field()) { $params[] = &$row[$field->name]; }
 call_user_func_array(array($userStmt, 'bind_result'), $params);
-if ($userStmt->fetch()) {
-    foreach($row as $key => $val) { $userRow[$key] = $val; }
-}
+if ($userStmt->fetch()) { foreach($row as $key => $val) { $userRow[$key] = $val; } }
 $userStmt->close();
 
-// Query 2: Dashboard Stats
 $dashStmt = $conn->prepare($dashQuery);
 $dashStmt->bind_param("i", $currentUserId);
 $dashStmt->execute();
-
-$dashRow = [];
-$meta = $dashStmt->result_metadata();
-$row = []; $params = [];
+$dashRow = []; $meta = $dashStmt->result_metadata(); $row = []; $params = [];
 while ($field = $meta->fetch_field()) { $params[] = &$row[$field->name]; }
 call_user_func_array(array($dashStmt, 'bind_result'), $params);
-if ($dashStmt->fetch()) {
-    foreach($row as $key => $val) { $dashRow[$key] = $val; }
-}
+if ($dashStmt->fetch()) { foreach($row as $key => $val) { $dashRow[$key] = $val; } }
 $dashStmt->close();
 
-// Audit Log: View Dashboard
-if (function_exists('logAudit')) {
+// [FIX] Only log "User viewed dashboard" if we are NOT in a sub-section (Tags or Categories)
+// This prevents double logging when viewing lists or forms.
+if (!$isTagSection && !$isCatSection && function_exists('logAudit')) {
     logAudit([
-        'page' => $auditPage, 'action' => 'V',
+        'page'           => $auditPage,
+        'action'         => 'V',
         'action_message' => 'User viewed dashboard',
-        'query' => $dashQuery, 'query_table' => $dashTable,      
-        'user_id' => $currentUserId
+        'query'          => $dashQuery,
+        'query_table'    => $dashTable,
+        'user_id'        => $currentUserId
     ]);
 }
 
-// --- DATA PREPARATION ---
+// Data Prep
 $rawAvatar = !empty($dashRow['avatar']) ? URL_ASSETS . '/uploads/avatars/' . $dashRow['avatar'] : URL_ASSETS . '/images/default-avatar.png';
 $rawName   = $userRow['name'] ?? $_SESSION['user_name'];
 $rawLevel  = 'Lv' . ($dashRow['level'] ?? 1);
@@ -77,24 +73,17 @@ $statsArray = [
 ];
 
 $profileComponents = [
-    [
-        'type' => 'avatar',
-        'url'  => URL_PROFILE,
-        'src'  => $rawAvatar
-    ],
-    [
-        'type'  => 'info',
-        'url'   => URL_PROFILE,
-        'name'  => $rawName,
-        'level' => $rawLevel,
-        'stats' => $statsArray 
-    ]
+    ['type' => 'avatar', 'url' => URL_PROFILE, 'src' => $rawAvatar],
+    ['type' => 'info', 'url' => URL_PROFILE, 'name' => $rawName, 'level' => $rawLevel, 'stats' => $statsArray]
 ];
 
 $sidebarItems = [
-    ['label' => '首页',     'url' => URL_USER_DASHBOARD, 'icon' => 'fa-solid fa-house-user', 'active' => !$isTagSection],
+    ['label' => '首页',     'url' => URL_USER_DASHBOARD, 'icon' => 'fa-solid fa-house-user', 'active' => (!$isTagSection && !$isCatSection)],
     ['label' => '账号中心', 'url' => URL_HOME,           'icon' => 'fa-solid fa-id-card',   'active' => false],
     ['label' => '写小说',   'url' => URL_AUTHOR_DASHBOARD, 'icon' => 'fa-solid fa-pen-nib',  'active' => false],
+    // [NEW] Category Item
+    ['label' => '小说分类', 'url' => URL_NOVEL_CATS,     'icon' => 'fa-solid fa-layer-group','active' => $isCatSection],
+    // Tag Item
     ['label' => '小说标签', 'url' => URL_NOVEL_TAGS,     'icon' => 'fa-solid fa-tags',      'active' => $isTagSection]
 ];
 
@@ -105,7 +94,8 @@ $quickActions = [
 ];
 
 $pageTitle = "个人中心 - " . WEBSITE_NAME;
-$customCSS = $isTagSection ? ['dashboard.css', 'dataTables.bootstrap.min.css', 'tag.css'] : 'dashboard.css';
+if ($isTagListView || $isCatListView) $customCSS[] = 'dataTables.bootstrap.min.css';
+$customCSS[] = 'dashboard.css';
 ?>
 
 <!DOCTYPE html>
@@ -136,8 +126,7 @@ $customCSS = $isTagSection ? ['dashboard.css', 'dataTables.bootstrap.min.css', '
     </aside>
 
     <main class="dashboard-main">
-        
-        <?php if (!$isTagSection): ?>
+        <?php if (!$isTagSection && !$isCatSection): ?>
         <div class="profile-card">
             <?php foreach ($profileComponents as $component): ?>
                 <?php if ($component['type'] === 'avatar'): ?>
@@ -168,21 +157,26 @@ $customCSS = $isTagSection ? ['dashboard.css', 'dataTables.bootstrap.min.css', '
         </div>
         <?php endif; ?>
 
-        <?php if ($isTagListView): ?>
-            <div class="dashboard-tag-section">
-                <?php
-                $EMBED_TAGS_PAGE = true;
-                require BASE_PATH . PATH_NOVEL_TAGS_INDEX;
-                ?>
-            </div>
-        <?php elseif ($isTagFormView): ?>
-            <div class="dashboard-tag-section">
-                <?php
-                $EMBED_TAG_FORM_PAGE = true;
-                require BASE_PATH . PATH_NOVEL_TAGS_FORM;
-                ?>
-            </div>
-        <?php else: ?>
+        <?php 
+        if ($isTagListView):
+            $EMBED_TAGS_PAGE = true;
+            require BASE_PATH . PATH_NOVEL_TAGS_INDEX;
+        
+        elseif ($isTagFormView):
+            $EMBED_TAG_FORM_PAGE = true;
+            require BASE_PATH . PATH_NOVEL_TAGS_FORM;
+        
+        // [NEW] Embed Category List
+        elseif ($isCatListView):
+            $EMBED_CATS_PAGE = true;
+            require BASE_PATH . PATH_NOVEL_CATS_INDEX;
+        
+        // [NEW] Embed Category Form
+        elseif ($isCatFormView):
+            $EMBED_CAT_FORM_PAGE = true;
+            require BASE_PATH . PATH_NOVEL_CATS_FORM;
+        
+        else: ?>
             <div class="quick-actions-grid">
                 <?php foreach ($quickActions as $action): ?>
                     <a href="<?php echo $action['url']; ?>" class="action-card">
@@ -197,19 +191,18 @@ $customCSS = $isTagSection ? ['dashboard.css', 'dataTables.bootstrap.min.css', '
     </main>
 </div>
 
+<script src="<?php echo URL_ASSETS; ?>/js/jquery-3.6.0.min.js"></script>
+<script src="<?php echo URL_ASSETS; ?>/js/bootstrap.bundle.min.js"></script>
+<script src="<?php echo URL_ASSETS; ?>/js/sweetalert2@11.js"></script>
+
 <?php if ($isTagListView): ?>
-    <script src="<?php echo URL_ASSETS; ?>/js/jquery-3.6.0.min.js"></script>
     <script src="<?php echo URL_ASSETS; ?>/js/jquery.dataTables.min.js"></script>
     <script src="<?php echo URL_ASSETS; ?>/js/dataTables.bootstrap.min.js"></script>
-    <script src="<?php echo URL_ASSETS; ?>/js/sweetalert2@11.js"></script>
-    <script src="<?php echo URL_ASSETS; ?>/js/bootstrap.bundle.min.js"></script>
     <script src="<?php echo URL_ASSETS; ?>/js/tag.js"></script>
-<?php elseif ($isTagFormView): ?>
-    <script src="<?php echo URL_ASSETS; ?>/js/bootstrap.bundle.min.js"></script>
-<?php else: ?>
-    <script src="<?php echo URL_ASSETS; ?>/js/jquery-3.6.0.min.js"></script>
-    <script src="<?php echo URL_ASSETS; ?>/js/sweetalert2@11.js"></script>
-    <script src="<?php echo URL_ASSETS; ?>/js/bootstrap.bundle.min.js"></script>
+<?php elseif ($isCatListView): ?>
+    <script src="<?php echo URL_ASSETS; ?>/js/jquery.dataTables.min.js"></script>
+    <script src="<?php echo URL_ASSETS; ?>/js/dataTables.bootstrap.min.js"></script>
+    <script src="<?php echo URL_ASSETS; ?>/js/category.js"></script>
 <?php endif; ?>
 
 <script src="<?php echo URL_ASSETS; ?>/js/login-script.js"></script>

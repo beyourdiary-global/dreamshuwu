@@ -1,8 +1,6 @@
-/* * assets/css/auth-style.css
- * Unified styles for Login, Register, Forgot, and Reset Password pages
- */
+/* src/assets/css/global.css */
 
-/* --- 1. Global Layout --- */
+/* 1. Global Layout */
 body {
   font-family: "Roboto", "Segoe UI", Tahoma, sans-serif;
   background: #ffffff;
@@ -10,14 +8,15 @@ body {
   margin: 0;
 }
 
+/* Auth Page Wrapper */
 body.auth-page {
   display: flex;
   align-items: center;
   justify-content: center;
+  background: #ffffff;
 }
 
-/* --- 2. Card Container (Shared) --- */
-/* Supports both .login-card and .reg-card classes */
+/* 2. Auth Page Cards & Typography */
 .auth-page .login-card,
 .auth-page .reg-card,
 .auth-page .welcome-card {
@@ -26,19 +25,17 @@ body.auth-page {
   border-radius: 12px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
   width: 100%;
-  max-width: 420px; /* Standardized width */
+  max-width: 420px;
   box-sizing: border-box;
   margin: auto;
 }
 
-/* --- 3. Typography --- */
 .auth-page .logo {
   font-size: 24px;
   font-weight: 700;
   margin-bottom: 20px;
   text-align: center;
 }
-
 .auth-page .logo span {
   color: #233dd2;
 }
@@ -56,14 +53,20 @@ body.auth-page {
   color: #333;
 }
 
-/* --- 4. Form Elements (Unified) --- */
-/* Targets both Bootstrap .form-control and raw Inputs */
+/* 3. Form Elements (Scoped) */
+/* Scoped to .auth-page and .dashboard-main to prevent affecting Header Search Bar */
 .auth-page .form-control,
 .auth-page input[type="text"],
 .auth-page input[type="email"],
 .auth-page input[type="password"],
 .auth-page input[type="date"],
-.auth-page select {
+.auth-page select,
+.dashboard-main .form-control,
+.dashboard-main input[type="text"],
+.dashboard-main input[type="email"],
+.dashboard-main input[type="password"],
+.dashboard-main input[type="date"],
+.dashboard-main select {
   width: 100%;
   padding: 12px;
   border: 1px solid #e0e0e0;
@@ -72,60 +75,81 @@ body.auth-page {
   box-sizing: border-box;
   font-size: 14px;
   transition: all 0.2s;
-  margin-bottom: 15px; /* Spacing for raw inputs */
 }
 
-/* Focus State */
+/* Focus States */
 .auth-page .form-control:focus,
 .auth-page input:focus,
-.auth-page select:focus {
+.auth-page select:focus,
+.dashboard-main .form-control:focus,
+.dashboard-main input:focus,
+.dashboard-main select:focus {
   border-color: #233dd2;
   box-shadow: 0 0 0 3.2px rgba(35, 61, 210, 0.15);
   outline: none;
 }
 
-/* Remove default IE/Edge reveal icons */
-.auth-page input[type="password"]::-ms-reveal,
-.auth-page input[type="password"]::-ms-clear {
+/* Auth Page specific margin */
+.auth-page input:not(.form-control) {
+  margin-bottom: 15px;
+}
+
+/* Common input fixes */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
   display: none;
 }
 
-/* Auto-fill background fix */
-.auth-page input:-webkit-autofill,
-.auth-page input:-webkit-autofill:hover,
-.auth-page input:-webkit-autofill:focus {
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
   -webkit-box-shadow: 0 0 0 1000px #fff inset;
   transition: background-color 5000s ease-in-out 0s;
 }
 
-/* --- 5. Buttons (Shared) --- */
+/* 4. Buttons (Scoped) */
+/* Scoped to avoid affecting Header buttons */
 .auth-page .btn-primary,
-.auth-page .btn-reg {
+.auth-page .btn-reg,
+.dashboard-main .btn-primary,
+.dashboard-main .btn-reg {
   background: #233dd2;
   color: white;
   border: none;
-  padding: 12px;
-  width: 100%;
+  padding: 10px 20px;
   border-radius: 8px;
   font-weight: 600;
   font-size: 16px;
   cursor: pointer;
   transition: 0.3s;
+  text-align: center;
+  text-decoration: none;
+  /* Default to inline-block for Dashboard side-by-side */
+  display: inline-block;
+  width: auto;
+}
+
+/* Auth Buttons - Force Block/Full Width */
+.auth-page .btn-primary,
+.auth-page .btn-reg {
+  width: 100%;
   display: block;
+  padding: 12px;
 }
 
-.auth-page .btn-primary:hover,
-.auth-page .btn-reg:hover {
+.btn-primary:hover,
+.btn-reg:hover {
   background: #1a2eb0;
+  color: #fff;
 }
 
-.auth-page .btn-primary:disabled,
-.auth-page .btn-reg:disabled {
+.btn-primary:disabled,
+.btn-reg:disabled {
   background: #c9d1f7;
   cursor: not-allowed;
 }
 
-/* --- 6. Helpers & Validation --- */
+/* 5. Helpers & Alerts */
 .error-msg,
 .alert-danger {
   color: #d9534f;
@@ -152,6 +176,12 @@ body.auth-page {
 .text-center {
   text-align: center;
 }
+.d-flex {
+  display: flex;
+}
+.justify-content-between {
+  justify-content: space-between;
+}
 
 /* Links */
 .action-links,
@@ -161,12 +191,10 @@ body.auth-page {
   margin-top: 16px;
   font-size: 14px;
 }
-
 .footer-links {
-  justify-content: center; /* Center for register page */
+  justify-content: center;
   gap: 5px;
 }
-
 a {
   color: #233dd2;
   text-decoration: none;
@@ -175,18 +203,14 @@ a:hover {
   text-decoration: underline;
 }
 
-/* --- 7. Special Components --- */
-
-/* Password Toggle Button */
+/* 6. Special Components */
+/* Password Toggle */
 .password-field {
   position: relative;
 }
-
-/* Ensure input has space for the button */
 .password-field input {
   padding-right: 60px;
 }
-
 .password-toggle {
   position: absolute;
   right: 15px;
@@ -202,7 +226,7 @@ a:hover {
   z-index: 5;
 }
 
-/* Password Strength Meter */
+/* Strength Meter */
 #strength-meter,
 .strength-meter {
   font-size: 12px;
@@ -211,9 +235,7 @@ a:hover {
   margin-top: -10px;
 }
 
-/* --- Register Page Specifics --- */
-
-/* Small Label (for Birthday, etc.) */
+/* Small Labels & Terms */
 .form-label-sm {
   font-size: 12px;
   color: #666;
@@ -221,32 +243,184 @@ a:hover {
   margin-top: 10px;
   margin-bottom: 4px;
 }
-
-/* Terms & Conditions Container */
 .terms-container {
   font-size: 13px;
   color: #666;
   margin-top: 15px;
   margin-bottom: 10px;
   display: flex;
-  align-items: center; /* Vertically align checkbox with text */
+  align-items: center;
 }
-
-/* Terms Checkbox Override */
 .terms-checkbox {
-  width: auto !important; /* Override global 100% width */
+  width: auto !important;
   margin-right: 8px !important;
   margin-bottom: 0 !important;
   cursor: pointer;
 }
 
-/* --- 8. Responsive --- */
+/* 7. Dashboard Management UI (Tags & Categories) */
+/* Unified Container */
+.tag-container,
+.category-container {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Unified Card */
+.tag-card,
+.category-card {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  border: none;
+}
+
+/* Form Styles inside Cards */
+.tag-card .card-body,
+.category-card .card-body {
+  padding: 24px;
+}
+
+/* Table Actions */
+.btn-action {
+  padding: 4px 8px;
+  font-size: 13px;
+  margin-right: 5px;
+}
+
+/* Badges */
+.badge {
+  font-weight: 500;
+  font-size: 13px;
+  padding: 5px 8px;
+  display: inline-block;
+  margin-bottom: 2px;
+  border-radius: 4px;
+}
+.bg-secondary {
+  background-color: #6c757d;
+  color: white;
+}
+
+/* Floating Add Button (Mobile) */
+.btn-add-mobile {
+  display: none;
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 10px rgba(35, 61, 210, 0.3);
+  z-index: 1000;
+  background-color: #233dd2;
+  color: #fff;
+}
+
+/* Desktop Add Button */
+.desktop-add-btn {
+  width: auto;
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 16px;
+}
+
+/* 8. DataTables Styling */
+.dataTables_wrapper .dataTables_paginate {
+  display: flex;
+  justify-content: flex-end;
+  gap: 5px;
+  margin-top: 15px;
+}
+
+.dataTables_wrapper .dataTables_paginate .paginate_button {
+  box-sizing: border-box;
+  display: inline-block;
+  padding: 6px 12px;
+  margin-left: 2px;
+  text-align: center;
+  text-decoration: none !important;
+  cursor: pointer;
+  color: #233dd2 !important;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  background: #fff;
+  font-size: 14px;
+  min-width: 1.5em;
+}
+
+.dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+  background-color: #e9ecef !important;
+  border-color: #dee2e6;
+  color: #1a2eb0 !important;
+}
+
+.dataTables_wrapper .dataTables_paginate .paginate_button.current,
+.dataTables_wrapper .dataTables_paginate .paginate_button.current:hover {
+  background-color: #233dd2 !important;
+  border-color: #233dd2;
+  color: white !important;
+  font-weight: bold;
+}
+
+.dataTables_wrapper .dataTables_paginate .paginate_button.disabled {
+  color: #6c757d !important;
+  cursor: default;
+  background-color: #fff !important;
+  border-color: #dee2e6;
+  opacity: 0.6;
+  box-shadow: none;
+}
+
+/* Search Bar Alignment */
+.dataTables_wrapper .dataTables_filter {
+  text-align: right;
+}
+.dataTables_wrapper .dataTables_filter input {
+  margin-left: 0.5em;
+  display: inline-block;
+  width: auto;
+  border-radius: 6px;
+  border: 1px solid #ced4da;
+  padding: 6px 12px;
+}
+
+/* 9. Responsive */
 @media (max-width: 576px) {
-  body {
-    padding: 16px;
-  }
   .login-card,
   .reg-card {
     padding: 24px;
+  }
+  .tag-container,
+  .category-container {
+    padding: 10px;
+  }
+
+  .desktop-add-btn {
+    display: none;
+  }
+  .btn-add-mobile {
+    display: flex;
+  }
+
+  table.dataTable tbody td {
+    padding: 10px 5px !important;
+    font-size: 14px;
+  }
+  td span.badge {
+    margin-right: 4px;
+    margin-bottom: 4px;
+  }
+
+  .dataTables_wrapper .dataTables_filter {
+    text-align: left;
+    margin-top: 10px;
+  }
+  .dataTables_wrapper .dataTables_filter input {
+    width: 100%;
+    margin-left: 0;
   }
 }
