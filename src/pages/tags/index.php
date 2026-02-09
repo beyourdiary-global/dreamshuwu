@@ -209,6 +209,14 @@ if ($isDeleteRequest) {
         }
         $sel->close();
     }
+
+    // Fallback: still log something useful even if old row can't be loaded
+    if (empty($oldData)) {
+        $oldData = [
+            'id' => $id,
+            'name' => $tagName,
+        ];
+    }
     
     // Execute Delete
     $stmt = $conn->prepare($deleteQuery);
@@ -292,9 +300,6 @@ if ($isEmbeddedInDashboard): ?>
             </div>
         </div>
     </div>
-    <a href="<?php echo URL_USER_DASHBOARD; ?>?view=tag_form" class="btn btn-primary btn-add-mobile">
-        <i class="fa-solid fa-plus fa-lg"></i>
-    </a>
 <?php else: ?>
 <!DOCTYPE html>
 <html lang="<?php echo defined('SITE_LANG') ? SITE_LANG : 'zh-CN'; ?>">
@@ -336,9 +341,6 @@ if ($isEmbeddedInDashboard): ?>
         </div>
     </div>
 </div>
-<a href="<?php echo URL_USER_DASHBOARD; ?>?view=tag_form" class="btn btn-primary btn-add-mobile">
-    <i class="fa-solid fa-plus fa-lg"></i>
-</a>
 <script src="<?php echo URL_ASSETS; ?>/js/jquery-3.6.0.min.js"></script>
 <script src="<?php echo URL_ASSETS; ?>/js/jquery.dataTables.min.js"></script>
 <script src="<?php echo URL_ASSETS; ?>/js/dataTables.bootstrap.min.js"></script>

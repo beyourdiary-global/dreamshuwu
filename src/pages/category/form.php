@@ -18,6 +18,8 @@ $catTable  = NOVEL_CATEGORY;
 $linkTable = CATEGORY_TAG;
 $tagTable  = NOVEL_TAGS;
 $auditPage = 'Category Management';
+$insertQuery = "INSERT INTO $catTable (name, created_by, updated_by) VALUES (?, ?, ?)";
+$updateQuery = "UPDATE $catTable SET name = ?, updated_by = ? WHERE id = ?";
 
 // Context Detection
 $isEmbeddedTagForm = isset($EMBED_CAT_FORM_PAGE) && $EMBED_CAT_FORM_PAGE === true;
@@ -138,7 +140,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 try {
                     // Prepare Insert/Update
                     if ($isEdit) {
-                        $upd = $conn->prepare("UPDATE $catTable SET name = ?, updated_by = ? WHERE id = ?");
+                        $upd = $conn->prepare($updateQuery);
                         $upd->bind_param("sii", $name, $uid, $id);
                         $upd->execute();
                         $upd->close();
@@ -152,7 +154,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                         $targetId = $id;
                         $action = 'E';
                     } else {
-                        $ins = $conn->prepare("INSERT INTO $catTable (name, created_by, updated_by) VALUES (?, ?, ?)");
+                        $ins = $conn->prepare($insertQuery);
                         $ins->bind_param("sii", $name, $uid, $uid);
                         $ins->execute();
                         $targetId = $ins->insert_id;
@@ -192,11 +194,25 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                         $reload->close();
                     }
 
+                    // Fallback: ensure new_value is not empty even if reload fails on some hosts
+                    if (empty($newData)) {
+                        $now = date('Y-m-d H:i:s');
+                        $newData = [
+                            'id' => $targetId,
+                            'name' => $name,
+                            'created_at' => $isEdit ? ($existingCatRow['created_at'] ?? null) : $now,
+                            'updated_at' => $now,
+                            'created_by' => $isEdit ? ($existingCatRow['created_by'] ?? $uid) : $uid,
+                            'updated_by' => $uid,
+                        ];
+                    }
+
                     if (function_exists('logAudit')) {
                         logAudit([
                             'page'           => $auditPage,
                             'action'         => $action,
                             'action_message' => "Saved Category: $name",
+                            'query'          => $isEdit ? $updateQuery : $insertQuery,
                             'query_table'    => $catTable,
                             'user_id'        => $uid,
                             'old_value'      => $existingCatRow,

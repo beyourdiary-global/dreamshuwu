@@ -8,7 +8,7 @@ body {
   margin: 0;
 }
 
-/* Auth Page Wrapper */
+/* 2. Auth Pages */
 body.auth-page {
   display: flex;
   align-items: center;
@@ -16,7 +16,6 @@ body.auth-page {
   background: #ffffff;
 }
 
-/* 2. Auth Page Cards & Typography */
 .auth-page .login-card,
 .auth-page .reg-card,
 .auth-page .welcome-card {
@@ -26,7 +25,6 @@ body.auth-page {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
   width: 100%;
   max-width: 420px;
-  box-sizing: border-box;
   margin: auto;
 }
 
@@ -39,34 +37,25 @@ body.auth-page {
 .auth-page .logo span {
   color: #233dd2;
 }
-
 .auth-page .subtext {
   color: #666;
   margin-bottom: 20px;
   text-align: center;
   font-size: 14px;
 }
-
 .auth-page h3 {
   text-align: center;
   margin-bottom: 10px;
   color: #333;
 }
 
-/* 3. Form Elements (Scoped) */
-/* Scoped to .auth-page and .dashboard-main to prevent affecting Header Search Bar */
-.auth-page .form-control,
-.auth-page input[type="text"],
-.auth-page input[type="email"],
-.auth-page input[type="password"],
-.auth-page input[type="date"],
-.auth-page select,
-.dashboard-main .form-control,
-.dashboard-main input[type="text"],
-.dashboard-main input[type="email"],
-.dashboard-main input[type="password"],
-.dashboard-main input[type="date"],
-.dashboard-main select {
+/* 3. Form Elements */
+.form-control,
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="date"],
+select {
   width: 100%;
   padding: 12px;
   border: 1px solid #e0e0e0;
@@ -77,42 +66,25 @@ body.auth-page {
   transition: all 0.2s;
 }
 
-/* Focus States */
-.auth-page .form-control:focus,
-.auth-page input:focus,
-.auth-page select:focus,
-.dashboard-main .form-control:focus,
-.dashboard-main input:focus,
-.dashboard-main select:focus {
+.form-control:focus,
+input:focus,
+select:focus {
   border-color: #233dd2;
   box-shadow: 0 0 0 3.2px rgba(35, 61, 210, 0.15);
   outline: none;
 }
 
-/* Auth Page specific margin */
 .auth-page input:not(.form-control) {
   margin-bottom: 15px;
 }
-
-/* Common input fixes */
 input[type="password"]::-ms-reveal,
 input[type="password"]::-ms-clear {
   display: none;
 }
 
-input:-webkit-autofill,
-input:-webkit-autofill:hover,
-input:-webkit-autofill:focus {
-  -webkit-box-shadow: 0 0 0 1000px #fff inset;
-  transition: background-color 5000s ease-in-out 0s;
-}
-
-/* 4. Buttons (Scoped) */
-/* Scoped to avoid affecting Header buttons */
-.auth-page .btn-primary,
-.auth-page .btn-reg,
-.dashboard-main .btn-primary,
-.dashboard-main .btn-reg {
+/* 4. Buttons */
+.btn-primary,
+.btn-reg {
   background: #233dd2;
   color: white;
   border: none;
@@ -124,150 +96,53 @@ input:-webkit-autofill:focus {
   transition: 0.3s;
   text-align: center;
   text-decoration: none;
-  /* Default to inline-block for Dashboard side-by-side */
   display: inline-block;
-  width: auto;
+  white-space: nowrap;
 }
 
-/* Auth Buttons - Force Block/Full Width */
 .auth-page .btn-primary,
 .auth-page .btn-reg {
   width: 100%;
   display: block;
   padding: 12px;
 }
-
 .btn-primary:hover,
 .btn-reg:hover {
   background: #1a2eb0;
   color: #fff;
 }
-
-.btn-primary:disabled,
-.btn-reg:disabled {
+.btn-primary:disabled {
   background: #c9d1f7;
   cursor: not-allowed;
 }
 
-/* 5. Helpers & Alerts */
-.error-msg,
-.alert-danger {
-  color: #d9534f;
-  background: #fdf2f2;
-  border-left: 4px solid #d9534f;
-  padding: 10px;
+/* Action Buttons Spacing */
+.btn-action {
+  padding: 6px 10px;
   font-size: 13px;
-  border-radius: 6px;
-  margin-bottom: 15px;
-}
-
-.alert-success {
-  color: #0f5132;
-  background-color: #d1e7dd;
-  border-color: #badbcc;
-  padding: 10px;
-  border-radius: 6px;
-  margin-bottom: 15px;
-}
-
-.text-muted {
-  color: #6c757d;
-}
-.text-center {
-  text-align: center;
-}
-.d-flex {
-  display: flex;
-}
-.justify-content-between {
-  justify-content: space-between;
-}
-
-/* Links */
-.action-links,
-.footer-links {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 16px;
-  font-size: 14px;
-}
-.footer-links {
-  justify-content: center;
-  gap: 5px;
-}
-a {
-  color: #233dd2;
-  text-decoration: none;
-}
-a:hover {
-  text-decoration: underline;
-}
-
-/* 6. Special Components */
-/* Password Toggle */
-.password-field {
-  position: relative;
-}
-.password-field input {
-  padding-right: 60px;
-}
-.password-toggle {
-  position: absolute;
-  right: 15px;
-  top: 50%;
-  transform: translateY(-50%);
-  border: none;
-  background: transparent;
-  color: #233dd2;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  padding: 0;
-  z-index: 5;
-}
-
-/* Strength Meter */
-#strength-meter,
-.strength-meter {
-  font-size: 12px;
-  color: #666;
-  margin-bottom: 10px;
-  margin-top: -10px;
-}
-
-/* Small Labels & Terms */
-.form-label-sm {
-  font-size: 12px;
-  color: #666;
-  display: block;
-  margin-top: 10px;
-  margin-bottom: 4px;
-}
-.terms-container {
-  font-size: 13px;
-  color: #666;
-  margin-top: 15px;
-  margin-bottom: 10px;
-  display: flex;
-  align-items: center;
-}
-.terms-checkbox {
-  width: auto !important;
   margin-right: 8px !important;
-  margin-bottom: 0 !important;
-  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 32px;
+  min-width: 36px;
+  border-radius: 8px;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+.btn-action:last-child {
+  margin-right: 0 !important;
 }
 
-/* 7. Dashboard Management UI (Tags & Categories) */
-/* Unified Container */
+/* 5. Dashboard UI */
 .tag-container,
 .category-container {
   padding: 20px;
   max-width: 1200px;
   margin: 0 auto;
 }
-
-/* Unified Card */
 .tag-card,
 .category-card {
   background: #fff;
@@ -275,27 +150,47 @@ a:hover {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   border: none;
 }
-
-/* Form Styles inside Cards */
-.tag-card .card-body,
-.category-card .card-body {
+.card-body {
   padding: 24px;
 }
 
-/* Table Actions */
-.btn-action {
-  padding: 4px 8px;
-  font-size: 13px;
-  margin-right: 5px;
+/* Header Layout */
+.card-header {
+  background-color: #fff;
+  padding: 15px 20px;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  flex-wrap: wrap; /* Allows dropping to next line */
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
 }
 
-/* Badges */
+.card-header .desktop-add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 22px;
+  border-radius: 12px;
+  box-shadow: 0 12px 30px rgba(35, 61, 210, 0.22);
+  font-size: 15px;
+}
+
+.card-header .desktop-add-btn i {
+  font-size: 14px;
+}
+
+.card-header h4 {
+  margin: 0;
+  white-space: nowrap;
+}
+
+/* Badge Styling */
 .badge {
   font-weight: 500;
   font-size: 13px;
   padding: 5px 8px;
   display: inline-block;
-  margin-bottom: 2px;
   border-radius: 4px;
 }
 .bg-secondary {
@@ -303,32 +198,7 @@ a:hover {
   color: white;
 }
 
-/* Floating Add Button (Mobile) */
-.btn-add-mobile {
-  display: none;
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 4px 10px rgba(35, 61, 210, 0.3);
-  z-index: 1000;
-  background-color: #233dd2;
-  color: #fff;
-}
-
-/* Desktop Add Button */
-.desktop-add-btn {
-  width: auto;
-  display: inline-flex;
-  align-items: center;
-  padding: 8px 16px;
-}
-
-/* 8. DataTables Styling */
+/* 6. DataTables Styling */
 .dataTables_wrapper .dataTables_paginate {
   display: flex;
   justify-content: flex-end;
@@ -337,90 +207,212 @@ a:hover {
 }
 
 .dataTables_wrapper .dataTables_paginate .paginate_button {
-  box-sizing: border-box;
-  display: inline-block;
   padding: 6px 12px;
   margin-left: 2px;
-  text-align: center;
-  text-decoration: none !important;
   cursor: pointer;
   color: #233dd2 !important;
   border: 1px solid #dee2e6;
   border-radius: 4px;
   background: #fff;
   font-size: 14px;
-  min-width: 1.5em;
 }
-
+.dataTables_wrapper .dataTables_paginate .paginate_button.current {
+  background-color: #233dd2 !important;
+  color: white !important;
+  font-weight: bold;
+  border-color: #233dd2;
+}
 .dataTables_wrapper .dataTables_paginate .paginate_button:hover {
   background-color: #e9ecef !important;
-  border-color: #dee2e6;
   color: #1a2eb0 !important;
 }
 
-.dataTables_wrapper .dataTables_paginate .paginate_button.current,
-.dataTables_wrapper .dataTables_paginate .paginate_button.current:hover {
-  background-color: #233dd2 !important;
-  border-color: #233dd2;
-  color: white !important;
-  font-weight: bold;
-}
-
-.dataTables_wrapper .dataTables_paginate .paginate_button.disabled {
-  color: #6c757d !important;
-  cursor: default;
-  background-color: #fff !important;
-  border-color: #dee2e6;
-  opacity: 0.6;
-  box-shadow: none;
-}
-
-/* Search Bar Alignment */
+/* DataTables Search Styling */
 .dataTables_wrapper .dataTables_filter {
-  text-align: right;
-}
-.dataTables_wrapper .dataTables_filter input {
-  margin-left: 0.5em;
-  display: inline-block;
-  width: auto;
-  border-radius: 6px;
-  border: 1px solid #ced4da;
-  padding: 6px 12px;
+  width: 100%;
+  display: flex;
+  justify-content: flex-end;
 }
 
-/* 9. Responsive */
-@media (max-width: 576px) {
-  .login-card,
-  .reg-card {
-    padding: 24px;
+.dataTables_wrapper .dataTables_filter label {
+  width: auto;
+  flex: 0 0 340px;
+  max-width: 100%;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px;
+  margin-bottom: 0;
+}
+
+.dataTables_wrapper .dataTables_filter input {
+  flex: 1;
+  width: 100% !important;
+  padding: 11px 14px !important;
+  border: 1px solid #dfe3f7;
+  border-radius: 12px;
+  background-color: #fff;
+  box-shadow: 0 12px 28px rgba(18, 32, 74, 0.08);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.dataTables_wrapper .dataTables_filter input:focus {
+  border-color: #233dd2;
+  box-shadow: 0 0 0 3px rgba(35, 61, 210, 0.15);
+  outline: none;
+}
+
+/* Tag/Category: Keep action buttons aligned on tablet/desktop */
+.tag-container #tagTable tbody td:last-child,
+.category-container #categoryTable tbody td:last-child {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+
+.tag-container #tagTable tbody td:last-child .btn-action,
+.category-container #categoryTable tbody td:last-child .btn-action {
+  margin-right: 0 !important;
+}
+
+/* Tag & Category Table Search Alignment */
+.tag-container .dataTables_wrapper .dataTables_filter,
+.category-container .dataTables_wrapper .dataTables_filter {
+  justify-content: flex-end;
+}
+
+/* 7. Desktop View (Min Width 768px) */
+@media screen and (min-width: 768px) {
+  /* Search Bar - Right Align */
+  .dataTables_wrapper .row:first-child {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    width: 100% !important;
   }
+
+  .dataTables_wrapper .dataTables_filter {
+    margin-left: auto !important;
+    text-align: right !important;
+  }
+
+  .dataTables_wrapper .dataTables_filter label {
+    display: inline-flex !important;
+    align-items: center !important;
+    margin-bottom: 0 !important;
+  }
+
+  /* Desktop Button Only */
+  .desktop-add-btn {
+    display: inline-flex !important;
+  }
+  .btn-add-mobile {
+    display: none !important;
+    visibility: hidden !important;
+  }
+}
+
+/* 8. Mobile View (280px - 767px) */
+@media screen and (max-width: 767px) {
   .tag-container,
   .category-container {
     padding: 10px;
   }
+  .card-header {
+    padding: 15px;
+  }
+
+  /* 1. BUTTONS: Hide Floating Button, Wrap Main Button */
+  .btn-add-mobile {
+    display: none !important;
+    visibility: hidden !important;
+  }
 
   .desktop-add-btn {
-    display: none;
+    display: inline-flex !important;
+    width: 100%; /* Full width for easier tapping */
+    justify-content: center;
+    margin-top: 5px;
   }
-  .btn-add-mobile {
-    display: flex;
+
+  /* 2. SEARCH BAR: Vertical Stack */
+  /* Forces the row containing 'Show Entries' and 'Search' to stack vertically */
+  .dataTables_wrapper .row:first-child {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+    width: 100% !important;
+    margin: 0 !important;
+  }
+
+  /* Reset bootstrap columns if they exist inside */
+  .dataTables_wrapper .row:first-child > * {
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: 0 0 100% !important;
+  }
+
+  .dataTables_wrapper .dataTables_length,
+  .dataTables_wrapper .dataTables_filter {
+    text-align: left !important;
+    width: 100% !important;
+    margin: 0 !important;
+    float: none !important;
+  }
+
+  .dataTables_wrapper .dataTables_filter label {
+    width: 100% !important;
+    max-width: 100% !important;
+    display: flex !important;
+  }
+
+  .dataTables_wrapper .dataTables_filter input {
+    width: 100% !important;
+    margin-left: 0 !important;
+    display: block !important;
+  }
+
+  /* 3. TABLE: Horizontal Scroll */
+  .card-body {
+    padding: 10px !important;
+    overflow-x: auto !important;
+    display: block !important;
+    width: 100% !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  table.dataTable {
+    min-width: 600px !important;
   }
 
   table.dataTable tbody td {
     padding: 10px 5px !important;
     font-size: 14px;
   }
-  td span.badge {
-    margin-right: 4px;
-    margin-bottom: 4px;
+
+  /* 4. PAGINATION: Wrap */
+  .dataTables_wrapper .dataTables_paginate {
+    justify-content: center !important;
+    flex-wrap: wrap !important;
+    float: none !important;
   }
 
-  .dataTables_wrapper .dataTables_filter {
-    text-align: left;
-    margin-top: 10px;
+  .tag-container table.dataTable,
+  .category-container table.dataTable {
+    min-width: 100% !important;
   }
-  .dataTables_wrapper .dataTables_filter input {
-    width: 100%;
-    margin-left: 0;
+
+  .tag-container table.dataTable tbody td:last-child,
+  .category-container table.dataTable tbody td:last-child {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
   }
 }

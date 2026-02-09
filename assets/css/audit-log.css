@@ -1,20 +1,16 @@
-/* =========================================
-   1. AUDIT PAGE LAYOUT
-   ========================================= */
+/* src/assets/css/audit-log.css */
+
+/* 1. Audit Layout */
 .audit-container {
   padding: 20px;
   max-width: 1400px;
   margin: 0 auto;
 }
-
-/* Card Header Icons */
 .card-header h4 i {
   margin-right: 8px;
 }
 
-/* =========================================
-   2. BADGE FIXES (Fixes Invisible Text)
-   ========================================= */
+/* 2. Badges */
 .badge-custom {
   padding: 6px 12px;
   font-size: 12px;
@@ -23,90 +19,52 @@
   letter-spacing: 0.5px;
   text-transform: uppercase;
 }
-
-/* Info (View) - Cyan background, Black Text */
 .badge-info {
   background-color: #0dcaf0 !important;
   color: #000000 !important;
 }
-
-/* Warning (Edit) - Yellow background, Black Text */
 .badge-warning {
   background-color: #ffc107 !important;
   color: #000000 !important;
 }
-
-/* Success (Add) - Green background, White Text */
 .badge-success {
   background-color: #198754 !important;
   color: #ffffff !important;
 }
-
-/* Danger (Delete) - Red background, White Text */
 .badge-danger {
   background-color: #dc3545 !important;
   color: #ffffff !important;
 }
 
-/* =========================================
-   3. PAGINATION FIXES (Fixes Previous/Next)
-   ========================================= */
+/* 3. Pagination & Buttons */
 .dataTables_wrapper .dataTables_paginate {
   float: right;
   margin-top: 15px;
   display: flex;
   justify-content: flex-end;
-  gap: 5px;
+}
+.dataTables_wrapper .dataTables_paginate .pagination {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin: 0;
+  padding-left: 0;
 }
 
-/* Base Button Style */
 .dataTables_wrapper .dataTables_paginate .paginate_button {
-  padding: 6px 12px;
-  margin-left: 0;
-  border: 1px solid #dee2e6;
-  background-color: #ffffff;
-  color: #0d6efd !important; /* Bootstrap Blue */
-  cursor: pointer;
-  text-decoration: none;
-  border-radius: 4px;
-  display: inline-block;
-  min-width: 30px;
-  text-align: center;
+  margin: 0 !important;
 }
-
-/* Hover State */
 .dataTables_wrapper .dataTables_paginate .paginate_button:hover {
   background-color: #e9ecef !important;
-  color: #0a58ca !important;
-  border-color: #dee2e6;
 }
 
-/* Active State (Current Page) */
-.dataTables_wrapper .dataTables_paginate .paginate_button.current {
-  background-color: #0d6efd !important;
-  color: #ffffff !important;
-  border-color: #0d6efd;
-}
-
-/* Disabled State (e.g., Previous on Page 1) */
-.dataTables_wrapper .dataTables_paginate .paginate_button.disabled {
-  color: #6c757d !important;
-  cursor: not-allowed;
-  background-color: #f8f9fa !important;
-  border-color: #dee2e6;
-  opacity: 0.6;
-}
-
-/* =========================================
-   4. EXPAND BUTTON (+/-) STYLES
-   ========================================= */
+/* 4. Expand Button */
 td.dt-control {
   text-align: center;
   cursor: pointer;
   vertical-align: middle;
 }
-
-/* Plus Icon (+) */
 td.dt-control:before {
   content: "+";
   display: inline-block;
@@ -118,84 +76,146 @@ td.dt-control:before {
   line-height: 20px;
   font-weight: bold;
   text-align: center;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
-
-/* Minus Icon (-) when expanded */
 tr.shown td.dt-control:before {
   content: "-";
   background-color: #dc3545;
 }
 
-/* =========================================
-   5. DETAILS BOX STYLING (The Expanded Area)
-   ========================================= */
+/* 5. Details Box */
 .detail-box {
   background: #f8f9fa;
   padding: 20px;
   border-radius: 8px;
   border: 1px solid #dee2e6;
   margin: 10px 0;
-  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.02);
 }
-
 .detail-box pre {
   background: #ffffff;
   border: 1px solid #e9ecef;
   padding: 15px;
   border-radius: 6px;
-  color: #d63384; /* Pinkish code color */
-  white-space: pre-wrap; /* Wrap long text */
+  color: #d63384;
+  white-space: pre-wrap;
   word-wrap: break-word;
   font-size: 0.85em;
   max-height: 300px;
   overflow-y: auto;
-  margin-top: 5px;
 }
 
-/* =========================================
-   6. MOBILE RESPONSIVE FIXES
-   ========================================= */
-@media (max-width: 576px) {
+/* 6. Mobile Responsive (280px - 767px) */
+@media screen and (min-width: 280px) and (max-width: 767px) {
   .audit-container {
-    padding: 10px;
-    overflow-x: hidden;
-  }
-  .card-body {
-    padding: 10px;
+    padding: 10px !important;
+    overflow-x: visible !important;
+    width: 100% !important;
   }
 
-  /* Fix Search Bar */
+  /* Header Wrapping */
+  .card-header {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    justify-content: space-between !important;
+    gap: 10px;
+  }
+
+  .card-header .d-flex {
+    width: 100%;
+  }
+
+  .form-select {
+    width: 100% !important;
+  }
+
+  /* Search Bar Stacking */
+  .dataTables_wrapper .row:first-child {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+  }
+
+  .dataTables_wrapper .dataTables_length,
+  .dataTables_wrapper .dataTables_filter {
+    width: 100% !important;
+    margin: 0 !important;
+  }
+
+  .dataTables_wrapper .dataTables_length label,
+  .dataTables_wrapper .dataTables_filter label {
+    width: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between;
+    gap: 10px;
+    margin: 0 !important;
+  }
+
+  .dataTables_wrapper .dataTables_length select {
+    width: 100% !important;
+    max-width: 160px;
+  }
+
   .dataTables_wrapper .dataTables_filter {
     text-align: left !important;
-    margin-top: 10px;
-    margin-bottom: 10px;
-    width: 100%;
+    width: 100% !important;
+    margin: 0 !important;
   }
-  .dataTables_wrapper .dataTables_filter label {
-    width: 100%;
-    display: flex !important;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 5px;
-  }
+
   .dataTables_wrapper .dataTables_filter input {
     width: 100% !important;
     margin-left: 0 !important;
+  }
+
+  /* Scrollable Table */
+  .card-body {
+    padding: 10px !important;
+    overflow-x: visible !important;
     display: block !important;
+    width: 100% !important;
+    -webkit-overflow-scrolling: touch;
   }
 
-  /* Adjust Padding */
-  table.dataTable > tbody > tr > td,
-  table.dataTable > tbody > tr > th {
-    padding: 10px 8px !important;
-    font-size: 0.85rem;
+  #auditTable,
+  table.dataTable {
+    width: 100% !important;
+    min-width: 0 !important;
   }
 
-  /* Empty Row Fix */
-  .dataTables_empty {
+  /* Make the details control obvious on mobile */
+  td.dt-control:before {
+    content: "View";
+    background-color: #0d6efd;
+    border-radius: 6px;
+    width: auto;
+    height: auto;
+    line-height: 1;
+    padding: 6px 10px;
+    font-weight: 600;
+    font-size: 12px;
+  }
+
+  tr.shown td.dt-control:before {
+    content: "Close";
+    background-color: #dc3545;
+  }
+
+  /* Pagination Wrap */
+  .dataTables_wrapper .dataTables_paginate {
+    float: none !important;
+    justify-content: center !important;
+    width: 100% !important;
+  }
+
+  .dataTables_wrapper .dataTables_paginate .pagination {
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    padding: 0;
+  }
+
+  .dataTables_wrapper .dataTables_info {
+    width: 100% !important;
     text-align: center !important;
-    padding: 20px !important;
-    white-space: normal !important;
+    margin-bottom: 10px;
   }
 }

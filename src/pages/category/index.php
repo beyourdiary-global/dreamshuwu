@@ -163,6 +163,14 @@ if (isset($_POST['mode']) && $_POST['mode'] === 'delete') {
         $fetchOld->close();
     }
 
+    // Fallback: still log something useful even if old row can't be loaded
+    if (empty($oldData)) {
+        $oldData = [
+            'id' => $id,
+            'name' => $name,
+        ];
+    }
+
     // 2. Perform Delete
     $stmt = $conn->prepare($deleteQuery);
     $stmt->bind_param("i", $id);
