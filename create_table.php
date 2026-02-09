@@ -91,31 +91,32 @@ CREATE TABLE IF NOT EXISTS users_dashboard (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ";
 
-// 5. Novel Tags (NEW)
+// 5. Novel Tags
 $tables['novel_tag'] = "
 CREATE TABLE IF NOT EXISTS novel_tag (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(100) NOT NULL UNIQUE COMMENT 'Tag Name (Unique)',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT 'Creation timestamp',
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Last update timestamp',
-    INDEX idx_tag_name (name) COMMENT 'Index for searching tags'
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL UNIQUE COMMENT 'Tag Name e.g. Modern, Romance',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by BIGINT,
+    updated_by BIGINT,
+    INDEX (name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ";
 
 $tables['novel_category'] = "
 CREATE TABLE IF NOT EXISTS novel_category (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(255) NOT NULL UNIQUE COMMENT 'Category Name',
-    created_by BIGINT NOT NULL,
-    updated_by BIGINT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    name VARCHAR(255) NOT NULL UNIQUE COMMENT 'Category name, e.g., Modern Romance',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT 'Record creation timestamp',
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Record last updated timestamp',
+    created_by BIGINT NOT NULL COMMENT 'User ID who created the category',
+    updated_by BIGINT NOT NULL COMMENT 'User ID who last updated the category',
     INDEX idx_cat_name (name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ";
 
 // 7. Category <-> Tag (Many-to-Many)
-// NOTE: 'tag_id' type MUST match 'novel_tag.id' exactly (INT vs BIGINT)
 $tables['category_tag'] = "
 CREATE TABLE IF NOT EXISTS category_tag (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
