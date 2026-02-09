@@ -420,7 +420,10 @@ input[type="password"]::-ms-clear {
   }
 
   .tag-container table.dataTable tbody td:last-child:not(.dataTables_empty),
-  .category-container table.dataTable tbody td:last-child:not(.dataTables_empty) {
+  .category-container
+    table.dataTable
+    tbody
+    td:last-child:not(.dataTables_empty) {
     display: flex;
     justify-content: flex-start;
     align-items: center;
