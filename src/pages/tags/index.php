@@ -188,15 +188,18 @@ if ($isDeleteRequest) {
     
     // Audit Data Load
     $oldData = null;
-    $selectSql = "SELECT id, name FROM " . $dbTable . " WHERE id = ?";
+    $selectSql = "SELECT id, name, created_at, updated_at, created_by, updated_by FROM " . $dbTable . " WHERE id = ?";
     if ($sel = $conn->prepare($selectSql)) {
         $sel->bind_param("i", $id);
         if ($sel->execute()) {
             $sel->store_result(); // [CRITICAL FIX]
             if ($sel->num_rows > 0) {
-                $sel->bind_result($rId, $rName);
+                $sel->bind_result($rId, $rName, $rCr, $rUp, $rCb, $rUb);
                 $sel->fetch();
-                $oldData = ['id' => $rId, 'name' => $rName];
+                $oldData = [
+                    'id' => $rId, 'name' => $rName, 'created_at' => $rCr, 
+                    'updated_at' => $rUp, 'created_by' => $rCb, 'updated_by' => $rUb
+                ];
             }
         }
         $sel->close();
