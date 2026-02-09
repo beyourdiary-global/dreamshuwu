@@ -19,7 +19,7 @@ $(document).ready(function () {
     dom:
       "<'row'<'col-sm-12 d-flex justify-content-end'f>>" +
       "<'row'<'col-sm-12'tr>>" +
-      "<'row'<'col-sm-5'i><'col-sm-7'p>>",
+      "<'row'<'col-sm-12 d-flex justify-content-between align-items-center'ip>>",
 
     // Chinese language configuration
     language: {

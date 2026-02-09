@@ -144,7 +144,7 @@
 
 .search-form:focus-within {
   border-color: rgba(128, 170, 255, 0.9);
-  box-shadow: 0 10px 28px rgba(128, 170, 255, 0.35);
+  box-shadow: none;
 }
 
 .site-header .search-form input[type="text"] {
