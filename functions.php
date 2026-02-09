@@ -4,6 +4,55 @@
  * Reusable logic for validation and security.
  */
 
+if (!function_exists('safeJsonEncode')) {
+    /**
+     * Encode data as JSON even when the json extension is disabled.
+     */
+    function safeJsonEncode($data) {
+        if (function_exists('json_encode')) {
+            $flags = defined('JSON_UNESCAPED_UNICODE') ? JSON_UNESCAPED_UNICODE : 0;
+            $encoded = json_encode($data, $flags);
+            if ($encoded !== false) {
+                return $encoded;
+            }
+        }
+
+        if (is_array($data)) {
+            if ($data === []) {
+                return '[]';
+            }
+            $isAssoc = array_keys($data) !== range(0, count($data) - 1);
+            $items = [];
+            foreach ($data as $key => $value) {
+                $encodedValue = safeJsonEncode($value);
+                if ($isAssoc) {
+                    $items[] = '"' . addslashes((string)$key) . '":' . $encodedValue;
+                } else {
+                    $items[] = $encodedValue;
+                }
+            }
+            return $isAssoc ? '{' . implode(',', $items) . '}' : '[' . implode(',', $items) . ']';
+        }
+
+        if (is_string($data)) {
+            $search = defined('SAFE_JSON_ESCAPE_SEARCH') ? SAFE_JSON_ESCAPE_SEARCH : ["\\", "\"", "\n", "\r", "\t", "\f", "\b"];
+            $replace = defined('SAFE_JSON_ESCAPE_REPLACE') ? SAFE_JSON_ESCAPE_REPLACE : ["\\\\", "\\\"", "\\n", "\\r", "\\t", "\\f", "\\b"];
+            $escaped = str_replace($search, $replace, $data);
+            return '"' . $escaped . '"';
+        }
+
+        if (is_bool($data)) {
+            return $data ? 'true' : 'false';
+        }
+
+        if (is_null($data)) {
+            return 'null';
+        }
+
+        return (string)$data;
+    }
+}
+
 /**
  * Validates email format
  */
@@ -170,21 +219,9 @@ function logAudit($params) {
     }
 
     // 3. JSON Encode (WITH SAFETY CHECK)
-    // This fixes the "Call to undefined function json_encode" error
-    if (function_exists('json_encode')) {
-        // Use standard JSON encode if server supports it
-        $flags = defined('JSON_UNESCAPED_UNICODE') ? JSON_UNESCAPED_UNICODE : 0;
-        
-        $jsonOld     = !empty($oldData) ? json_encode($oldData, $flags) : null;
-        $jsonNew     = !empty($newData) ? json_encode($newData, $flags) : null;
-        $jsonChanges = !empty($changes) ? json_encode($changes, $flags) : null;
-    } else {
-        // FALLBACK: If JSON extension is disabled, send NULL to avoid crash
-        // IMPORTANT: You should enable the "json" extension in CPanel
-        $jsonOld     = null;
-        $jsonNew     = null;
-        $jsonChanges = null;
-    }
+    $jsonOld     = !empty($oldData) ? safeJsonEncode($oldData) : null;
+    $jsonNew     = !empty($newData) ? safeJsonEncode($newData) : null;
+    $jsonChanges = !empty($changes) ? safeJsonEncode($changes) : null;
 
     // 4. Prepare SQL
     $sql = "INSERT INTO " . AUDIT_LOG . " 

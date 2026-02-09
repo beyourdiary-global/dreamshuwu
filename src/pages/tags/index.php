@@ -18,7 +18,7 @@ $isDeleteRequest = isset($_POST['mode']) && $_POST['mode'] === 'delete';
 if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
     if ($isAjaxRequest || $isDeleteRequest) {
         header('Content-Type: application/json');
-        echo json_encode([
+        echo safeJsonEncode([
             'draw' => intval($_GET['draw'] ?? 0),
             'recordsTotal' => 0,
             'recordsFiltered' => 0,
@@ -34,51 +34,6 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
 // Handle AJAX requests for DataTables
 if ($isAjaxRequest) {
     header('Content-Type: application/json');
-
-    /**
-     * Safe JSON encoder that works even if the json extension is disabled.
-     */
-    if (!function_exists('safeJsonEncode')) {
-        function safeJsonEncode($data) {
-            if (function_exists('json_encode')) {
-                $flags = defined('JSON_UNESCAPED_UNICODE') ? JSON_UNESCAPED_UNICODE : 0;
-                return json_encode($data, $flags);
-            }
-
-            // Minimal manual encoder (supports nested arrays, strings, numbers, bool, null)
-            if (is_array($data)) {
-                // IMPORTANT: Empty arrays must always be encoded as [] (not {})
-                if ($data === []) {
-                    return '[]';
-                }
-
-                $isAssoc = array_keys($data) !== range(0, count($data) - 1);
-                $items = [];
-                foreach ($data as $key => $value) {
-                    $encodedValue = safeJsonEncode($value);
-                    if ($isAssoc) {
-                        $items[] = '"' . addslashes((string)$key) . '":' . $encodedValue;
-                    } else {
-                        $items[] = $encodedValue;
-                    }
-                }
-                return $isAssoc ? '{' . implode(',', $items) . '}' : '[' . implode(',', $items) . ']';
-            } elseif (is_string($data)) {
-                $escaped = str_replace(
-                    ["\\", "\"", "\n", "\r", "\t", "\f", "\b"],
-                    ["\\\\", "\\\"", "\\n", "\\r", "\\t", "\\f", "\\b"],
-                    $data
-                );
-                return '"' . $escaped . '"';
-            } elseif (is_bool($data)) {
-                return $data ? 'true' : 'false';
-            } elseif (is_null($data)) {
-                return 'null';
-            } else {
-                return (string)$data;
-            }
-        }
-    }
 
     /**
      * Unified error response helper for DataTables.
