@@ -153,6 +153,19 @@ try {
                         $reload->close();
                     }
 
+                    // Fallback: ensure new_value is not empty even if reload fails on some hosts
+                    if (empty($newData)) {
+                        $now = date('Y-m-d H:i:s');
+                        $newData = [
+                            'id' => $targetId,
+                            'name' => $tagName,
+                            'created_at' => $isEditMode ? ($existingTagRow['created_at'] ?? null) : $now,
+                            'updated_at' => $now,
+                            'created_by' => $isEditMode ? ($existingTagRow['created_by'] ?? $currentUserId) : $currentUserId,
+                            'updated_by' => $currentUserId,
+                        ];
+                    }
+
                     if (function_exists('logAudit')) {
                         logAudit([
                             'page'           => $auditPage,

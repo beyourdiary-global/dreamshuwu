@@ -24,6 +24,31 @@ if ($conn->query($sql) === TRUE) {
 $conn->select_db($dbname);
 echo "<hr>";
 
+// Changing INT to BIGINT for novel_tag table
+echo "<strong>Checking & Fixing Existing Tables...</strong><br>";
+
+// 1. Disable FK Checks to allow modification
+$conn->query("SET FOREIGN_KEY_CHECKS = 0");
+
+// 2. Fix 'novel_tag' ID type (INT -> BIGINT)
+if ($conn->query("ALTER TABLE novel_tag MODIFY id BIGINT AUTO_INCREMENT") === TRUE) {
+    echo " - Fixed 'novel_tag' ID to BIGINT.<br>";
+} else {
+    // It might fail if table doesn't exist yet, which is fine
+    echo " - Note: Could not alter 'novel_tag' (Table might not exist yet).<br>";
+}
+
+// 3. Fix 'novel_category' ID type (INT -> BIGINT)
+if ($conn->query("ALTER TABLE novel_category MODIFY id BIGINT AUTO_INCREMENT") === TRUE) {
+    echo " - Fixed 'novel_category' ID to BIGINT.<br>";
+} else {
+    echo " - Note: Could not alter 'novel_category' (Table might not exist yet).<br>";
+}
+
+// 4. Re-enable FK Checks
+$conn->query("SET FOREIGN_KEY_CHECKS = 1");
+echo "<hr>";
+
 // 3. Define Table SQL (Order matters for Foreign Keys!)
 
 $tables = [];

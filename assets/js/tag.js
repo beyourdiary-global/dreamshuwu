@@ -17,7 +17,7 @@ $(document).ready(function () {
     columns: [{ data: 0 }, { data: 1, orderable: false }],
     order: [],
     dom:
-      "<'row'<'col-sm-6'f><'col-sm-6 text-end'>>" +
+      "<'row'<'col-sm-12 d-flex justify-content-end'f>>" +
       "<'row'<'col-sm-12'tr>>" +
       "<'row'<'col-sm-5'i><'col-sm-7'p>>",
 
@@ -30,7 +30,7 @@ $(document).ready(function () {
       sInfoEmpty: "显示第 0 至 0 项结果，共 0 项",
       sInfoFiltered: "(由 _MAX_ 项结果过滤)",
       sInfoPostFix: "",
-      sSearch: "搜索:",
+      sSearch: "",
       sUrl: "",
       sEmptyTable: "表中数据为空",
       sLoadingRecords: "载入中...",
