@@ -67,11 +67,18 @@ $(document).ready(function () {
           data: { mode: "delete", id: id, name: name },
           dataType: "json",
           success: function (res) {
-            if (res.success) {
+            // Add a check to ensure res is not null or undefined
+            if (res && res.success) {
               Swal.fire("删除成功！", "", "success");
               table.ajax.reload();
             } else {
-              Swal.fire("错误", res.message, "error");
+              // Provide a default error message if res or res.success is missing
+              // or use res.message if it exists and res is not null
+              Swal.fire(
+                "错误",
+                res ? res.message || "未知错误" : "服务器返回空响应",
+                "error",
+              );
             }
           },
           error: function () {

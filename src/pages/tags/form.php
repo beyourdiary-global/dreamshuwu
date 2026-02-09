@@ -89,9 +89,12 @@ try {
         if (empty($tagName)) {
             $message = "标签名称不能为空"; $msgType = "danger";
         } else {
-            // Check Duplicates
+            // Check for duplicates
             $sql = $isEditMode ? "SELECT id FROM $dbTable WHERE name = ? AND id != ?" : "SELECT id FROM $dbTable WHERE name = ?";
             $chk = $conn->prepare($sql);
+            if (!$chk) {
+                throw new Exception($conn->error ?: 'Failed to prepare duplicate check.');
+            }
             if ($isEditMode) $chk->bind_param("si", $tagName, $tagId); else $chk->bind_param("s", $tagName);
             $chk->execute();
             $chk->store_result();

@@ -104,6 +104,7 @@ if ($isAjaxRequest) {
         sendTagTableError('Database connection is not available.');
     }
     
+    // Get DataTables parameters
     $start  = $_GET['start'] ?? 0;
     $length = $_GET['length'] ?? 10;
     $search = '';
@@ -111,12 +112,16 @@ if ($isAjaxRequest) {
         $search = $_GET['search']['value'];
     }
 
+    // Build SQL queries
     $sql = "SELECT id, name FROM " . $dbTable . " WHERE 1=1";
     $countSql = "SELECT COUNT(*) FROM " . $dbTable . " WHERE 1=1";
     
-    $mainParams = []; $mainTypes = "";
-    $countParams = []; $countTypes = "";
+    $mainParams = []; 
+    $mainTypes = "";
+    $countParams = []; 
+    $countTypes = "";
 
+    // Add search condition if provided
     if (!empty($search)) {
         $term = "%" . $search . "%";
         $sql .= " AND name LIKE ?";
@@ -210,6 +215,7 @@ if ($isDeleteRequest) {
     if ($stmt === false) sendDeleteError('Error preparing delete statement.', $debug, $traceId);
     $stmt->bind_param("i", $id);
     
+    // Execute deletion
     if ($stmt->execute()) {
         $auditLogged = false;
         if (function_exists('logAudit')) {
@@ -235,6 +241,7 @@ if ($isDeleteRequest) {
         $stmt->close();
         sendDeleteError('Error deleting tag from database.', $debug, $traceId);
     }
+    
     exit();
 }
 
