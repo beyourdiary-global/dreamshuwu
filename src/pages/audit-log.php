@@ -171,25 +171,26 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
         }
 
         // Build details payload for expandable row (query + old/new values)
-        // Decode JSON columns when possible so the client always renders values reliably.
-        $oldRaw = $cRow['old_value'] ?? null;
-        $newRaw = $cRow['new_value'] ?? null;
-        $oldVal = null;
-        $newVal = null;
+        // Decode JSON columns so they become proper objects (avoids double-encoding)
+        $rawOld = $cRow['old_value'] ?? null;
+        $rawNew = $cRow['new_value'] ?? null;
 
-        if ($oldRaw !== null && $oldRaw !== '') {
-            $tmp = json_decode($oldRaw, true);
-            $oldVal = (json_last_error() === JSON_ERROR_NONE) ? $tmp : $oldRaw;
+        $decodedOld = null;
+        $decodedNew = null;
+
+        if (!empty($rawOld) && is_string($rawOld)) {
+            $decoded = json_decode($rawOld, true);
+            $decodedOld = ($decoded !== null) ? $decoded : $rawOld;
         }
-        if ($newRaw !== null && $newRaw !== '') {
-            $tmp = json_decode($newRaw, true);
-            $newVal = (json_last_error() === JSON_ERROR_NONE) ? $tmp : $newRaw;
+        if (!empty($rawNew) && is_string($rawNew)) {
+            $decoded = json_decode($rawNew, true);
+            $decodedNew = ($decoded !== null) ? $decoded : $rawNew;
         }
 
         $details = [
             'query' => $cRow['query'] ?? '',
-            'old'   => $oldVal,
-            'new'   => $newVal,
+            'old'   => $decodedOld,
+            'new'   => $decodedNew,
         ];
 
         $data[] = [

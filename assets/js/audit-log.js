@@ -44,27 +44,35 @@ $(document).ready(function () {
       html += "<pre>" + det.query + "</pre></div>";
     }
 
-    // Try parsing JSON if strings
+    // Try parsing JSON if strings, or stringify objects for display
     var oldV = det.old,
       newV = det.new;
-    if (oldV && typeof oldV === "object") {
-      try {
+
+    // Format old value for display
+    if (oldV !== null && oldV !== undefined) {
+      if (typeof oldV === "object") {
         oldV = JSON.stringify(oldV, null, 2);
-      } catch (e) {}
+      } else if (typeof oldV === "string") {
+        try {
+          oldV = JSON.stringify(JSON.parse(oldV), null, 2);
+        } catch (e) {
+          // Keep as-is if not valid JSON
+        }
+      }
     }
-    if (newV && typeof newV === "object") {
-      try {
+
+    // Format new value for display
+    if (newV !== null && newV !== undefined) {
+      if (typeof newV === "object") {
         newV = JSON.stringify(newV, null, 2);
-      } catch (e) {}
+      } else if (typeof newV === "string") {
+        try {
+          newV = JSON.stringify(JSON.parse(newV), null, 2);
+        } catch (e) {
+          // Keep as-is if not valid JSON
+        }
+      }
     }
-    try {
-      if (typeof oldV === "string")
-        oldV = JSON.stringify(JSON.parse(oldV), null, 2);
-    } catch (e) {}
-    try {
-      if (typeof newV === "string")
-        newV = JSON.stringify(JSON.parse(newV), null, 2);
-    } catch (e) {}
 
     // Show Changes if available
     if (oldV || newV) {
