@@ -6,7 +6,6 @@ defined('URL_ASSETS') || define('URL_ASSETS', SITEURL . '/assets');
 
 // --- 2. Auth Pages ---
 defined('URL_LOGIN')      || define('URL_LOGIN', SITEURL . '/src/pages/login/login.php');
-defined('URL_LOGOUT')     || define('URL_LOGOUT', SITEURL . '/src/pages/login/logout.php');
 defined('URL_REGISTER')   || define('URL_REGISTER', SITEURL . '/src/pages/register/register.php');
 defined('URL_FORGOT_PWD') || define('URL_FORGOT_PWD', SITEURL . '/src/pages/forgot-password/forgot-password.php');
 defined('URL_RESET_PWD')  || define('URL_RESET_PWD', SITEURL . '/src/pages/forgot-password/reset-password.php');
@@ -45,4 +44,8 @@ defined('PATH_NOVEL_CATS_FORM')  || define('PATH_NOVEL_CATS_FORM', 'src/pages/ca
 
 // --  8. Audit Log Page ---
 defined('URL_AUDIT_LOG') || define('URL_AUDIT_LOG', SITEURL . '/src/pages/audit-log.php');
+
+// --- 8. Logout ---
+// Example in config/urls.php
+defined('URL_LOGOUT') || define('URL_LOGOUT', SITEURL . '/src/pages/logout/');
 ?>
