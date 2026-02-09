@@ -47,6 +47,16 @@ $(document).ready(function () {
     // Try parsing JSON if strings
     var oldV = det.old,
       newV = det.new;
+    if (oldV && typeof oldV === "object") {
+      try {
+        oldV = JSON.stringify(oldV, null, 2);
+      } catch (e) {}
+    }
+    if (newV && typeof newV === "object") {
+      try {
+        newV = JSON.stringify(newV, null, 2);
+      } catch (e) {}
+    }
     try {
       if (typeof oldV === "string")
         oldV = JSON.stringify(JSON.parse(oldV), null, 2);

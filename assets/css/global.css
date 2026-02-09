@@ -172,7 +172,7 @@ input[type="password"]::-ms-clear {
   gap: 8px;
   padding: 12px 22px;
   border-radius: 12px;
-  box-shadow: 0 12px 30px rgba(35, 61, 210, 0.22);
+  box-shadow: none;
   font-size: 15px;
 }
 
@@ -215,6 +215,7 @@ input[type="password"]::-ms-clear {
   border-radius: 4px;
   background: #fff;
   font-size: 14px;
+  text-decoration: none !important;
 }
 .dataTables_wrapper .dataTables_paginate .paginate_button.current {
   background-color: #233dd2 !important;
@@ -225,6 +226,17 @@ input[type="password"]::-ms-clear {
 .dataTables_wrapper .dataTables_paginate .paginate_button:hover {
   background-color: #e9ecef !important;
   color: #1a2eb0 !important;
+  text-decoration: underline !important;
+}
+
+/* Pagination links: no underline unless hover (covers Prev/Next + numeric) */
+.dataTables_wrapper .dataTables_paginate a,
+.dataTables_wrapper .dataTables_paginate .page-link {
+  text-decoration: none !important;
+}
+.dataTables_wrapper .dataTables_paginate a:hover,
+.dataTables_wrapper .dataTables_paginate .page-link:hover {
+  text-decoration: underline !important;
 }
 
 /* DataTables Search Styling */
@@ -251,7 +263,7 @@ input[type="password"]::-ms-clear {
   border: 1px solid #dfe3f7;
   border-radius: 12px;
   background-color: #fff;
-  box-shadow: 0 12px 28px rgba(18, 32, 74, 0.08);
+  box-shadow: none;
   transition:
     border-color 0.2s ease,
     box-shadow 0.2s ease;
@@ -259,13 +271,13 @@ input[type="password"]::-ms-clear {
 
 .dataTables_wrapper .dataTables_filter input:focus {
   border-color: #233dd2;
-  box-shadow: 0 0 0 3px rgba(35, 61, 210, 0.15);
+  box-shadow: none;
   outline: none;
 }
 
 /* Tag/Category: Keep action buttons aligned on tablet/desktop */
-.tag-container #tagTable tbody td:last-child,
-.category-container #categoryTable tbody td:last-child {
+.tag-container #tagTable tbody td:last-child:not(.dataTables_empty),
+.category-container #categoryTable tbody td:last-child:not(.dataTables_empty) {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -407,12 +419,18 @@ input[type="password"]::-ms-clear {
     min-width: 100% !important;
   }
 
-  .tag-container table.dataTable tbody td:last-child,
-  .category-container table.dataTable tbody td:last-child {
+  .tag-container table.dataTable tbody td:last-child:not(.dataTables_empty),
+  .category-container table.dataTable tbody td:last-child:not(.dataTables_empty) {
     display: flex;
     justify-content: flex-start;
     align-items: center;
     gap: 8px;
     flex-wrap: wrap;
+  }
+
+  /* DataTables “no data” cell must remain a table-cell to span full width */
+  .tag-container table.dataTable tbody td.dataTables_empty,
+  .category-container table.dataTable tbody td.dataTables_empty {
+    display: table-cell !important;
   }
 }
