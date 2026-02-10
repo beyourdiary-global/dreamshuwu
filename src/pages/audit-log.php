@@ -13,6 +13,7 @@ $auditActions = ['V' => 'View', 'E' => 'Edit', 'A' => 'Add', 'D' => 'Delete'];
 
 if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
     header('Content-Type: application/json');
+    $debugAudit = isset($_GET['debug']) && $_GET['debug'] === '1';
 
     /**
      * Error helper so DataTables always receives valid JSON instead of a PHP fatal.
@@ -178,13 +179,28 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
         $decodedOld = null;
         $decodedNew = null;
 
-        if (!empty($rawOld) && is_string($rawOld)) {
-            $decoded = json_decode($rawOld, true);
-            $decodedOld = ($decoded !== null) ? $decoded : $rawOld;
+        if ($rawOld !== null) {
+            if (is_array($rawOld) || is_object($rawOld)) {
+                $decodedOld = $rawOld;
+            } elseif (is_string($rawOld)) {
+                $trimOld = trim($rawOld);
+                if ($trimOld !== '' && strtolower($trimOld) !== 'null') {
+                    $decoded = json_decode($rawOld, true);
+                    $decodedOld = ($decoded !== null) ? $decoded : $rawOld;
+                }
+            }
         }
-        if (!empty($rawNew) && is_string($rawNew)) {
-            $decoded = json_decode($rawNew, true);
-            $decodedNew = ($decoded !== null) ? $decoded : $rawNew;
+
+        if ($rawNew !== null) {
+            if (is_array($rawNew) || is_object($rawNew)) {
+                $decodedNew = $rawNew;
+            } elseif (is_string($rawNew)) {
+                $trimNew = trim($rawNew);
+                if ($trimNew !== '' && strtolower($trimNew) !== 'null') {
+                    $decoded = json_decode($rawNew, true);
+                    $decodedNew = ($decoded !== null) ? $decoded : $rawNew;
+                }
+            }
         }
 
         $details = [
@@ -192,6 +208,15 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
             'old'   => $decodedOld,
             'new'   => $decodedNew,
         ];
+
+        if ($debugAudit) {
+            $details['debug'] = [
+                'raw_old' => $rawOld,
+                'raw_new' => $rawNew,
+                'decoded_old' => $decodedOld,
+                'decoded_new' => $decodedNew
+            ];
+        }
 
         $data[] = [
             'page'    => htmlspecialchars($cRow['page']),

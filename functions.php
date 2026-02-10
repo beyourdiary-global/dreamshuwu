@@ -184,6 +184,40 @@ function sendPasswordResetEmail($email, $resetLink) {
 /**
  * Logs a database operation to the audit_log table.
  */
+if (!function_exists('encodeAuditValue')) {
+    function encodeAuditValue($value) {
+        if ($value === null) {
+            return null;
+        }
+
+        if (is_string($value)) {
+            $trimmed = trim($value);
+            return $trimmed === '' ? null : $trimmed;
+        }
+
+        if (is_array($value) || is_object($value)) {
+            if (function_exists('json_encode')) {
+                $flags = defined('JSON_UNESCAPED_UNICODE') ? JSON_UNESCAPED_UNICODE : 0;
+                if (defined('JSON_UNESCAPED_SLASHES')) {
+                    $flags |= JSON_UNESCAPED_SLASHES;
+                }
+                if (defined('JSON_INVALID_UTF8_SUBSTITUTE')) {
+                    $flags |= JSON_INVALID_UTF8_SUBSTITUTE;
+                }
+
+                $encoded = json_encode($value, $flags);
+                if ($encoded !== false) {
+                    return $encoded;
+                }
+            }
+
+            return safeJsonEncode($value);
+        }
+
+        return safeJsonEncode($value);
+    }
+}
+
 function logAudit($params) {
     global $conn;
 
@@ -219,9 +253,9 @@ function logAudit($params) {
     }
 
     // 3. JSON Encode (WITH SAFETY CHECK)
-    $jsonOld     = !empty($oldData) ? safeJsonEncode($oldData) : null;
-    $jsonNew     = !empty($newData) ? safeJsonEncode($newData) : null;
-    $jsonChanges = !empty($changes) ? safeJsonEncode($changes) : null;
+    $jsonOld     = encodeAuditValue($oldData);
+    $jsonNew     = encodeAuditValue($newData);
+    $jsonChanges = encodeAuditValue($changes);
 
     // 4. Prepare SQL
     $sql = "INSERT INTO " . AUDIT_LOG . " 
