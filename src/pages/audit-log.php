@@ -15,14 +15,10 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
     header('Content-Type: application/json');
     $debugAudit = isset($_GET['debug']) && $_GET['debug'] === '1';
 
-    /**
-     * Error helper so DataTables always receives valid JSON instead of a PHP fatal.
-     */
     if (!function_exists('sendAuditTableError')) {
         function sendAuditTableError($message) {
-            $draw = isset($_GET['draw']) ? (int) $_GET['draw'] : 0;
             echo safeJsonEncode([
-                "draw" => $draw,
+                "draw" => isset($_GET['draw']) ? (int)$_GET['draw'] : 0,
                 "recordsTotal" => 0,
                 "recordsFiltered" => 0,
                 "data" => [],
@@ -33,10 +29,13 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
     }
 
     if (!isset($conn) || !$conn) {
-        sendAuditTableError('Database connection is not available.');
+        sendAuditTableError('Database connection unavailable.');
     }
 
-    $sql = "SELECT * FROM " . AUDIT_LOG . " WHERE 1=1";
+    // [FIX 1] Select Specific Columns (No SELECT *)
+    // This allows us to safely use bind_result below without guessing column order
+    $columns = "page, action, action_message, query, old_value, new_value, user_id, created_at";
+    $sql = "SELECT $columns FROM " . AUDIT_LOG . " WHERE 1=1";
     $countSql = "SELECT COUNT(*) FROM " . AUDIT_LOG . " WHERE 1=1";
     
     $mainParams = []; $mainTypes = "";
@@ -61,36 +60,25 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
         $clause = " AND action = ?";
         $sql .= $clause;
         $countSql .= $clause;
-        
         $mainParams[] = $_GET['filter_action']; $countParams[] = $_GET['filter_action'];
         $mainTypes .= "s"; $countTypes .= "s";
     }
 
-    // Safe Parameter Binding Helper (shared name but guarded)
+    // Helper
     if (!function_exists('bindDynamicParams')) {
         function bindDynamicParams($stmt, $types, $params) {
-            if (!empty($params) && $stmt instanceof mysqli_stmt) {
-                $bindParams = [];
-                $bindParams[] = $types;
-                for ($i = 0; $i < count($params); $i++) {
-                    $bindParams[] = &$params[$i];
-                }
-                call_user_func_array(array($stmt, 'bind_param'), $bindParams);
+            if (!empty($params)) {
+                $bindParams = [$types];
+                foreach ($params as $k => $v) $bindParams[] = &$params[$k];
+                call_user_func_array([$stmt, 'bind_param'], $bindParams);
             }
         }
     }
 
     // 3. Count Query
     $countStmt = $conn->prepare($countSql);
-    if ($countStmt === false) {
-        error_log("Audit log count query prepare failed: " . $conn->error);
-        sendAuditTableError('System error while loading audit log.');
-    }
     bindDynamicParams($countStmt, $countTypes, $countParams);
-    if (!$countStmt->execute()) {
-        error_log("Audit log count query execute failed: " . $countStmt->error);
-        sendAuditTableError('System error while loading audit log.');
-    }
+    $countStmt->execute();
     $countStmt->bind_result($totalRecords);
     $countStmt->fetch();
     $countStmt->close();
@@ -98,7 +86,7 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
     // 4. Sort & Limit
     $sortCols = ['page', 'action', 'action_message', 'user_id', 'created_at', 'created_at']; 
     $colIdx = $_GET['order'][0]['column'] ?? 5; 
-    $realColIdx = ($colIdx > 0) ? $colIdx - 1 : 4; // Adjust for hidden column
+    $realColIdx = ($colIdx > 0) ? $colIdx - 1 : 4;
     $colName = $sortCols[$realColIdx] ?? 'created_at';
     $dir = ($_GET['order'][0]['dir'] ?? 'desc') === 'asc' ? 'ASC' : 'DESC';
     $sql .= " ORDER BY " . $colName . " " . $dir;
@@ -109,7 +97,7 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
     $mainParams[] = $start; $mainParams[] = $length;
     $mainTypes .= "ii";
 
-    // 5. Execute Main
+   // 5. Execute Main
     $stmt = $conn->prepare($sql);
     if ($stmt === false) {
         error_log("Audit log data query prepare failed: " . $conn->error);
@@ -122,17 +110,27 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
         sendAuditTableError('System error while loading audit log.');
     }
     
-    // [CRITICAL FIX] Use get_result() instead of bind_result()
-    // bind_result() often fails with TEXT/JSON columns on some servers
-    $res = $stmt->get_result();
+    // Use store_result() + dynamic bind_result()
+    $stmt->store_result(); 
+
+    $meta = $stmt->result_metadata();
+    $bindVars = [];
+    $row = [];
+
+    while ($field = $meta->fetch_field()) {
+        $bindVars[] = &$row[$field->name];
+    }
+
+    call_user_func_array(array($stmt, 'bind_result'), $bindVars);
+
     $results = [];
-    
-    if ($res) {
-        while ($row = $res->fetch_assoc()) {
-            $results[] = $row;
-        }
+    while ($stmt->fetch()) {
+        // [FIX] Use array_merge to copy values and break references in one line
+        $results[] = array_merge([], $row);
     }
     $stmt->close();
+
+    // 6. User Mapping
 
     // 6. User Mapping
     $userIds = array_unique(array_column($results, 'user_id'));
@@ -156,65 +154,29 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
             case 'A': $badgeClass = 'success'; break;
         }
 
-        // Ensure Action Text is never empty
-        $actionLabel = $auditActions[$actCode] ?? $actCode;
-        if (empty($actionLabel)) $actionLabel = "Record"; 
-
-        $createdAt = $cRow['created_at'] ?? null;
-        $dateStr = '';
-        $timeStr = '';
-        if (!empty($createdAt)) {
-            try {
-                $dt = new DateTime($createdAt);
-                $dateStr = $dt->format('Y-m-d');
-                $timeStr = $dt->format('H:i:s');
-            } catch (Exception $e) {
-                // Leave date/time empty if parsing fails
-            }
+        $actionLabel = $auditActions[$actCode] ?? ($actCode ?: "Record");
+        
+        // Date Formatting
+        $dateStr = ''; $timeStr = '';
+        if (!empty($cRow['created_at'])) {
+            $ts = strtotime($cRow['created_at']);
+            $dateStr = date('Y-m-d', $ts);
+            $timeStr = date('H:i:s', $ts);
         }
 
-        // Build details payload for expandable row (query + old/new values)
-        // Decode JSON columns so they become proper objects (avoids double-encoding)
-
-        // Safely Decode Old Value
-        $rawOld = $cRow['old_value'] ?? null;
+        // --- JSON DECODING FIX ---
+        // Safely decode Old Value
         $decodedOld = null;
-
-        if ($rawOld !== null) {
-            // If it is already an array (rare but possible with some drivers)
-            if (is_array($rawOld) || is_object($rawOld)) {
-                $decodedOld = $rawOld;
-            } else {
-                // It is a string. Try to decode it.
-                $decoded = json_decode($rawOld, true);
-
-                // CHECK 1: If valid JSON, use the object/array
-                if (json_last_error() === JSON_ERROR_NONE) {
-                    $decodedOld = $decoded;
-                } 
-                // CHECK 2: If simple string (not "null"), keep it as string
-                elseif (trim($rawOld) !== '' && strtolower(trim($rawOld)) !== 'null') {
-                    $decodedOld = $rawOld; 
-                }
-            }
+        if ($cRow['old_value'] !== null) {
+            $json = json_decode($cRow['old_value'], true);
+            $decodedOld = (json_last_error() === JSON_ERROR_NONE) ? $json : $cRow['old_value'];
         }
 
-        // Safely Decode New Value
-        $rawNew = $cRow['new_value'] ?? null;
+        // Safely decode New Value
         $decodedNew = null;
-
-        if ($rawNew !== null) {
-            if (is_array($rawNew) || is_object($rawNew)) {
-                $decodedNew = $rawNew;
-            } else {
-                $decoded = json_decode($rawNew, true);
-
-                if (json_last_error() === JSON_ERROR_NONE) {
-                    $decodedNew = $decoded;
-                } elseif (trim($rawNew) !== '' && strtolower(trim($rawNew)) !== 'null') {
-                    $decodedNew = $rawNew;
-                }
-            }
+        if ($cRow['new_value'] !== null) {
+            $json = json_decode($cRow['new_value'], true);
+            $decodedNew = (json_last_error() === JSON_ERROR_NONE) ? $json : $cRow['new_value'];
         }
 
         $details = [
@@ -222,15 +184,6 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
             'old'   => $decodedOld,
             'new'   => $decodedNew,
         ];
-
-        if ($debugAudit) {
-            $details['debug'] = [
-                'raw_old' => $rawOld,
-                'raw_new' => $rawNew,
-                'decoded_old' => $decodedOld,
-                'decoded_new' => $decodedNew
-            ];
-        }
 
         $data[] = [
             'page'    => htmlspecialchars($cRow['page']),

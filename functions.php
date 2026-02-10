@@ -199,30 +199,22 @@ if (!function_exists('encodeAuditValue')) {
     }
 }
 
-// [CRITICAL FIX] Robust Fetch Row Function
-// This version uses get_result() which handles all column types automatically.
+// [UNIVERSAL FIX] Fetch using Query + Type Casting
+// This bypasses the 'prepare' driver crash on some servers
 if (!function_exists('fetchAuditRow')) {
     function fetchAuditRow($conn, $table, $recordId) {
-        if (empty($table) || empty($recordId) || !($conn instanceof mysqli)) {
-            return null;
-        }
-
-        // Use SELECT * to get everything
-        $sql = "SELECT * FROM {$table} WHERE id = ? LIMIT 1";
-        $stmt = $conn->prepare($sql);
-        if (!$stmt) return null;
-
-        $stmt->bind_param("i", $recordId);
+        if (empty($table) || empty($recordId)) return null;
         
-        if ($stmt->execute()) {
-            $res = $stmt->get_result();
-            if ($res && $res->num_rows > 0) {
-                $row = $res->fetch_assoc(); // Get clean associative array
-                $stmt->close();
-                return $row;
-            }
+        // Safety: Force ID to be an integer to prevent SQL Injection
+        $safeId = (int) $recordId;
+        
+        // Direct Query
+        $sql = "SELECT * FROM {$table} WHERE id = $safeId LIMIT 1";
+        $result = $conn->query($sql);
+        
+        if ($result && $result->num_rows > 0) {
+            return $result->fetch_assoc();
         }
-        $stmt->close();
         return null;
     }
 }
@@ -238,34 +230,26 @@ function logAudit($params) {
     $table       = $params['query_table'] ?? '';
     $userId      = $params['user_id'] ?? 0;
     
-    // Explicit values passed from the page
     $recordId    = $params['record_id'] ?? null;
     $recordName  = $params['record_name'] ?? null;
     $oldData     = $params['old_value'] ?? null;
     $newData     = $params['new_value'] ?? null;
     $changes     = null;
 
-    // --- STEP A: Auto-Detect ID for New Inserts ---
-    // If we just added something, get the new ID from the connection
+    // A. Auto-Detect ID
     if (empty($recordId) && ($action === 'A' || $action === 'ADD') && isset($conn->insert_id) && $conn->insert_id > 0) {
         $recordId = $conn->insert_id;
     }
 
-    // --- STEP B: Auto-Fetch Missing Data from DB ---
-    // If we have an ID and Table, but missing data, go fetch it now.
-    
-    // For ADD/EDIT: If New Data is missing, fetch it
+    // B. Auto-Fetch Missing Data
     if (($action === 'A' || $action === 'E') && empty($newData) && !empty($recordId) && !empty($table)) {
         $newData = fetchAuditRow($conn, $table, (int) $recordId);
     }
-
-    // For EDIT/DELETE: If Old Data is missing, fetch it
     if (($action === 'E' || $action === 'D') && empty($oldData) && !empty($recordId) && !empty($table)) {
         $oldData = fetchAuditRow($conn, $table, (int) $recordId);
     }
 
-    // --- STEP C: Fallback to ensure NO NULLS in DB ---
-    // If fetch failed (maybe transaction committed late), manually construct an array
+    // C. Fallback (Prevent NULLs)
     if (empty($oldData) && ($action === 'E' || $action === 'D') && ($recordId || $recordName)) {
         $oldData = ['id' => $recordId, 'name' => $recordName, 'note' => 'Data fetch skipped'];
     }
@@ -273,11 +257,10 @@ function logAudit($params) {
         $newData = ['id' => $recordId, 'name' => $recordName, 'note' => 'Data fetch skipped'];
     }
 
-    // --- STEP D: Calculate Changes ---
+    // D. Calculate Changes
     if ($action === 'E' && is_array($oldData) && is_array($newData)) {
         $changes = [];
         foreach ($newData as $key => $value) {
-            // Loose comparison (!=) to handle string vs int differences
             if (array_key_exists($key, $oldData) && $oldData[$key] != $value) {
                 $changes[$key] = ['from' => $oldData[$key], 'to' => $value];
             }
@@ -285,7 +268,7 @@ function logAudit($params) {
         if (empty($changes)) $changes = null;
     }
 
-    // --- STEP E: Save to Database ---
+    // E. Save
     $jsonOld     = encodeAuditValue($oldData);
     $jsonNew     = encodeAuditValue($newData);
     $jsonChanges = encodeAuditValue($changes);
@@ -305,8 +288,6 @@ function logAudit($params) {
         );
         $stmt->execute();
         $stmt->close();
-    } else {
-        error_log("Audit Log SQL Error: " . $conn->error);
     }
 }
 
