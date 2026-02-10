@@ -116,19 +116,21 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
         sendAuditTableError('System error while loading audit log.');
     }
     bindDynamicParams($stmt, $mainTypes, $mainParams);
+    
     if (!$stmt->execute()) {
         error_log("Audit log data query execute failed: " . $stmt->error);
         sendAuditTableError('System error while loading audit log.');
     }
     
+    // [CRITICAL FIX] Use get_result() instead of bind_result()
+    // bind_result() often fails with TEXT/JSON columns on some servers
+    $res = $stmt->get_result();
     $results = [];
-    $meta = $stmt->result_metadata();
-    $row = []; $bindResult = [];
-    while ($field = $meta->fetch_field()) { $bindResult[] = &$row[$field->name]; }
-    call_user_func_array(array($stmt, 'bind_result'), $bindResult);
-    while ($stmt->fetch()) {
-        $cRow = []; foreach($row as $k => $v) { $cRow[$k] = $v; }
-        $results[] = $cRow;
+    
+    if ($res) {
+        while ($row = $res->fetch_assoc()) {
+            $results[] = $row;
+        }
     }
     $stmt->close();
 
