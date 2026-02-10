@@ -186,85 +186,48 @@ function sendPasswordResetEmail($email, $resetLink) {
  */
 if (!function_exists('encodeAuditValue')) {
     function encodeAuditValue($value) {
-        if ($value === null) {
-            return null;
-        }
-
+        if ($value === null) return null;
+        
+        // If it's a string, trim it. If empty/null string, return null.
         if (is_string($value)) {
             $trimmed = trim($value);
             return $trimmed === '' ? null : $trimmed;
         }
-
-        if (is_array($value) || is_object($value)) {
-            if (function_exists('json_encode')) {
-                $flags = defined('JSON_UNESCAPED_UNICODE') ? JSON_UNESCAPED_UNICODE : 0;
-                if (defined('JSON_UNESCAPED_SLASHES')) {
-                    $flags |= JSON_UNESCAPED_SLASHES;
-                }
-                if (defined('JSON_INVALID_UTF8_SUBSTITUTE')) {
-                    $flags |= JSON_INVALID_UTF8_SUBSTITUTE;
-                }
-
-                $encoded = json_encode($value, $flags);
-                if ($encoded !== false) {
-                    return $encoded;
-                }
-            }
-
-            return safeJsonEncode($value);
-        }
-
+        
+        // Use the global safeJsonEncode for arrays/objects
         return safeJsonEncode($value);
     }
 }
 
+// [CRITICAL FIX] Robust Fetch Row Function
+// This version uses get_result() which handles all column types automatically.
 if (!function_exists('fetchAuditRow')) {
     function fetchAuditRow($conn, $table, $recordId) {
         if (empty($table) || empty($recordId) || !($conn instanceof mysqli)) {
             return null;
         }
 
+        // Use SELECT * to get everything
         $sql = "SELECT * FROM {$table} WHERE id = ? LIMIT 1";
         $stmt = $conn->prepare($sql);
-        if (!$stmt) {
-            return null;
-        }
+        if (!$stmt) return null;
 
         $stmt->bind_param("i", $recordId);
-        if (!$stmt->execute()) {
-            $stmt->close();
-            return null;
-        }
-
-        $meta = $stmt->result_metadata();
-        if (!$meta) {
-            $stmt->close();
-            return null;
-        }
-
-        $row = [];
-        $bindResult = [];
-        while ($field = $meta->fetch_field()) {
-            $bindResult[] = &$row[$field->name];
-        }
-        call_user_func_array([$stmt, 'bind_result'], $bindResult);
-
-        $result = null;
-        if ($stmt->fetch()) {
-            $result = [];
-            foreach ($row as $k => $v) {
-                $result[$k] = $v;
+        
+        if ($stmt->execute()) {
+            $res = $stmt->get_result();
+            if ($res && $res->num_rows > 0) {
+                $row = $res->fetch_assoc(); // Get clean associative array
+                $stmt->close();
+                return $row;
             }
         }
-
         $stmt->close();
-        return $result;
+        return null;
     }
 }
 
-/**
- * Logs a database operation to the audit_log table.
- */
+// [CRITICAL FIX] The Logger Logic
 function logAudit($params) {
     global $conn;
 
@@ -275,68 +238,58 @@ function logAudit($params) {
     $table       = $params['query_table'] ?? '';
     $userId      = $params['user_id'] ?? 0;
     
-    // Data passed from caller
+    // Explicit values passed from the page
     $recordId    = $params['record_id'] ?? null;
     $recordName  = $params['record_name'] ?? null;
     $oldData     = $params['old_value'] ?? null;
     $newData     = $params['new_value'] ?? null;
     $changes     = null;
 
-    // [FIX 1] Auto-detect Record ID for INSERT actions (Registration/Add)
-    // If we just inserted a row, the DB connection has the new ID.
+    // --- STEP A: Auto-Detect ID for New Inserts ---
+    // If we just added something, get the new ID from the connection
     if (empty($recordId) && ($action === 'A' || $action === 'ADD') && isset($conn->insert_id) && $conn->insert_id > 0) {
         $recordId = $conn->insert_id;
     }
 
-    // [FIX 2] If ID is still missing, try to find it in the data arrays
-    if (empty($recordId)) {
-        if (is_array($oldData) && isset($oldData['id'])) $recordId = $oldData['id'];
-        elseif (is_array($newData) && isset($newData['id'])) $recordId = $newData['id'];
-    }
-
-    // [FIX 3] Auto-Fetch Logic (Robust)
-    // If we have an ID but missing data, go get it from the DB.
+    // --- STEP B: Auto-Fetch Missing Data from DB ---
+    // If we have an ID and Table, but missing data, go fetch it now.
     
-    // For ADD/EDIT: If New Data is missing, fetch it using the ID
+    // For ADD/EDIT: If New Data is missing, fetch it
     if (($action === 'A' || $action === 'E') && empty($newData) && !empty($recordId) && !empty($table)) {
         $newData = fetchAuditRow($conn, $table, (int) $recordId);
     }
 
-    // For EDIT/DELETE: If Old Data is missing, fetch it using the ID
+    // For EDIT/DELETE: If Old Data is missing, fetch it
     if (($action === 'E' || $action === 'D') && empty($oldData) && !empty($recordId) && !empty($table)) {
         $oldData = fetchAuditRow($conn, $table, (int) $recordId);
     }
 
-    // [FIX 4] Final Fallback: Ensure we log *something* even if DB fetch fails
-    // This prevents "NULL" showing up in the log.
-    if (($action === 'E' || $action === 'D') && empty($oldData) && ($recordId || $recordName)) {
-        $oldData = ['id' => $recordId, 'name' => $recordName, 'note' => 'Details not fetched'];
+    // --- STEP C: Fallback to ensure NO NULLS in DB ---
+    // If fetch failed (maybe transaction committed late), manually construct an array
+    if (empty($oldData) && ($action === 'E' || $action === 'D') && ($recordId || $recordName)) {
+        $oldData = ['id' => $recordId, 'name' => $recordName, 'note' => 'Data fetch skipped'];
     }
-    if (($action === 'A' || $action === 'E') && empty($newData) && ($recordId || $recordName)) {
-        $newData = ['id' => $recordId, 'name' => $recordName, 'note' => 'Details not fetched'];
+    if (empty($newData) && ($action === 'A' || $action === 'E') && ($recordId || $recordName)) {
+        $newData = ['id' => $recordId, 'name' => $recordName, 'note' => 'Data fetch skipped'];
     }
 
-    // Calculate Changes (Only if we have both sets of data)
+    // --- STEP D: Calculate Changes ---
     if ($action === 'E' && is_array($oldData) && is_array($newData)) {
         $changes = [];
         foreach ($newData as $key => $value) {
             // Loose comparison (!=) to handle string vs int differences
             if (array_key_exists($key, $oldData) && $oldData[$key] != $value) {
-                $changes[$key] = [
-                    'from' => $oldData[$key],
-                    'to'   => $value
-                ];
+                $changes[$key] = ['from' => $oldData[$key], 'to' => $value];
             }
         }
-        if (empty($changes)) { $changes = null; }
+        if (empty($changes)) $changes = null;
     }
 
-    // Encode to JSON
+    // --- STEP E: Save to Database ---
     $jsonOld     = encodeAuditValue($oldData);
     $jsonNew     = encodeAuditValue($newData);
     $jsonChanges = encodeAuditValue($changes);
 
-    // Insert
     $sql = "INSERT INTO " . AUDIT_LOG . " 
             (page, action, action_message, query, query_table, 
              old_value, new_value, changes, user_id, 
@@ -344,7 +297,6 @@ function logAudit($params) {
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ?, ?)";
 
     $stmt = $conn->prepare($sql);
-
     if ($stmt) {
         $stmt->bind_param(
             "ssssssssiii", 
