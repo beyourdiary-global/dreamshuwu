@@ -15,83 +15,90 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
 $auditActions = ['V' => 'View', 'E' => 'Edit', 'A' => 'Add', 'D' => 'Delete'];
 
 if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
+    // [FIX 1] Clean Buffer & Header
+    if (ob_get_length()) ob_clean();
     header('Content-Type: application/json');
     ini_set('display_errors', 0); 
     error_reporting(E_ALL);
 
+    // FIX: Handle Data Types "In Front" (Sanitize Early)
+    // We force the types here so we don't need complex binding later.
+    
+    $draw   = (int)($_GET['draw'] ?? 0);
+    $start  = (int)($_GET['start'] ?? 0);
+    $length = (int)($_GET['length'] ?? 10);
+    
+    // Clean strings immediately
+    $searchRaw = isset($_GET['search']['value']) ? trim($_GET['search']['value']) : '';
+    $actionRaw = isset($_GET['filter_action']) ? trim($_GET['filter_action']) : '';
+
+    // Helper: Send Error
     if (!function_exists('sendAuditTableError')) {
-        function sendAuditTableError($message) {
-            echo safeJsonEncode(["draw"=>isset($_GET['draw'])?(int)$_GET['draw']:0, "recordsTotal"=>0, "recordsFiltered"=>0, "data"=>[], "error"=>$message]);
+        function sendAuditTableError($message, $draw) {
+            echo safeJsonEncode(["draw"=>$draw, "recordsTotal"=>0, "recordsFiltered"=>0, "data"=>[], "error"=>$message]);
             exit();
         }
     }
 
-    if (!isset($conn) || !$conn) sendAuditTableError('Database connection unavailable.');
+    if (!isset($conn) || !$conn) sendAuditTableError('Database connection unavailable.', $draw);
 
-    // STRATEGY: Two-Step Direct Query (Safest Method)
+    // STEP 2: PREPARE FILTERS (2-Query Logic)
     
     $whereClauses = [];
 
-    // 1. SEARCH LOGIC (Split into 2 steps for safety)
-    if (!empty($_GET['search']['value'])) {
-        $searchRaw = $_GET['search']['value'];
+    // A. SEARCH (Find User IDs -> Then Filter Log)
+    if ($searchRaw !== '') {
         $safeSearch = $conn->real_escape_string($searchRaw);
         
-        // STEP A: Find Users First (Single Line SQL)
+        // Query 1: Get User IDs
         $userIds = [];
         $uSql = "SELECT id FROM " . USR_LOGIN . " WHERE name LIKE '%{$safeSearch}%'";
         $uRes = $conn->query($uSql);
-        
         if ($uRes) {
-            while ($row = $uRes->fetch_assoc()) $userIds[] = $row['id'];
+            while ($row = $uRes->fetch_assoc()) $userIds[] = (int)$row['id'];
             $uRes->free();
         }
 
-        // STEP B: Build Main Filter
+        // Query 2: Build Clause
         $orParts = [];
         $orParts[] = "page LIKE '%{$safeSearch}%'";
         $orParts[] = "action_message LIKE '%{$safeSearch}%'";
-        
         if (!empty($userIds)) {
-            $idList = implode(',', array_map('intval', $userIds));
+            $idList = implode(',', $userIds);
             $orParts[] = "user_id IN ({$idList})";
         }
         $whereClauses[] = "(" . implode(' OR ', $orParts) . ")";
     }
     
-    // 2. FILTER ACTION
-    if (!empty($_GET['filter_action'])) {
-        $act = $conn->real_escape_string($_GET['filter_action']);
-        $whereClauses[] = "action = '{$act}'";
+    // B. FILTER ACTION
+    if ($actionRaw !== '') {
+        $safeAction = $conn->real_escape_string($actionRaw);
+        $whereClauses[] = "action = '{$safeAction}'";
     }
 
-    // Build WHERE String
     $whereSQL = empty($whereClauses) ? '' : ' AND ' . implode(' AND ', $whereClauses);
 
-    // 3. COUNT QUERY (Direct)
+    // STEP 3: EXECUTE (Direct Query - Treat as String)
+    
+    // 1. Count
     $countSql = "SELECT COUNT(*) as total FROM " . AUDIT_LOG . " WHERE 1=1" . $whereSQL;
     $countResult = $conn->query($countSql);
-    
-    if (!$countResult) sendAuditTableError('Count Failed: ' . $conn->error);
-    
+    if (!$countResult) sendAuditTableError('Count Failed: ' . $conn->error, $draw);
     $countRow = $countResult->fetch_assoc();
     $totalRecords = (int)$countRow['total'];
     $countResult->free();
 
-    // 4. SORT & LIMIT
+    // 2. Sort Logic
     $sortCols = ['page', 'action', 'action_message', 'user_id', 'created_at', 'created_at']; 
-    $colIdx = $_GET['order'][0]['column'] ?? 5; 
+    $colIdx = (int)($_GET['order'][0]['column'] ?? 5); 
     $colName = $sortCols[($colIdx > 0) ? $colIdx - 1 : 4] ?? 'created_at';
     $dir = ($_GET['order'][0]['dir'] ?? 'desc') === 'asc' ? 'ASC' : 'DESC';
 
-    $start = (int)($_GET['start'] ?? 0);
-    $length = (int)($_GET['length'] ?? 10);
-
-    // 5. DATA QUERY (Direct - Single Line SQL)
+    // 3. Fetch Data (Directly use sanitized $start/$length)
     $sql = "SELECT page, action, action_message, query, old_value, new_value, user_id, created_at FROM " . AUDIT_LOG . " WHERE 1=1" . $whereSQL . " ORDER BY {$colName} {$dir} LIMIT {$start}, {$length}";
 
     $result = $conn->query($sql);
-    if (!$result) sendAuditTableError('Data Failed: ' . $conn->error);
+    if (!$result) sendAuditTableError('Data Failed: ' . $conn->error, $draw);
 
     $results = [];
     while ($row = $result->fetch_assoc()) {
@@ -99,7 +106,9 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
     }
     $result->free();
 
-    // 6. USER MAPPING
+    // STEP 4: CONVERT IN PHP
+
+    // User Map
     $userIds = array_unique(array_column($results, 'user_id'));
     $userMap = [];
     if (!empty($userIds)) {
@@ -108,7 +117,6 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
         if($uRes) while ($uRow = $uRes->fetch_assoc()) $userMap[$uRow['id']] = $uRow['name'];
     }
 
-    // 7. OUTPUT
     $data = [];
     foreach ($results as $cRow) {
         $actCode = trim($cRow['action'] ?? '');
@@ -119,7 +127,7 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
             try { $dt = new DateTime($cRow['created_at']); $dateStr=$dt->format('Y-m-d'); $timeStr=$dt->format('H:i:s'); } catch(Exception $e){}
         }
 
-        // Robust JSON Decode
+        // Fetch as string -> Decode in PHP
         $old = $cRow['old_value']; 
         if($old && is_string($old)) { $j=json_decode($old,true); if(json_last_error()===JSON_ERROR_NONE)$old=$j; }
         
@@ -137,9 +145,10 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
         ];
     }
 
-    echo safeJsonEncode(["draw"=>intval($_GET['draw']??0), "recordsTotal"=>$totalRecords, "recordsFiltered"=>$totalRecords, "data"=>$data]);
+    echo safeJsonEncode(["draw"=>$draw, "recordsTotal"=>$totalRecords, "recordsFiltered"=>$totalRecords, "data"=>$data]);
     exit();
 }
+
 $pageTitle = "System Audit Log - " . WEBSITE_NAME;
 ?>
 <!DOCTYPE html>
