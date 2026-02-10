@@ -11,6 +11,14 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
 
 $auditActions = ['V' => 'View', 'E' => 'Edit', 'A' => 'Add', 'D' => 'Delete'];
 
+if (!function_exists('safeFreeResult')) {
+    function safeFreeResult($result) {
+        if ($result instanceof mysqli_result) {
+            mysqli_free_result($result);
+        }
+    }
+}
+
 if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
     header('Content-Type: application/json');
     $debugAudit = isset($_GET['debug']) && $_GET['debug'] === '1';
@@ -40,8 +48,13 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
     $whereClauses = [];
 
     // 1. Search Logic (Split into 2 calls)
-    if (!empty($_GET['search']['value'])) {
-        $search = $conn->real_escape_string($_GET['search']['value']);
+    $searchValue = '';
+    if (isset($_GET['search']) && is_array($_GET['search']) && isset($_GET['search']['value'])) {
+        $searchValue = trim((string)$_GET['search']['value']);
+    }
+
+    if ($searchValue !== '') {
+        $search = $conn->real_escape_string($searchValue);
         
         // Call A: Find User IDs first
         $userIds = [];
@@ -52,7 +65,7 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
             while ($row = $uRes->fetch_assoc()) {
                 $userIds[] = $row['id'];
             }
-            $uRes->free();
+            safeFreeResult($uRes);
         }
 
         // Call B: Build the main WHERE clause
@@ -88,8 +101,8 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
     }
     
     $countRow = $countResult->fetch_assoc();
-    $totalRecords = $countRow['total'];
-    $countResult->free();
+    $totalRecords = isset($countRow['total']) ? (int)$countRow['total'] : 0;
+    safeFreeResult($countResult);
 
     // 4. Sort & Limit
     $sortCols = ['page', 'action', 'action_message', 'user_id', 'created_at', 'created_at']; 
@@ -118,7 +131,7 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
     while ($row = $result->fetch_assoc()) {
         $results[] = $row;
     }
-    $result->free();
+    safeFreeResult($result);
 
     // 6. User Mapping
     $userIds = array_unique(array_filter(array_column($results, 'user_id')));
@@ -130,7 +143,7 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
             while ($uRow = $uRes->fetch_assoc()) {
                 $userMap[$uRow['id']] = $uRow['name'];
             }
-            $uRes->free();
+            safeFreeResult($uRes);
         }
     }
 
