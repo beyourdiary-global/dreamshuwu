@@ -199,21 +199,26 @@ if (!function_exists('encodeAuditValue')) {
     }
 }
 
-// [UNIVERSAL FIX] Fetch using Query + Type Casting
-// This bypasses the 'prepare' driver crash on some servers
+// [UNIVERSAL FIX] Fetch using Query + Explicit Free
+// This prevents "Commands out of sync" errors that block the INSERT
 if (!function_exists('fetchAuditRow')) {
     function fetchAuditRow($conn, $table, $recordId) {
         if (empty($table) || empty($recordId)) return null;
         
-        // Safety: Force ID to be an integer to prevent SQL Injection
+        // Safety: Force ID to be an integer
         $safeId = (int) $recordId;
         
         // Direct Query
         $sql = "SELECT * FROM {$table} WHERE id = $safeId LIMIT 1";
         $result = $conn->query($sql);
         
-        if ($result && $result->num_rows > 0) {
-            return $result->fetch_assoc();
+        if ($result) {
+            if ($result->num_rows > 0) {
+                $row = $result->fetch_assoc();
+                $result->free(); // [CRITICAL] Unlock DB for the next query
+                return $row;
+            }
+            $result->free(); // [CRITICAL] Unlock even if empty
         }
         return null;
     }
@@ -224,7 +229,7 @@ function logAudit($params) {
     global $conn;
 
     $page        = $params['page'] ?? 'Unknown';
-    $action      = $params['action'] ?? 'V';
+    $action      = $params['action'] ?? 'V'; // Default to View
     $message     = $params['action_message'] ?? '';
     $query       = $params['query'] ?? '';
     $table       = $params['query_table'] ?? '';
@@ -236,12 +241,13 @@ function logAudit($params) {
     $newData     = $params['new_value'] ?? null;
     $changes     = null;
 
-    // A. Auto-Detect ID
+    // A. Auto-Detect ID for New Inserts
     if (empty($recordId) && ($action === 'A' || $action === 'ADD') && isset($conn->insert_id) && $conn->insert_id > 0) {
         $recordId = $conn->insert_id;
     }
 
     // B. Auto-Fetch Missing Data
+    // Note: fetchAuditRow now properly frees memory, so this won't block the INSERT below
     if (($action === 'A' || $action === 'E') && empty($newData) && !empty($recordId) && !empty($table)) {
         $newData = fetchAuditRow($conn, $table, (int) $recordId);
     }
@@ -249,7 +255,7 @@ function logAudit($params) {
         $oldData = fetchAuditRow($conn, $table, (int) $recordId);
     }
 
-    // C. Fallback (Prevent NULLs)
+    // C. Fallback to ensure NO NULLS in DB
     if (empty($oldData) && ($action === 'E' || $action === 'D') && ($recordId || $recordName)) {
         $oldData = ['id' => $recordId, 'name' => $recordName, 'note' => 'Data fetch skipped'];
     }
@@ -286,8 +292,13 @@ function logAudit($params) {
             $page, $action, $message, $query, $table, 
             $jsonOld, $jsonNew, $jsonChanges, $userId, $userId, $userId
         );
-        $stmt->execute();
+        if (!$stmt->execute()) {
+             // Log error to PHP error log if insert fails
+             error_log("Audit Insert Failed: " . $stmt->error);
+        }
         $stmt->close();
+    } else {
+        error_log("Audit Prepare Failed: " . $conn->error);
     }
 }
 
