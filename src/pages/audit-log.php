@@ -38,12 +38,36 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
     // ==========================================
     
     $whereClauses = [];
-    $whereValues = [];
 
-    // 1. Search Logic
+    // 1. Search Logic (Split into 2 calls)
     if (!empty($_GET['search']['value'])) {
         $search = $conn->real_escape_string($_GET['search']['value']);
-        $whereClauses[] = "(page LIKE '%{$search}%' OR action_message LIKE '%{$search}%' OR user_id IN (SELECT id FROM " . USR_LOGIN . " WHERE name LIKE '%{$search}%'))";
+        
+        // Call A: Find User IDs first
+        $userIds = [];
+        $uSql = "SELECT id FROM " . USR_LOGIN . " WHERE name LIKE '%{$search}%'";
+        $uRes = $conn->query($uSql);
+        
+        if ($uRes) {
+            while ($row = $uRes->fetch_assoc()) {
+                $userIds[] = $row['id'];
+            }
+            $uRes->free();
+        }
+
+        // Call B: Build the main WHERE clause
+        $orParts = [];
+        $orParts[] = "page LIKE '%{$search}%'";
+        $orParts[] = "action_message LIKE '%{$search}%'";
+        
+        // Only add the user_id check if we actually found matching users
+        if (!empty($userIds)) {
+            $idList = implode(',', array_map('intval', $userIds));
+            $orParts[] = "user_id IN ({$idList})";
+        }
+        
+        // Combine them: (page OR message OR user_id)
+        $whereClauses[] = "(" . implode(' OR ', $orParts) . ")";
     }
     
     // 2. Filter Action
@@ -52,7 +76,7 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
         $whereClauses[] = "action = '{$action}'";
     }
 
-    // Build WHERE clause
+    // Build WHERE SQL
     $whereSQL = empty($whereClauses) ? '' : ' AND ' . implode(' AND ', $whereClauses);
 
     // 3. Count Query
@@ -77,7 +101,7 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
     $start = isset($_GET['start']) ? (int)$_GET['start'] : 0;
     $length = isset($_GET['length']) ? (int)$_GET['length'] : 10;
 
-    // 5. Main Query - Using regular query, NOT prepared statement
+    // 5. Main Query - Using Direct Query
     $sql = "SELECT page, action, action_message, query, old_value, new_value, user_id, created_at 
             FROM " . AUDIT_LOG . " 
             WHERE 1=1" . $whereSQL . " 
@@ -90,7 +114,6 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
         sendAuditTableError('Main query failed: ' . $conn->error);
     }
 
-    // Fetch all results using fetch_assoc (this works with JSON columns!)
     $results = [];
     while ($row = $result->fetch_assoc()) {
         $results[] = $row;
@@ -135,7 +158,6 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
         }
 
         // --- JSON DECODING ---
-        // fetch_assoc properly retrieves JSON columns as strings
         $decodedOld = null;
         if (!empty($cRow['old_value'])) {
             $json = json_decode($cRow['old_value'], true);
