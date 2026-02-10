@@ -262,6 +262,9 @@ if (!function_exists('fetchAuditRow')) {
     }
 }
 
+/**
+ * Logs a database operation to the audit_log table.
+ */
 function logAudit($params) {
     global $conn;
 
@@ -271,77 +274,69 @@ function logAudit($params) {
     $query       = $params['query'] ?? '';
     $table       = $params['query_table'] ?? '';
     $userId      = $params['user_id'] ?? 0;
+    
+    // Data passed from caller
     $recordId    = $params['record_id'] ?? null;
     $recordName  = $params['record_name'] ?? null;
-
     $oldData     = $params['old_value'] ?? null;
     $newData     = $params['new_value'] ?? null;
     $changes     = null;
 
-    if ($recordId === null) {
-        if (is_array($oldData) && isset($oldData['id'])) {
-            $recordId = $oldData['id'];
-        } elseif (is_array($newData) && isset($newData['id'])) {
-            $recordId = $newData['id'];
-        }
+    // [FIX 1] Auto-detect Record ID for INSERT actions (Registration/Add)
+    // If we just inserted a row, the DB connection has the new ID.
+    if (empty($recordId) && ($action === 'A' || $action === 'ADD') && isset($conn->insert_id) && $conn->insert_id > 0) {
+        $recordId = $conn->insert_id;
     }
 
-    if ($recordName === null) {
-        if (is_array($oldData) && isset($oldData['name'])) {
-            $recordName = $oldData['name'];
-        } elseif (is_array($newData) && isset($newData['name'])) {
-            $recordName = $newData['name'];
-        }
+    // [FIX 2] If ID is still missing, try to find it in the data arrays
+    if (empty($recordId)) {
+        if (is_array($oldData) && isset($oldData['id'])) $recordId = $oldData['id'];
+        elseif (is_array($newData) && isset($newData['id'])) $recordId = $newData['id'];
     }
 
-    if (($action === 'A' || $action === 'E') && $newData === null && $recordId) {
+    // [FIX 3] Auto-Fetch Logic (Robust)
+    // If we have an ID but missing data, go get it from the DB.
+    
+    // For ADD/EDIT: If New Data is missing, fetch it using the ID
+    if (($action === 'A' || $action === 'E') && empty($newData) && !empty($recordId) && !empty($table)) {
         $newData = fetchAuditRow($conn, $table, (int) $recordId);
     }
 
-    if ($action === 'E' && $oldData === null && $recordId) {
+    // For EDIT/DELETE: If Old Data is missing, fetch it using the ID
+    if (($action === 'E' || $action === 'D') && empty($oldData) && !empty($recordId) && !empty($table)) {
         $oldData = fetchAuditRow($conn, $table, (int) $recordId);
     }
 
-    if ($action === 'D' && $oldData === null && $recordId) {
-        $oldData = fetchAuditRow($conn, $table, (int) $recordId);
+    // [FIX 4] Final Fallback: Ensure we log *something* even if DB fetch fails
+    // This prevents "NULL" showing up in the log.
+    if (($action === 'E' || $action === 'D') && empty($oldData) && ($recordId || $recordName)) {
+        $oldData = ['id' => $recordId, 'name' => $recordName, 'note' => 'Details not fetched'];
+    }
+    if (($action === 'A' || $action === 'E') && empty($newData) && ($recordId || $recordName)) {
+        $newData = ['id' => $recordId, 'name' => $recordName, 'note' => 'Details not fetched'];
     }
 
-    if (($action === 'A' || $action === 'E') && $newData === null && ($recordId || $recordName)) {
-        $newData = ['id' => $recordId, 'name' => $recordName];
-    }
-
-    if (($action === 'E' || $action === 'D') && $oldData === null && ($recordId || $recordName)) {
-        $oldData = ['id' => $recordId, 'name' => $recordName];
-    }
-
+    // Calculate Changes (Only if we have both sets of data)
     if ($action === 'E' && is_array($oldData) && is_array($newData)) {
         $changes = [];
         foreach ($newData as $key => $value) {
-            if (array_key_exists($key, $oldData) && $oldData[$key] !== $value) {
+            // Loose comparison (!=) to handle string vs int differences
+            if (array_key_exists($key, $oldData) && $oldData[$key] != $value) {
                 $changes[$key] = [
                     'from' => $oldData[$key],
                     'to'   => $value
                 ];
             }
         }
-        if (empty($changes)) {
-            $changes = null;
-        }
+        if (empty($changes)) { $changes = null; }
     }
 
+    // Encode to JSON
     $jsonOld     = encodeAuditValue($oldData);
     $jsonNew     = encodeAuditValue($newData);
     $jsonChanges = encodeAuditValue($changes);
 
-    if (($action === 'A' || $action === 'E' || $action === 'D')) {
-        if ($jsonOld === null && ($recordId !== null || $recordName !== null)) {
-            $jsonOld = encodeAuditValue(['id' => $recordId, 'name' => $recordName]);
-        }
-        if ($jsonNew === null && ($recordId !== null || $recordName !== null)) {
-            $jsonNew = encodeAuditValue(['id' => $recordId, 'name' => $recordName]);
-        }
-    }
-
+    // Insert
     $sql = "INSERT INTO " . AUDIT_LOG . " 
             (page, action, action_message, query, query_table, 
              old_value, new_value, changes, user_id, 

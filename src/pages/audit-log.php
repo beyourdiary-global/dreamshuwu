@@ -173,32 +173,44 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
 
         // Build details payload for expandable row (query + old/new values)
         // Decode JSON columns so they become proper objects (avoids double-encoding)
-        $rawOld = $cRow['old_value'] ?? null;
-        $rawNew = $cRow['new_value'] ?? null;
 
+        // Safely Decode Old Value
+        $rawOld = $cRow['old_value'] ?? null;
         $decodedOld = null;
-        $decodedNew = null;
 
         if ($rawOld !== null) {
+            // If it is already an array (rare but possible with some drivers)
             if (is_array($rawOld) || is_object($rawOld)) {
                 $decodedOld = $rawOld;
-            } elseif (is_string($rawOld)) {
-                $trimOld = trim($rawOld);
-                if ($trimOld !== '' && strtolower($trimOld) !== 'null') {
-                    $decoded = json_decode($rawOld, true);
-                    $decodedOld = ($decoded !== null) ? $decoded : $rawOld;
+            } else {
+                // It is a string. Try to decode it.
+                $decoded = json_decode($rawOld, true);
+
+                // CHECK 1: If valid JSON, use the object/array
+                if (json_last_error() === JSON_ERROR_NONE) {
+                    $decodedOld = $decoded;
+                } 
+                // CHECK 2: If simple string (not "null"), keep it as string
+                elseif (trim($rawOld) !== '' && strtolower(trim($rawOld)) !== 'null') {
+                    $decodedOld = $rawOld; 
                 }
             }
         }
 
+        // Safely Decode New Value
+        $rawNew = $cRow['new_value'] ?? null;
+        $decodedNew = null;
+
         if ($rawNew !== null) {
             if (is_array($rawNew) || is_object($rawNew)) {
                 $decodedNew = $rawNew;
-            } elseif (is_string($rawNew)) {
-                $trimNew = trim($rawNew);
-                if ($trimNew !== '' && strtolower($trimNew) !== 'null') {
-                    $decoded = json_decode($rawNew, true);
-                    $decodedNew = ($decoded !== null) ? $decoded : $rawNew;
+            } else {
+                $decoded = json_decode($rawNew, true);
+
+                if (json_last_error() === JSON_ERROR_NONE) {
+                    $decodedNew = $decoded;
+                } elseif (trim($rawNew) !== '' && strtolower(trim($rawNew)) !== 'null') {
+                    $decodedNew = $rawNew;
                 }
             }
         }
