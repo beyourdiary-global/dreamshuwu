@@ -166,6 +166,10 @@ try {
                         ];
                     }
 
+                    if ($isEditMode && empty($existingTagRow)) {
+                        $existingTagRow = ['id' => $targetId, 'name' => $tagName];
+                    }
+
                     if (function_exists('logAudit')) {
                         logAudit([
                             'page'           => $auditPage,
@@ -174,6 +178,8 @@ try {
                             'query'          => $isEditMode ? $updateQuery : $insertQuery,
                             'query_table'    => $dbTable,
                             'user_id'        => $currentUserId,
+                            'record_id'      => $targetId,
+                            'record_name'    => $tagName,
                             'old_value'      => $existingTagRow,
                             'new_value'      => $newData
                         ]);
