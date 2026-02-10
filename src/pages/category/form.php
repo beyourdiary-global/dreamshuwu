@@ -207,6 +207,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                         ];
                     }
 
+                    if ($isEdit && empty($existingCatRow)) {
+                        $existingCatRow = ['id' => $targetId, 'name' => $name];
+                    }
+
                     if (function_exists('logAudit')) {
                         logAudit([
                             'page'           => $auditPage,
@@ -215,6 +219,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                             'query'          => $isEdit ? $updateQuery : $insertQuery,
                             'query_table'    => $catTable,
                             'user_id'        => $uid,
+                            'record_id'      => $targetId,
+                            'record_name'    => $name,
                             'old_value'      => $existingCatRow,
                             'new_value'      => $newData
                         ]);

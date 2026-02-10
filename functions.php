@@ -218,6 +218,50 @@ if (!function_exists('encodeAuditValue')) {
     }
 }
 
+if (!function_exists('fetchAuditRow')) {
+    function fetchAuditRow($conn, $table, $recordId) {
+        if (empty($table) || empty($recordId) || !($conn instanceof mysqli)) {
+            return null;
+        }
+
+        $sql = "SELECT * FROM {$table} WHERE id = ? LIMIT 1";
+        $stmt = $conn->prepare($sql);
+        if (!$stmt) {
+            return null;
+        }
+
+        $stmt->bind_param("i", $recordId);
+        if (!$stmt->execute()) {
+            $stmt->close();
+            return null;
+        }
+
+        $meta = $stmt->result_metadata();
+        if (!$meta) {
+            $stmt->close();
+            return null;
+        }
+
+        $row = [];
+        $bindResult = [];
+        while ($field = $meta->fetch_field()) {
+            $bindResult[] = &$row[$field->name];
+        }
+        call_user_func_array([$stmt, 'bind_result'], $bindResult);
+
+        $result = null;
+        if ($stmt->fetch()) {
+            $result = [];
+            foreach ($row as $k => $v) {
+                $result[$k] = $v;
+            }
+        }
+
+        $stmt->close();
+        return $result;
+    }
+}
+
 function logAudit($params) {
     global $conn;
 
@@ -228,11 +272,27 @@ function logAudit($params) {
     $query       = $params['query'] ?? '';
     $table       = $params['query_table'] ?? '';
     $userId      = $params['user_id'] ?? 0;
+    $recordId    = $params['record_id'] ?? null;
+    $recordName  = $params['record_name'] ?? null;
     
     // Arrays for JSON columns
     $oldData     = $params['old_value'] ?? null;
     $newData     = $params['new_value'] ?? null;
     $changes     = null;
+
+    // Fallbacks to avoid null old/new values in logs
+    if (($action === 'A' || $action === 'E') && $newData === null && $recordId) {
+        $newData = fetchAuditRow($conn, $table, (int) $recordId);
+    }
+
+    if ($action === 'D' && $oldData === null) {
+        if ($recordId) {
+            $oldData = fetchAuditRow($conn, $table, (int) $recordId);
+        }
+        if ($oldData === null && ($recordId || $recordName)) {
+            $oldData = ['id' => $recordId, 'name' => $recordName];
+        }
+    }
 
     // 2. Calculate Changes (Improved Logic: From -> To)
     if ($action === 'E' && is_array($oldData) && is_array($newData)) {

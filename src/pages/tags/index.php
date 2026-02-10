@@ -235,6 +235,8 @@ if ($isDeleteRequest) {
                     'query'          => $deleteQuery,
                     'query_table'    => $dbTable,
                     'user_id'        => $currentUserId,
+                    'record_id'      => $id,
+                    'record_name'    => $tagName,
                     'old_value'      => $oldData,
                     'new_value'      => null,
                 ]);
