@@ -32,8 +32,13 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
         sendAuditTableError('Database connection unavailable.');
     }
 
-    // [FIX 1] Select Specific Columns
-    $columns = "page, action, action_message, query, old_value, new_value, user_id, created_at";
+    // [FIX] Use CAST to force JSON/TEXT columns to be simple Strings
+    // This fixes the "NULL" issue on your server driver
+    $columns = "page, action, action_message, query, 
+                CAST(old_value AS CHAR) as old_val, 
+                CAST(new_value AS CHAR) as new_val, 
+                user_id, created_at";
+                
     $sql = "SELECT $columns FROM " . AUDIT_LOG . " WHERE 1=1";
     $countSql = "SELECT COUNT(*) FROM " . AUDIT_LOG . " WHERE 1=1";
     
@@ -83,9 +88,10 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
     $countStmt->close();
 
     // 4. Sort & Limit
-    $sortCols = ['page', 'action', 'action_message', 'user_id', 'created_at', 'created_at']; 
-    $colIdx = $_GET['order'][0]['column'] ?? 5; 
-    $realColIdx = ($colIdx > 0) ? $colIdx - 1 : 4;
+    // Note: We use the alias names 'old_val' / 'new_val' for sorting if needed
+    $sortCols = ['page', 'action', 'action_message', 'query', 'old_val', 'new_val', 'user_id', 'created_at']; 
+    $colIdx = $_GET['order'][0]['column'] ?? 7; 
+    $realColIdx = ($colIdx > 0) ? $colIdx - 1 : 7;
     $colName = $sortCols[$realColIdx] ?? 'created_at';
     $dir = ($_GET['order'][0]['dir'] ?? 'desc') === 'asc' ? 'ASC' : 'DESC';
     $sql .= " ORDER BY " . $colName . " " . $dir;
@@ -104,11 +110,9 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
         sendAuditTableError('Query Execution Failed');
     }
 
-    // [CRITICAL FIX] Use store_result() + Manual bind_result()
-    // This fixes the 500 Error AND the NULL data issue
     $stmt->store_result();
     
-    // We bind variables exactly matching the $columns string above
+    // [FIX] Bind exactly the 8 columns we selected above
     $stmt->bind_result($rPage, $rAction, $rMsg, $rQuery, $rOld, $rNew, $rUser, $rDate);
 
     $results = [];
@@ -118,8 +122,8 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
             'action' => $rAction,
             'action_message' => $rMsg,
             'query' => $rQuery,
-            'old_value' => $rOld,
-            'new_value' => $rNew,
+            'old_value' => $rOld, // This will now be a STRING, never NULL (unless actually empty)
+            'new_value' => $rNew, 
             'user_id' => $rUser,
             'created_at' => $rDate
         ];
@@ -150,7 +154,6 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
 
         $actionLabel = $auditActions[$actCode] ?? ($actCode ?: "Record");
         
-        // Date Formatting
         $dateStr = ''; $timeStr = '';
         if (!empty($cRow['created_at'])) {
             $ts = strtotime($cRow['created_at']);
@@ -158,9 +161,10 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
             $timeStr = date('H:i:s', $ts);
         }
 
-        // --- JSON DECODING ---
+        // JSON DECODING
         $decodedOld = null;
         if ($cRow['old_value'] !== null) {
+            // It comes as a string now because of CAST
             $json = json_decode($cRow['old_value'], true);
             $decodedOld = (json_last_error() === JSON_ERROR_NONE) ? $json : $cRow['old_value'];
         }
