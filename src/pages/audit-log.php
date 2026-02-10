@@ -97,35 +97,40 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
     $mainParams[] = $start; $mainParams[] = $length;
     $mainTypes .= "ii";
 
-    // 5. Execute Main Query
+   // 5. Execute Main
     $stmt = $conn->prepare($sql);
+    if ($stmt === false) {
+        error_log("Audit log data query prepare failed: " . $conn->error);
+        sendAuditTableError('System error while loading audit log.');
+    }
     bindDynamicParams($stmt, $mainTypes, $mainParams);
     
     if (!$stmt->execute()) {
-        sendAuditTableError('Query Execution Failed');
+        error_log("Audit log data query execute failed: " . $stmt->error);
+        sendAuditTableError('System error while loading audit log.');
+    }
+    
+    // Use store_result() + dynamic bind_result()
+    $stmt->store_result(); 
+
+    $meta = $stmt->result_metadata();
+    $bindVars = [];
+    $row = [];
+
+    while ($field = $meta->fetch_field()) {
+        $bindVars[] = &$row[$field->name];
     }
 
-    // [CRITICAL FIX] Use store_result() + Manual bind_result()
-    // This bypasses the driver crash and the dynamic binding bugs
-    $stmt->store_result();
-    
-    // We bind variables exactly matching the $columns string above
-    $stmt->bind_result($rPage, $rAction, $rMsg, $rQuery, $rOld, $rNew, $rUser, $rDate);
+    call_user_func_array(array($stmt, 'bind_result'), $bindVars);
 
     $results = [];
     while ($stmt->fetch()) {
-        $results[] = [
-            'page' => $rPage,
-            'action' => $rAction,
-            'action_message' => $rMsg,
-            'query' => $rQuery,
-            'old_value' => $rOld,
-            'new_value' => $rNew,
-            'user_id' => $rUser,
-            'created_at' => $rDate
-        ];
+        // [FIX] Use array_merge to copy values and break references in one line
+        $results[] = array_merge([], $row);
     }
     $stmt->close();
+
+    // 6. User Mapping
 
     // 6. User Mapping
     $userIds = array_unique(array_column($results, 'user_id'));
