@@ -265,7 +265,6 @@ if (!function_exists('fetchAuditRow')) {
 function logAudit($params) {
     global $conn;
 
-    // 1. Set Defaults
     $page        = $params['page'] ?? 'Unknown';
     $action      = $params['action'] ?? 'V';
     $message     = $params['action_message'] ?? '';
@@ -274,31 +273,50 @@ function logAudit($params) {
     $userId      = $params['user_id'] ?? 0;
     $recordId    = $params['record_id'] ?? null;
     $recordName  = $params['record_name'] ?? null;
-    
-    // Arrays for JSON columns
+
     $oldData     = $params['old_value'] ?? null;
     $newData     = $params['new_value'] ?? null;
     $changes     = null;
 
-    // Fallbacks to avoid null old/new values in logs
+    if ($recordId === null) {
+        if (is_array($oldData) && isset($oldData['id'])) {
+            $recordId = $oldData['id'];
+        } elseif (is_array($newData) && isset($newData['id'])) {
+            $recordId = $newData['id'];
+        }
+    }
+
+    if ($recordName === null) {
+        if (is_array($oldData) && isset($oldData['name'])) {
+            $recordName = $oldData['name'];
+        } elseif (is_array($newData) && isset($newData['name'])) {
+            $recordName = $newData['name'];
+        }
+    }
+
     if (($action === 'A' || $action === 'E') && $newData === null && $recordId) {
         $newData = fetchAuditRow($conn, $table, (int) $recordId);
     }
 
-    if ($action === 'D' && $oldData === null) {
-        if ($recordId) {
-            $oldData = fetchAuditRow($conn, $table, (int) $recordId);
-        }
-        if ($oldData === null && ($recordId || $recordName)) {
-            $oldData = ['id' => $recordId, 'name' => $recordName];
-        }
+    if ($action === 'E' && $oldData === null && $recordId) {
+        $oldData = fetchAuditRow($conn, $table, (int) $recordId);
     }
 
-    // 2. Calculate Changes (Improved Logic: From -> To)
+    if ($action === 'D' && $oldData === null && $recordId) {
+        $oldData = fetchAuditRow($conn, $table, (int) $recordId);
+    }
+
+    if (($action === 'A' || $action === 'E') && $newData === null && ($recordId || $recordName)) {
+        $newData = ['id' => $recordId, 'name' => $recordName];
+    }
+
+    if (($action === 'E' || $action === 'D') && $oldData === null && ($recordId || $recordName)) {
+        $oldData = ['id' => $recordId, 'name' => $recordName];
+    }
+
     if ($action === 'E' && is_array($oldData) && is_array($newData)) {
         $changes = [];
         foreach ($newData as $key => $value) {
-            // Check if key exists in old data AND is different
             if (array_key_exists($key, $oldData) && $oldData[$key] !== $value) {
                 $changes[$key] = [
                     'from' => $oldData[$key],
@@ -306,18 +324,24 @@ function logAudit($params) {
                 ];
             }
         }
-        // If no actual changes found, set to null
         if (empty($changes)) {
             $changes = null;
         }
     }
 
-    // 3. JSON Encode (WITH SAFETY CHECK)
     $jsonOld     = encodeAuditValue($oldData);
     $jsonNew     = encodeAuditValue($newData);
     $jsonChanges = encodeAuditValue($changes);
 
-    // 4. Prepare SQL
+    if (($action === 'A' || $action === 'E' || $action === 'D')) {
+        if ($jsonOld === null && ($recordId !== null || $recordName !== null)) {
+            $jsonOld = encodeAuditValue(['id' => $recordId, 'name' => $recordName]);
+        }
+        if ($jsonNew === null && ($recordId !== null || $recordName !== null)) {
+            $jsonNew = encodeAuditValue(['id' => $recordId, 'name' => $recordName]);
+        }
+    }
+
     $sql = "INSERT INTO " . AUDIT_LOG . " 
             (page, action, action_message, query, query_table, 
              old_value, new_value, changes, user_id, 
