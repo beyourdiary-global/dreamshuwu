@@ -32,111 +32,83 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
         sendAuditTableError('Database connection unavailable.');
     }
 
-    // [FIX] Use CAST to force JSON/TEXT columns to be simple Strings
-    // This fixes the "NULL" issue on your server driver
-    $columns = "page, action, action_message, query, 
-                CAST(old_value AS CHAR) as old_val, 
-                CAST(new_value AS CHAR) as new_val, 
-                user_id, created_at";
-                
-    $sql = "SELECT $columns FROM " . AUDIT_LOG . " WHERE 1=1";
-    $countSql = "SELECT COUNT(*) FROM " . AUDIT_LOG . " WHERE 1=1";
+    // ==========================================
+    // [SOLUTION] Use mysqli_query + fetch_assoc instead of prepared statements
+    // This avoids the JSON + bind_result() issue completely
+    // ==========================================
     
-    $mainParams = []; $mainTypes = "";
-    $countParams = []; $countTypes = "";
+    $whereClauses = [];
+    $whereValues = [];
 
     // 1. Search Logic
     if (!empty($_GET['search']['value'])) {
-        $search = "%" . $_GET['search']['value'] . "%";
-        $userSubQuery = "(SELECT id FROM " . USR_LOGIN . " WHERE name LIKE ?)";
-        $clause = " AND (page LIKE ? OR action_message LIKE ? OR user_id IN $userSubQuery)";
-        
-        $sql .= $clause;
-        $countSql .= $clause;
-        
-        $searchParams = [$search, $search, $search];
-        foreach($searchParams as $p) { $mainParams[] = $p; $countParams[] = $p; }
-        $mainTypes .= "sss"; $countTypes .= "sss";
+        $search = $conn->real_escape_string($_GET['search']['value']);
+        $whereClauses[] = "(page LIKE '%{$search}%' OR action_message LIKE '%{$search}%' OR user_id IN (SELECT id FROM " . USR_LOGIN . " WHERE name LIKE '%{$search}%'))";
     }
     
     // 2. Filter Action
     if (!empty($_GET['filter_action'])) {
-        $clause = " AND action = ?";
-        $sql .= $clause;
-        $countSql .= $clause;
-        $mainParams[] = $_GET['filter_action']; $countParams[] = $_GET['filter_action'];
-        $mainTypes .= "s"; $countTypes .= "s";
+        $action = $conn->real_escape_string($_GET['filter_action']);
+        $whereClauses[] = "action = '{$action}'";
     }
 
-    // Helper
-    if (!function_exists('bindDynamicParams')) {
-        function bindDynamicParams($stmt, $types, $params) {
-            if (!empty($params)) {
-                $bindParams = [$types];
-                foreach ($params as $k => $v) $bindParams[] = &$params[$k];
-                call_user_func_array([$stmt, 'bind_param'], $bindParams);
-            }
-        }
-    }
+    // Build WHERE clause
+    $whereSQL = empty($whereClauses) ? '' : ' AND ' . implode(' AND ', $whereClauses);
 
     // 3. Count Query
-    $countStmt = $conn->prepare($countSql);
-    bindDynamicParams($countStmt, $countTypes, $countParams);
-    $countStmt->execute();
-    $countStmt->bind_result($totalRecords);
-    $countStmt->fetch();
-    $countStmt->close();
+    $countSql = "SELECT COUNT(*) as total FROM " . AUDIT_LOG . " WHERE 1=1" . $whereSQL;
+    $countResult = $conn->query($countSql);
+    
+    if (!$countResult) {
+        sendAuditTableError('Count query failed: ' . $conn->error);
+    }
+    
+    $countRow = $countResult->fetch_assoc();
+    $totalRecords = $countRow['total'];
+    $countResult->free();
 
     // 4. Sort & Limit
-    // Note: We use the alias names 'old_val' / 'new_val' for sorting if needed
-    $sortCols = ['page', 'action', 'action_message', 'query', 'old_val', 'new_val', 'user_id', 'created_at']; 
-    $colIdx = $_GET['order'][0]['column'] ?? 7; 
-    $realColIdx = ($colIdx > 0) ? $colIdx - 1 : 7;
-    $colName = $sortCols[$realColIdx] ?? 'created_at';
-    $dir = ($_GET['order'][0]['dir'] ?? 'desc') === 'asc' ? 'ASC' : 'DESC';
-    $sql .= " ORDER BY " . $colName . " " . $dir;
+    $sortCols = ['page', 'action', 'action_message', 'user_id', 'created_at', 'created_at']; 
+    $colIdx = isset($_GET['order'][0]['column']) ? (int)$_GET['order'][0]['column'] : 5;
+    $realColIdx = ($colIdx > 0) ? $colIdx - 1 : 4;
+    $colName = isset($sortCols[$realColIdx]) ? $sortCols[$realColIdx] : 'created_at';
+    $dir = (isset($_GET['order'][0]['dir']) && $_GET['order'][0]['dir'] === 'asc') ? 'ASC' : 'DESC';
 
-    $start = $_GET['start'] ?? 0;
-    $length = $_GET['length'] ?? 10;
-    $sql .= " LIMIT ?, ?";
-    $mainParams[] = $start; $mainParams[] = $length;
-    $mainTypes .= "ii";
+    $start = isset($_GET['start']) ? (int)$_GET['start'] : 0;
+    $length = isset($_GET['length']) ? (int)$_GET['length'] : 10;
 
-    // 5. Execute Main Query
-    $stmt = $conn->prepare($sql);
-    bindDynamicParams($stmt, $mainTypes, $mainParams);
+    // 5. Main Query - Using regular query, NOT prepared statement
+    $sql = "SELECT page, action, action_message, query, old_value, new_value, user_id, created_at 
+            FROM " . AUDIT_LOG . " 
+            WHERE 1=1" . $whereSQL . " 
+            ORDER BY {$colName} {$dir} 
+            LIMIT {$start}, {$length}";
+
+    $result = $conn->query($sql);
     
-    if (!$stmt->execute()) {
-        sendAuditTableError('Query Execution Failed');
+    if (!$result) {
+        sendAuditTableError('Main query failed: ' . $conn->error);
     }
 
-    $stmt->store_result();
-    
-    // [FIX] Bind exactly the 8 columns we selected above
-    $stmt->bind_result($rPage, $rAction, $rMsg, $rQuery, $rOld, $rNew, $rUser, $rDate);
-
+    // Fetch all results using fetch_assoc (this works with JSON columns!)
     $results = [];
-    while ($stmt->fetch()) {
-        $results[] = [
-            'page' => $rPage,
-            'action' => $rAction,
-            'action_message' => $rMsg,
-            'query' => $rQuery,
-            'old_value' => $rOld, // This will now be a STRING, never NULL (unless actually empty)
-            'new_value' => $rNew, 
-            'user_id' => $rUser,
-            'created_at' => $rDate
-        ];
+    while ($row = $result->fetch_assoc()) {
+        $results[] = $row;
     }
-    $stmt->close();
+    $result->free();
 
     // 6. User Mapping
-    $userIds = array_unique(array_column($results, 'user_id'));
+    $userIds = array_unique(array_filter(array_column($results, 'user_id')));
     $userMap = [];
     if (!empty($userIds)) {
         $idList = implode(',', array_map('intval', $userIds));
-        $uRes = $conn->query("SELECT id, name FROM " . USR_LOGIN . " WHERE id IN ($idList)");
-        if($uRes) while ($uRow = $uRes->fetch_assoc()) $userMap[$uRow['id']] = $uRow['name'];
+        $uRes = $conn->query("SELECT id, name FROM " . USR_LOGIN . " WHERE id IN ({$idList})");
+        if ($uRes) {
+            while ($uRow = $uRes->fetch_assoc()) {
+                $userMap[$uRow['id']] = $uRow['name'];
+            }
+            $uRes->free();
+        }
     }
 
     // 7. Output Data
@@ -152,8 +124,9 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
             case 'A': $badgeClass = 'success'; break;
         }
 
-        $actionLabel = $auditActions[$actCode] ?? ($actCode ?: "Record");
+        $actionLabel = isset($auditActions[$actCode]) ? $auditActions[$actCode] : ($actCode ?: "Record");
         
+        // Date Formatting
         $dateStr = ''; $timeStr = '';
         if (!empty($cRow['created_at'])) {
             $ts = strtotime($cRow['created_at']);
@@ -161,16 +134,16 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
             $timeStr = date('H:i:s', $ts);
         }
 
-        // JSON DECODING
+        // --- JSON DECODING ---
+        // fetch_assoc properly retrieves JSON columns as strings
         $decodedOld = null;
-        if ($cRow['old_value'] !== null) {
-            // It comes as a string now because of CAST
+        if (!empty($cRow['old_value'])) {
             $json = json_decode($cRow['old_value'], true);
             $decodedOld = (json_last_error() === JSON_ERROR_NONE) ? $json : $cRow['old_value'];
         }
 
         $decodedNew = null;
-        if ($cRow['new_value'] !== null) {
+        if (!empty($cRow['new_value'])) {
             $json = json_decode($cRow['new_value'], true);
             $decodedNew = (json_last_error() === JSON_ERROR_NONE) ? $json : $cRow['new_value'];
         }
@@ -182,10 +155,10 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
         ];
 
         $data[] = [
-            'page'    => htmlspecialchars($cRow['page']),
+            'page'    => htmlspecialchars($cRow['page'] ?? ''),
             'action'  => '<span class="badge badge-custom badge-'.$badgeClass.'">' . htmlspecialchars($actionLabel) . '</span>',
-            'message' => htmlspecialchars($cRow['action_message']),
-            'user'    => htmlspecialchars(($userMap[$cRow['user_id']] ?? 'Unknown') . " (ID:" . $cRow['user_id'] . ")"),
+            'message' => htmlspecialchars($cRow['action_message'] ?? ''),
+            'user'    => htmlspecialchars((isset($userMap[$cRow['user_id']]) ? $userMap[$cRow['user_id']] : 'Unknown') . " (ID:" . $cRow['user_id'] . ")"),
             'date'    => $dateStr,
             'time'    => $timeStr,
             'details' => $details,
