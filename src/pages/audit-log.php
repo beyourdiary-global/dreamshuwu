@@ -32,8 +32,7 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
         sendAuditTableError('Database connection unavailable.');
     }
 
-    // [FIX 1] Select Specific Columns (No SELECT *)
-    // This allows us to safely use bind_result below without guessing column order
+    // [FIX 1] Select Specific Columns
     $columns = "page, action, action_message, query, old_value, new_value, user_id, created_at";
     $sql = "SELECT $columns FROM " . AUDIT_LOG . " WHERE 1=1";
     $countSql = "SELECT COUNT(*) FROM " . AUDIT_LOG . " WHERE 1=1";
@@ -97,40 +96,35 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
     $mainParams[] = $start; $mainParams[] = $length;
     $mainTypes .= "ii";
 
-   // 5. Execute Main
+    // 5. Execute Main Query
     $stmt = $conn->prepare($sql);
-    if ($stmt === false) {
-        error_log("Audit log data query prepare failed: " . $conn->error);
-        sendAuditTableError('System error while loading audit log.');
-    }
     bindDynamicParams($stmt, $mainTypes, $mainParams);
     
     if (!$stmt->execute()) {
-        error_log("Audit log data query execute failed: " . $stmt->error);
-        sendAuditTableError('System error while loading audit log.');
+        sendAuditTableError('Query Execution Failed');
     }
+
+    // [CRITICAL FIX] Use store_result() + Manual bind_result()
+    // This fixes the 500 Error AND the NULL data issue
+    $stmt->store_result();
     
-    // Use store_result() + dynamic bind_result()
-    $stmt->store_result(); 
-
-    $meta = $stmt->result_metadata();
-    $bindVars = [];
-    $row = [];
-
-    while ($field = $meta->fetch_field()) {
-        $bindVars[] = &$row[$field->name];
-    }
-
-    call_user_func_array(array($stmt, 'bind_result'), $bindVars);
+    // We bind variables exactly matching the $columns string above
+    $stmt->bind_result($rPage, $rAction, $rMsg, $rQuery, $rOld, $rNew, $rUser, $rDate);
 
     $results = [];
     while ($stmt->fetch()) {
-        // [FIX] Use array_merge to copy values and break references in one line
-        $results[] = array_merge([], $row);
+        $results[] = [
+            'page' => $rPage,
+            'action' => $rAction,
+            'action_message' => $rMsg,
+            'query' => $rQuery,
+            'old_value' => $rOld,
+            'new_value' => $rNew,
+            'user_id' => $rUser,
+            'created_at' => $rDate
+        ];
     }
     $stmt->close();
-
-    // 6. User Mapping
 
     // 6. User Mapping
     $userIds = array_unique(array_column($results, 'user_id'));
@@ -164,15 +158,13 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
             $timeStr = date('H:i:s', $ts);
         }
 
-        // --- JSON DECODING FIX ---
-        // Safely decode Old Value
+        // --- JSON DECODING ---
         $decodedOld = null;
         if ($cRow['old_value'] !== null) {
             $json = json_decode($cRow['old_value'], true);
             $decodedOld = (json_last_error() === JSON_ERROR_NONE) ? $json : $cRow['old_value'];
         }
 
-        // Safely decode New Value
         $decodedNew = null;
         if ($cRow['new_value'] !== null) {
             $json = json_decode($cRow['new_value'], true);
