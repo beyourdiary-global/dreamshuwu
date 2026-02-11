@@ -1,9 +1,6 @@
 <?php
 // Path: src/pages/tags/index.php
-require_once __DIR__ . '/../../../init.php';
-defined('URL_HOME') || require_once BASE_PATH . '/config/urls.php';
-require_once BASE_PATH . 'functions.php';
-
+require_once dirname(__DIR__, 3) . '/common.php';
 
 $dbTable = defined('NOVEL_TAGS') ? NOVEL_TAGS : 'novel_tag';
 $auditPage = 'Tag Management';
@@ -154,7 +151,7 @@ if ($isAjaxRequest) {
 
     $data = [];
     while ($stmt->fetch()) {
-        $editUrl = URL_USER_DASHBOARD . '?view=tag_form';
+        $editUrl = URL_USER_DASHBOARD . '?view=tag_form&id=' . (int) $id;
         $actions = '<a href="' . $editUrl . '" class="btn btn-sm btn-outline-primary btn-action" title="Edit"><i class="fa-solid fa-pen"></i></a>'
             . '<button class="btn btn-sm btn-outline-danger btn-action delete-btn" data-id="' . $id . '" data-name="' . htmlspecialchars($name) . '" title="Delete"><i class="fa-solid fa-trash"></i></button>';
         $data[] = [htmlspecialchars($name), $actions];

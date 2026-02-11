@@ -1,8 +1,5 @@
 <?php
-require_once __DIR__ . '/../../../init.php'; 
-
-require_once BASE_PATH . '/config/urls.php'; 
-require_once BASE_PATH . 'functions.php';
+require_once dirname(__DIR__, 3) . '/common.php';
 
 // Set page variables BEFORE including header
 $pageTitle = "注册 - " . WEBSITE_NAME;

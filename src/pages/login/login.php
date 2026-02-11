@@ -1,7 +1,5 @@
 <?php
-require_once __DIR__ . '/../../../init.php'; 
-require_once BASE_PATH . '/config/urls.php'; 
-require_once BASE_PATH . 'functions.php';
+require_once dirname(__DIR__, 3) . '/common.php';
 
 $pageTitle = "登录 - " . WEBSITE_NAME;
 $dbTable = USR_LOGIN; 

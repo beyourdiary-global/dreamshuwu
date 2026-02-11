@@ -1,8 +1,5 @@
 <?php
-require_once __DIR__ . '/../../../init.php'; 
-require_once BASE_PATH . '/config/urls.php'; 
-require_once BASE_PATH . 'functions.php';
-
+require_once dirname(__DIR__, 3) . '/common.php';
 
 // 1. Auth Check
 if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
@@ -206,7 +203,7 @@ $customCSS[] = 'dashboard.css';
 <script src="<?php echo URL_ASSETS; ?>/js/sweetalert2@11.js"></script>
 
 <?php if ($isProfileView): ?>
-    <script src="<?php echo URL_ASSETS; ?>/js/user-profile.js?v=<?php echo time(); ?>"></script>
+    <script src="<?php echo URL_ASSETS; ?>/js/user-profile.js?v=<?php echo filemtime(BASE_PATH . 'assets/js/user-profile.js'); ?>"></script>
 <?php endif; ?>
 
 <?php if ($isTagListView): ?>

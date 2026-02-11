@@ -1,9 +1,5 @@
 <?php
-// Path: src/pages/tags/form.php
-require_once __DIR__ . '/../../../init.php';
-defined('URL_HOME') || require_once BASE_PATH . '/config/urls.php';
-require_once BASE_PATH . 'functions.php';
-
+require_once dirname(__DIR__, 3) . '/common.php';
 
 // 1. Auth Check
 if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {

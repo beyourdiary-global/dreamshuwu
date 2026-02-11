@@ -1,8 +1,6 @@
 <?php
 // Path: src/pages/logout/index.php
-require_once __DIR__ . '/../../../init.php';
-require_once BASE_PATH . 'config/urls.php';
-require_once BASE_PATH . 'functions.php';
+require_once dirname(__DIR__, 3) . '/common.php';
 
 // 1. Handle AJAX "Cancel" Request
 // We must intercept POST requests here. If we don't, the script will 

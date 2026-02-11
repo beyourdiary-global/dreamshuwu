@@ -1,8 +1,6 @@
 <?php
 // Path: src/pages/category/index.php
-require_once __DIR__ . '/../../../init.php';
-defined('URL_HOME') || require_once BASE_PATH . '/config/urls.php';
-require_once BASE_PATH . 'functions.php';
+require_once dirname(__DIR__, 3) . '/common.php';
 
 
 // 1. Auth Check
@@ -120,7 +118,7 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
         }
 
         // Edit URL points to Dashboard
-        $editUrl = URL_USER_DASHBOARD . "?view=cat_form";
+        $editUrl = URL_USER_DASHBOARD . "?view=cat_form&id=" . (int) $cat['id'];
         
         $actions = '
             <a href="'.$editUrl.'" class="btn btn-sm btn-outline-primary btn-action" title="编辑"><i class="fa-solid fa-pen"></i></a>
