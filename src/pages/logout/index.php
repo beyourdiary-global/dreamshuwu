@@ -1,7 +1,7 @@
 <?php
 // Path: src/pages/logout/index.php
 require_once __DIR__ . '/../../../init.php';
-require_once BASE_PATH . '/config/urls.php';
+require_once BASE_PATH . 'config/urls.php';
 require_once BASE_PATH . 'functions.php';
 
 // 1. Handle AJAX "Cancel" Request
