@@ -1,8 +1,6 @@
 <?php
 // Path: src/pages/audit-log.php
-require_once __DIR__ . '/../../init.php';
-require_once BASE_PATH . 'config/urls.php';
-require_once BASE_PATH . 'functions.php';
+require_once dirname(__DIR__, 2) . '/common.php';
 
 if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
     header("Location: " . URL_LOGIN);
@@ -156,6 +154,8 @@ $pageTitle = "System Audit Log - " . WEBSITE_NAME;
 </head>
 <body>
 <?php require_once BASE_PATH . 'common/menu/header.php'; ?>
+
+<main class="dashboard-main">
 <div class="container-fluid mt-4" style="max-width: 1400px;">
     <div class="card shadow-sm">
         <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
@@ -175,6 +175,8 @@ $pageTitle = "System Audit Log - " . WEBSITE_NAME;
         </div>
     </div>
 </div>
+
+</main>
 <script src="<?php echo URL_ASSETS; ?>/js/jquery-3.6.0.min.js"></script>
 <script src="<?php echo URL_ASSETS; ?>/js/jquery.dataTables.min.js"></script>
 <script src="<?php echo URL_ASSETS; ?>/js/dataTables.bootstrap.min.js"></script>

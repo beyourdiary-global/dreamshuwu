@@ -1,8 +1,6 @@
 <?php
 // Path: src/pages/category/form.php
-require_once __DIR__ . '/../../../init.php';
-defined('URL_HOME') || require_once BASE_PATH . 'config/urls.php';
-require_once BASE_PATH . 'functions.php';
+require_once dirname(__DIR__, 3) . '/common.php';
 
 // Auth Check
 if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
@@ -39,10 +37,6 @@ $isEdit = !empty($id);
 $viewQuery = $isEdit
     ? "SELECT id, name, created_at, updated_at, created_by, updated_by FROM $catTable WHERE id = " . intval($id)
     : "SELECT id, name FROM $catTable";
-
-if ($isEdit && $isEmbeddedTagForm) {
-    $formActionUrl .= '&id=' . intval($id);
-}
 
 $name = "";
 $selectedTags = [];
@@ -270,7 +264,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                         ]);
                     }
                     
-                    $redirectUrl = $listPageUrl . (strpos($listPageUrl, '?') !== false ? '&' : '?') . "msg=saved";
+                    $_SESSION['flash_msg'] = '分类保存成功！';
+                    $_SESSION['flash_type'] = 'success';
+                    $redirectUrl = $listPageUrl;
                     if ($isEmbeddedTagForm || headers_sent()) {
                         echo "<script>window.location.href='$redirectUrl';</script>";
                     } else {

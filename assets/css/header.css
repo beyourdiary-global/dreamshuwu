@@ -136,10 +136,8 @@
   padding: 0 16px;
   height: 38px;
   overflow: hidden;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
-  transition:
-    box-shadow 0.2s ease,
-    border-color 0.2s ease;
+  box-shadow: none;
+  transition: border-color 0.2s ease;
 }
 
 .search-form:focus-within {
@@ -160,6 +158,11 @@
   min-width: 0;
   height: 100%;
   color: #555;
+}
+
+/* Prevent global input:focus ring from leaking into header search */
+.site-header .search-form input[type="text"]:focus {
+  box-shadow: none !important;
 }
 
 .site-header .search-form input[type="text"]::placeholder {

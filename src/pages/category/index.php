@@ -1,8 +1,7 @@
 <?php
 // Path: src/pages/category/index.php
-require_once __DIR__ . '/../../../init.php';
-defined('URL_HOME') || require_once BASE_PATH . 'config/urls.php';
-require_once BASE_PATH . 'functions.php';
+require_once dirname(__DIR__, 3) . '/common.php';
+
 
 // 1. Auth Check
 if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
@@ -119,7 +118,7 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
         }
 
         // Edit URL points to Dashboard
-        $editUrl = URL_USER_DASHBOARD . "?view=cat_form&id=" . $cat['id'];
+        $editUrl = URL_USER_DASHBOARD . "?view=cat_form&id=" . (int) $cat['id'];
         
         $actions = '
             <a href="'.$editUrl.'" class="btn btn-sm btn-outline-primary btn-action" title="编辑"><i class="fa-solid fa-pen"></i></a>
@@ -213,6 +212,13 @@ if (function_exists('logAudit')) {
     ]);
 }
 
+// Flash message
+$flashMsg = $_SESSION['flash_msg'] ?? '';
+$flashType = $_SESSION['flash_type'] ?? 'success';
+if ($flashMsg !== '') {
+    unset($_SESSION['flash_msg'], $_SESSION['flash_type']);
+}
+
 // HTML Output
 if ($isEmbeddedInDashboard): ?>
 <div class="category-container">
@@ -222,9 +228,9 @@ if ($isEmbeddedInDashboard): ?>
             <a href="<?php echo URL_USER_DASHBOARD; ?>?view=cat_form" class="btn btn-primary desktop-add-btn"><i class="fa-solid fa-plus"></i> 新增分类</a>
         </div>
         <div class="card-body">
-            <?php if (isset($_GET['msg']) && $_GET['msg'] === 'saved'): ?>
-                <div class="alert alert-success alert-dismissible fade show">
-                    分类保存成功！ <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <?php if ($flashMsg): ?>
+                <div class="alert alert-<?php echo htmlspecialchars($flashType); ?> alert-dismissible fade show">
+                    <?php echo htmlspecialchars($flashMsg); ?> <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 </div>
             <?php endif; ?>
             <table id="categoryTable" class="table table-hover w-100" 

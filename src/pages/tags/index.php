@@ -1,8 +1,6 @@
 <?php
 // Path: src/pages/tags/index.php
-require_once __DIR__ . '/../../../init.php';
-defined('URL_HOME') || require_once BASE_PATH . 'config/urls.php';
-require_once BASE_PATH . 'functions.php';
+require_once dirname(__DIR__, 3) . '/common.php';
 
 $tagTable = NOVEL_TAGS;
 $auditPage = 'Tag Management';
@@ -153,7 +151,8 @@ if ($isAjaxRequest) {
 
     $data = [];
     while ($stmt->fetch()) {
-        $editUrl = URL_USER_DASHBOARD . '?view=tag_form&id=' . $id;
+        $editUrl = URL_USER_DASHBOARD . '?view=tag_form&id=' . (int) $id;
+        $editUrl = URL_USER_DASHBOARD . '?view=tag_form&id=' . (int) $id;
         $actions = '<a href="' . $editUrl . '" class="btn btn-sm btn-outline-primary btn-action" title="Edit"><i class="fa-solid fa-pen"></i></a>'
             . '<button class="btn btn-sm btn-outline-danger btn-action delete-btn" data-id="' . $id . '" data-name="' . htmlspecialchars($name) . '" title="Delete"><i class="fa-solid fa-trash"></i></button>';
         $data[] = [htmlspecialchars($name), $actions];
@@ -255,6 +254,13 @@ if ($isDeleteRequest) {
     exit();
 }
 
+// Flash message
+$flashMsg = $_SESSION['flash_msg'] ?? '';
+$flashType = $_SESSION['flash_type'] ?? 'success';
+if ($flashMsg !== '') {
+    unset($_SESSION['flash_msg'], $_SESSION['flash_type']);
+}
+
 // 5. Audit Log (View) & HTML Render
 $pageTitle = "小说标签 - " . WEBSITE_NAME;
 
@@ -280,9 +286,9 @@ if ($isEmbeddedInDashboard): ?>
                 </a>
             </div>
             <div class="card-body">
-                <?php if (isset($_GET['msg']) && $_GET['msg'] == 'saved'): ?>
-                    <div class="alert alert-success alert-dismissible fade show">
-                        标签保存成功！ 
+                <?php if ($flashMsg): ?>
+                    <div class="alert alert-<?php echo htmlspecialchars($flashType); ?> alert-dismissible fade show">
+                        <?php echo htmlspecialchars($flashMsg); ?>
                         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                     </div>
                 <?php endif; ?>

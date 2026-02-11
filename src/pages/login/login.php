@@ -1,7 +1,5 @@
 <?php
-require_once __DIR__ . '/../../../init.php'; 
-require_once BASE_PATH . 'config/urls.php'; 
-require_once BASE_PATH . 'functions.php';
+require_once dirname(__DIR__, 3) . '/common.php';
 
 $pageTitle = "登录 - " . WEBSITE_NAME;
 $dbTable = USR_LOGIN; 
@@ -125,38 +123,44 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 <html lang="<?php echo defined('SITE_LANG') ? SITE_LANG : 'zh-CN'; ?>">
 <?php require_once __DIR__ . '/../../../include/header.php'; ?>
 <body class="auth-page">
-<div class="container">
-    <div class="row justify-content-center mt-5">
-        <div class="col-12 col-md-7 col-lg-5">
-            <div class="login-card shadow-lg p-4 bg-white rounded">
-                <div class="logo text-center mb-4">Star<span class="text-primary fw-bold">Admin</span></div>
-                <h3 class="text-center">欢迎回来</h3>
-                <p class="subtext text-center text-muted">请登录您的管理后台</p>
-                <div id="loginError" class="alert alert-danger" style="<?php echo $message ? '' : 'display:none;'; ?>">
-                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                    <span class="error-text"><?php echo htmlspecialchars($message); ?></span>
+<?php require_once BASE_PATH . 'common/menu/header.php'; ?>
+
+<main class="dashboard-main">
+    <div class="auth-layout">
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-12 col-md-7 col-lg-5">
+                    <div class="login-card shadow-lg p-4 bg-white rounded">
+                        <div class="logo text-center mb-4">Star<span class="text-primary fw-bold">Admin</span></div>
+                        <h3 class="text-center">欢迎回来</h3>
+                        <p class="subtext text-center text-muted">请登录您的管理后台</p>
+                        <div id="loginError" class="alert alert-danger" style="<?php echo $message ? '' : 'display:none;'; ?>">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                            <span class="error-text"><?php echo htmlspecialchars($message); ?></span>
+                        </div>
+                        <form id="loginForm" method="POST" autocomplete="off" novalidate>
+                            <input type="hidden" name="redirect" id="redirect" value="<?php echo htmlspecialchars($redirectTarget); ?>">
+                            <div class="form-floating mb-3">
+                                <input type="email" class="form-control" id="email" name="email" placeholder="name@example.com" required>
+                                <label for="email">邮箱地址</label>
+                            </div>
+                            <div class="form-floating mb-3 password-field position-relative">
+                                <input type="password" class="form-control" id="password" name="password" placeholder="密码" required>
+                                <label for="password">密码</label>
+                                <button type="button" class="btn btn-link position-absolute end-0 top-50 translate-middle-y text-decoration-none me-2" id="togglePassword">显示</button>
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100 py-2 fw-bold" id="loginBtn">立即登录</button>
+                            <div class="action-links d-flex justify-content-between mt-4 border-top pt-3">
+                                <a href="<?php echo URL_REGISTER; ?>" class="text-decoration-none small text-primary">注册新账号</a>
+                                <a href="<?php echo URL_FORGOT_PWD; ?>" class="text-decoration-none small text-muted">忘记密码？</a>
+                            </div>
+                        </form>
+                    </div>
                 </div>
-                <form id="loginForm" method="POST" autocomplete="off" novalidate>
-                    <input type="hidden" name="redirect" id="redirect" value="<?php echo htmlspecialchars($redirectTarget); ?>">
-                    <div class="form-floating mb-3">
-                        <input type="email" class="form-control" id="email" name="email" placeholder="name@example.com" required>
-                        <label for="email">邮箱地址</label>
-                    </div>
-                    <div class="form-floating mb-3 password-field position-relative">
-                        <input type="password" class="form-control" id="password" name="password" placeholder="密码" required>
-                        <label for="password">密码</label>
-                        <button type="button" class="btn btn-link position-absolute end-0 top-50 translate-middle-y text-decoration-none me-2" id="togglePassword">显示</button>
-                    </div>
-                    <button type="submit" class="btn btn-primary w-100 py-2 fw-bold" id="loginBtn">立即登录</button>
-                    <div class="action-links d-flex justify-content-between mt-4 border-top pt-3">
-                        <a href="<?php echo URL_REGISTER; ?>" class="text-decoration-none small text-primary">注册新账号</a>
-                        <a href="<?php echo URL_FORGOT_PWD; ?>" class="text-decoration-none small text-muted">忘记密码？</a>
-                    </div>
-                </form>
             </div>
         </div>
     </div>
-</div>
+</main>
 <script src="<?php echo URL_ASSETS; ?>/js/jquery-3.7.1.min.js"></script>
 <script src="<?php echo URL_ASSETS; ?>/js/login-script.js"></script>
 </body>

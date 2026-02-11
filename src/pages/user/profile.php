@@ -1,7 +1,5 @@
 <?php
-require_once __DIR__ . '/../../../init.php'; 
-require_once BASE_PATH . 'config/urls.php'; 
-require_once BASE_PATH . 'functions.php';
+require_once dirname(__DIR__, 3) . '/common.php';
 
 // 1. Auth Check
 if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
@@ -240,7 +238,6 @@ $dashStmt->close();
 $currentUser = array_merge($userRow, $dashRow ?? ['avatar' => null]);
 $avatarUrl = !empty($currentUser['avatar']) ? URL_ASSETS . '/uploads/avatars/' . $currentUser['avatar'] : URL_ASSETS . '/images/default-avatar.png';
 $pageTitle = "编辑个人资料 - " . WEBSITE_NAME;
-$customCSS = "user-profile.css";
 
 // [AUDIT] Log View Action (Only for GET requests)
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && function_exists('logAudit') && !defined('PROFILE_VIEW_LOGGED')) {
@@ -256,15 +253,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && function_exists('logAudit') && !defi
 }
 ?>
 
-<!DOCTYPE html>
-<html lang="<?php echo defined('SITE_LANG') ? SITE_LANG : 'zh-CN'; ?>">
-<head>
-    <?php require_once BASE_PATH . 'include/header.php'; ?>
-</head>
-<body>
+$isEmbeddedProfile = defined('PROFILE_EMBEDDED') && PROFILE_EMBEDDED === true;
 
-<?php require_once BASE_PATH . 'common/menu/header.php'; ?>
-<div class="profile-container">
+if (!$isEmbeddedProfile) {
+    $_GET['view'] = 'profile';
+    define('PROFILE_EMBEDDED', true);
+    require BASE_PATH . 'src/pages/user/dashboard.php';
+    exit();
+}
+
+$sidebarItems = [
+    ['label' => '首页',     'url' => URL_USER_DASHBOARD, 'icon' => 'fa-solid fa-house-user', 'active' => false],
+    ['label' => '账号中心', 'url' => URL_PROFILE,        'icon' => 'fa-solid fa-id-card',   'active' => true],
+    ['label' => '写小说',   'url' => URL_AUTHOR_DASHBOARD, 'icon' => 'fa-solid fa-pen-nib',  'active' => false],
+    ['label' => '小说分类', 'url' => URL_NOVEL_CATS,     'icon' => 'fa-solid fa-layer-group','active' => false],
+    ['label' => '小说标签', 'url' => URL_NOVEL_TAGS,     'icon' => 'fa-solid fa-tags',      'active' => false]
+];
+?>
+
+    <div class="profile-container">
     <div class="section-header">
         <div class="header-text-content">
             <h2>个人资料设置</h2>
@@ -348,6 +355,3 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && function_exists('logAudit') && !defi
         </form>
     </div>
 </div>
-<script src="<?php echo URL_ASSETS; ?>/js/user-profile.js"></script>
-</body>
-</html>

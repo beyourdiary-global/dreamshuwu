@@ -4,14 +4,15 @@
 define('SKIP_DB_CHECK', true);
 
 // 2. Load Init
-require_once __DIR__ . '/../../init.php'; 
+require_once __DIR__ . '/init.php'; 
 
 // Fallback: If init failed to load URL constants
 if (!defined('URL_ASSETS')) {
-    require_once __DIR__ . '/../../config/urls.php';
+    require_once __DIR__ . '/config/urls.php';
 }
 
 $pageTitle = "Page Not Found - " . WEBSITE_NAME;
+http_response_code(404);
 ?>
 
 <!DOCTYPE html>

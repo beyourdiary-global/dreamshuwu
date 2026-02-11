@@ -1,6 +1,5 @@
 <?php
-require_once __DIR__ . '/../../init.php';
-require_once BASE_PATH . 'config/urls.php';
+require_once dirname(__DIR__, 2) . '/common.php';
 
 // --- [BUG FIX] Session Integrity Check ---
 if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
