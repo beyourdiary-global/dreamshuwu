@@ -1,7 +1,7 @@
 <?php
 // Path: src/pages/tags/form.php
 require_once __DIR__ . '/../../../init.php';
-defined('URL_HOME') || require_once BASE_PATH . 'urls.php';
+defined('URL_HOME') || require_once BASE_PATH . '/config/urls.php';
 require_once BASE_PATH . 'functions.php';
 
 

@@ -8,7 +8,7 @@ require_once __DIR__ . '/init.php';
 
 // Fallback: If init failed to load URL constants
 if (!defined('URL_ASSETS')) {
-    require_once __DIR__ . '/urls.php';
+    require_once __DIR__ . '/config/urls.php';
 }
 
 $pageTitle = "Page Not Found - " . WEBSITE_NAME;

@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/../../../init.php'; 
 
-require_once BASE_PATH . 'urls.php'; 
+require_once BASE_PATH . '/config/urls.php'; 
 require_once BASE_PATH . 'functions.php';
 
 // Set page variables BEFORE including header

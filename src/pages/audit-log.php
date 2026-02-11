@@ -1,7 +1,7 @@
 <?php
 // Path: src/pages/audit-log.php
 require_once __DIR__ . '/../../init.php';
-require_once BASE_PATH . 'urls.php';
+require_once BASE_PATH . '/config/urls.php';
 require_once BASE_PATH . 'functions.php';
 
 if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
