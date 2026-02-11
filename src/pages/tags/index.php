@@ -153,7 +153,7 @@ if ($isAjaxRequest) {
 
     $data = [];
     while ($stmt->fetch()) {
-        $editUrl = URL_USER_DASHBOARD . '?view=tag_form';
+        $editUrl = URL_USER_DASHBOARD . '?view=tag_form&id=' . (int) $id;
         $actions = '<a href="' . $editUrl . '" class="btn btn-sm btn-outline-primary btn-action" title="Edit"><i class="fa-solid fa-pen"></i></a>'
             . '<button class="btn btn-sm btn-outline-danger btn-action delete-btn" data-id="' . $id . '" data-name="' . htmlspecialchars($name) . '" title="Delete"><i class="fa-solid fa-trash"></i></button>';
         $data[] = [htmlspecialchars($name), $actions];
