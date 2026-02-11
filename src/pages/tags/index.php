@@ -4,11 +4,10 @@ require_once __DIR__ . '/../../../init.php';
 defined('URL_HOME') || require_once BASE_PATH . '/config/urls.php';
 require_once BASE_PATH . 'functions.php';
 
-
-$dbTable = defined('NOVEL_TAGS') ? NOVEL_TAGS : 'novel_tag';
+$tagTable = NOVEL_TAGS;
 $auditPage = 'Tag Management';
-$viewQuery = '$viewQuery = "SELECT id, name FROM " . $dbTable;';
-$deleteQuery = "DELETE FROM " . $dbTable . " WHERE id = ?";
+$viewQuery = "SELECT id, name FROM " . $tagTable;
+$deleteQuery = "DELETE FROM " . $tagTable . " WHERE id = ?";
 $isEmbeddedInDashboard = isset($EMBED_TAGS_PAGE) && $EMBED_TAGS_PAGE === true;
 
 // Request Type Detection
@@ -114,8 +113,8 @@ if ($isAjaxRequest) {
     }
 
     // Build SQL queries
-    $sql = "SELECT id, name FROM " . $dbTable . " WHERE 1=1";
-    $countSql = "SELECT COUNT(*) FROM " . $dbTable . " WHERE 1=1";
+    $sql = "SELECT id, name FROM " . $tagTable . " WHERE 1=1";
+    $countSql = "SELECT COUNT(*) FROM " . $tagTable . " WHERE 1=1";
     
     $mainParams = []; 
     $mainTypes = "";
@@ -194,7 +193,7 @@ if ($isDeleteRequest) {
     
     // Audit Data Load
     $oldData = null;
-    $selectSql = "SELECT id, name, created_at, updated_at, created_by, updated_by FROM " . $dbTable . " WHERE id = ?";
+    $selectSql = "SELECT id, name, created_at, updated_at, created_by, updated_by FROM " . $tagTable . " WHERE id = ?";
     if ($sel = $conn->prepare($selectSql)) {
         $sel->bind_param("i", $id);
         if ($sel->execute()) {
@@ -234,8 +233,10 @@ if ($isDeleteRequest) {
                     'action'         => 'D',
                     'action_message' => 'Deleted Tag: ' . $tagName,
                     'query'          => $deleteQuery,
-                    'query_table'    => $dbTable,
+                    'query_table'    => $tagTable,
                     'user_id'        => $currentUserId,
+                    'record_id'      => $id,
+                    'record_name'    => $tagName,
                     'old_value'      => $oldData,
                     'new_value'      => null,
                 ]);
@@ -271,7 +272,7 @@ if (function_exists('logAudit')) {
         'action'         => 'V',
         'action_message' => 'User viewed Tag List',
         'query'          => $viewQuery,
-        'query_table'    => $dbTable,
+        'query_table'    => $tagTable,
         'user_id'        => $_SESSION['user_id']
     ]);
 }

@@ -122,9 +122,11 @@ $customCSS[] = 'dashboard.css';
                 </li>
             <?php endforeach; ?>
             <li style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 10px;">
-                <a href="<?php echo URL_LOGOUT; ?>" class="logout-btn" style="color: #d9534f;">
-                    <i class="fa-solid fa-right-from-bracket"></i> 登出
-                </a>
+            <a href="<?php echo URL_LOGOUT; ?>" 
+            class="logout-btn" 
+            style="color: #d9534f;"
+            data-api-url="<?php echo URL_LOGOUT; ?>"> <i class="fa-solid fa-right-from-bracket"></i> 登出
+             </a>
             </li>
         </ul>
     </aside>
@@ -220,6 +222,6 @@ $customCSS[] = 'dashboard.css';
 <?php endif; ?>
 
 <script src="<?php echo URL_ASSETS; ?>/js/login-script.js"></script>
-
+<script src="<?php echo URL_ASSETS; ?>/js/logout-handler.js"></script>
 </body>
 </html>

@@ -12,8 +12,9 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
 $userId = $_SESSION['user_id'];
 $message = "";
 $msgType = ""; 
+$auditPage = 'User Profile'; 
 
-// Flash Message Check
+// Flash Message Check (This reads the message after redirect)
 if (isset($_SESSION['flash_msg'])) {
     $message = $_SESSION['flash_msg'];
     $msgType = $_SESSION['flash_type'];
@@ -32,17 +33,43 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['action']) && $_POST['
     } elseif (!isValidEmail($email)) {
         $message = "请输入正确的电子邮箱"; $msgType = "danger";
     } else {
+        // [AUDIT & COMPARE] Fetch Old Data
+        $oldUserData = [];
+        $preStmt = $conn->prepare("SELECT name, email, gender, birthday FROM " . USR_LOGIN . " WHERE id = ?");
+        $preStmt->bind_param("i", $userId);
+        $preStmt->execute();
+        $preStmt->bind_result($oName, $oEmail, $oGender, $oDob);
+        
+        if ($preStmt->fetch()) {
+            $oldUserData = ['name' => $oName, 'email' => $oEmail, 'gender' => $oGender, 'birthday' => $oDob];
+        }
+        $preStmt->close();
+
+        // [NEW] Use global helper to Check for Changes and Redirect
+        // This will exit script if no changes found
+        checkNoChangesAndRedirect(
+            ['name' => $name, 'email' => $email, 'gender' => $gender, 'birthday' => $birthday], 
+            $oldUserData, 
+            'avatar', 
+            URL_PROFILE
+        );
+
+        // --- CHANGES DETECTED - PROCEED ---
+        
         // --- IMAGE UPLOAD LOGIC ---
-        if (isset($_FILES['avatar']) && $_FILES['avatar']['size'] > 0) {
+        $newAvatarName = null;
+        // Check manually for upload logic
+        $hasAvatarUpload = (isset($_FILES['avatar']) && $_FILES['avatar']['size'] > 0);
+
+        if ($hasAvatarUpload) {
             $uploadDir = BASE_PATH . 'assets/uploads/avatars/';
             
-            // 1. FIND OLD AVATAR FIRST
+            // Find Old Avatar
             $oldAvSql = "SELECT avatar FROM " . USR_DASHBOARD . " WHERE user_id = ? LIMIT 1";
             $oldStmt = $conn->prepare($oldAvSql);
             $oldStmt->bind_param("i", $userId);
             $oldStmt->execute();
             
-            // Universal Fetch
             $oldRow = [];
             $meta = $oldStmt->result_metadata();
             $row = []; $params = [];
@@ -51,18 +78,20 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['action']) && $_POST['
             if ($oldStmt->fetch()) { foreach($row as $k=>$v){ $oldRow[$k]=$v; } }
             $oldStmt->close();
 
-            // 2. DELETE OLD FILE IF EXISTS
+            // Delete Old File
             if (!empty($oldRow['avatar'])) {
                 $oldFilePath = $uploadDir . $oldRow['avatar'];
                 if (file_exists($oldFilePath)) {
-                    @unlink($oldFilePath); // Delete the file
+                    @unlink($oldFilePath); 
                 }
+                $oldUserData['avatar'] = $oldRow['avatar'];
             }
 
-            // 3. UPLOAD NEW AVATAR
+            // Upload New
             $result = uploadImage($_FILES['avatar'], $uploadDir); 
 
             if ($result['success']) {
+                $newAvatarName = $result['filename'];
                 $avSql = "INSERT INTO " . USR_DASHBOARD . " (user_id, avatar) VALUES (?, ?) ON DUPLICATE KEY UPDATE avatar = VALUES(avatar)";
                 $avStmt = $conn->prepare($avSql);
                 $avStmt->bind_param("is", $userId, $result['filename']);
@@ -72,11 +101,31 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['action']) && $_POST['
             }
         }
 
+        // Update Text Data (Only if no upload error)
         if (empty($message) || $msgType !== 'danger') {
             $upSql = "UPDATE " . USR_LOGIN . " SET name = ?, email = ?, gender = ?, birthday = ? WHERE id = ?";
             $upStmt = $conn->prepare($upSql);
             $upStmt->bind_param("ssssi", $name, $email, $gender, $birthday, $userId);
             if ($upStmt->execute()) {
+                
+                // [AUDIT] Log Update Action
+                if (function_exists('logAudit')) {
+                    $newUserData = ['name' => $name, 'email' => $email, 'gender' => $gender, 'birthday' => $birthday];
+                    if ($newAvatarName) { $newUserData['avatar'] = $newAvatarName; }
+                    
+                    logAudit([
+                        'page'           => $auditPage,
+                        'action'         => 'E',
+                        'action_message' => 'Updated Profile Info',
+                        'query'          => $upSql,
+                        'query_table'    => USR_LOGIN,
+                        'user_id'        => $userId,
+                        'record_id'      => $userId,
+                        'old_value'      => $oldUserData,
+                        'new_value'      => $newUserData
+                    ]);
+                }
+
                 $_SESSION['user_name'] = $name; 
                 $_SESSION['flash_msg'] = "资料已更新";
                 $_SESSION['flash_type'] = "success";
@@ -86,8 +135,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['action']) && $_POST['
     }
 }
 
+// ... (Rest of the file remains unchanged) ...
 // --- HANDLE FORM B: CHANGE PASSWORD ---
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['action']) && $_POST['action'] === 'change_pwd') {
+    // ... existing password logic ...
     $currentPwd = $_POST['current_password'];
     $newPwd = $_POST['new_password'];
     $confirmPwd = $_POST['confirm_password'];
@@ -118,6 +169,20 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['action']) && $_POST['
         $upPwdStmt->bind_param("si", $newHash, $userId);
         
         if ($upPwdStmt->execute()) {
+            
+            // [AUDIT] Log Password Change
+            if (function_exists('logAudit')) {
+                logAudit([
+                    'page'           => $auditPage,
+                    'action'         => 'E',
+                    'action_message' => 'Changed Password',
+                    'query'          => $upPwdSql,
+                    'query_table'    => USR_LOGIN,
+                    'user_id'        => $userId,
+                    'record_id'      => $userId
+                ]);
+            }
+
             session_destroy(); 
             ?>
             <!DOCTYPE html>
@@ -175,6 +240,20 @@ $dashStmt->close();
 $currentUser = array_merge($userRow, $dashRow ?? ['avatar' => null]);
 $avatarUrl = !empty($currentUser['avatar']) ? URL_ASSETS . '/uploads/avatars/' . $currentUser['avatar'] : URL_ASSETS . '/images/default-avatar.png';
 $pageTitle = "编辑个人资料 - " . WEBSITE_NAME;
+
+// [AUDIT] Log View Action (Only for GET requests)
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && function_exists('logAudit') && !defined('PROFILE_VIEW_LOGGED')) {
+    define('PROFILE_VIEW_LOGGED', true);
+    logAudit([
+        'page'           => $auditPage,
+        'action'         => 'V',
+        'action_message' => 'Viewing User Profile',
+        'query'          => $userSql,
+        'query_table'    => USR_LOGIN,
+        'user_id'        => $userId
+    ]);
+}
+?>
 
 $isEmbeddedProfile = defined('PROFILE_EMBEDDED') && PROFILE_EMBEDDED === true;
 

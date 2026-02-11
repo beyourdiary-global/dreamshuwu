@@ -185,6 +185,8 @@ if (isset($_POST['mode']) && $_POST['mode'] === 'delete') {
                 'query'          => $deleteQuery,
                 'query_table'    => $catTable,
                 'user_id'        => $_SESSION['user_id'],
+                'record_id'      => $id,
+                'record_name'    => $name,
                 'old_value'      => $oldData // [ADDED] Pass the old data here
             ]);
         }
