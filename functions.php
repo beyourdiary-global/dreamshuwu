@@ -411,4 +411,22 @@ function uploadImage($file, $targetDir) {
 
     return ['success' => false, 'message' => '无法保存文件 (Move failed)'];
 }
+
+/**
+ * [NEW] Helper: Fetch SEO Meta Settings
+ * Supports hyphenated table names using backticks.
+ */
+function getMetaSettings($conn, $type, $id) {
+    if (!$conn) return null;
+    $stmt = $conn->prepare("SELECT meta_title, meta_description, og_title, og_description, og_url FROM `meta-settings` WHERE page_type = ? AND page_id = ? LIMIT 1");
+    if ($stmt) {
+        $stmt->bind_param("si", $type, $id);
+        $stmt->execute();
+        $result = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        return $result;
+    }
+    return null;
+}
+
 ?>

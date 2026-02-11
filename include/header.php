@@ -3,11 +3,29 @@
  * include/header.php
  * Shared HTML head component.
  */
+
+$globalSeo = getMetaSettings($conn, 'global', 0);
+$specificSeo = null;
+
+if (isset($category['id'])) {
+    $specificSeo = getMetaSettings($conn, 'category', $category['id']);
+}
+
+// Hierarchy: Specific Page -> Global Setting -> Site Default
+$finalMetaTitle = !empty($specificSeo['meta_title']) ? $specificSeo['meta_title'] : ($globalSeo['meta_title'] ?? 'StarAdmin');
+$finalMetaDesc  = !empty($specificSeo['meta_description']) ? $specificSeo['meta_description'] : ($globalSeo['meta_description'] ?? '');
+$finalOgTitle   = !empty($specificSeo['og_title']) ? $specificSeo['og_title'] : ($globalSeo['og_title'] ?? $finalMetaTitle);
+$finalOgDesc    = !empty($specificSeo['og_description']) ? $specificSeo['og_description'] : ($globalSeo['og_description'] ?? $finalMetaDesc);
+$finalOgUrl     = !empty($specificSeo['og_url']) ? $specificSeo['og_url'] : ($globalSeo['og_url'] ?? '');
 ?>
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo $pageTitle ?? 'StarAdmin'; ?></title>
+    <title><?php echo htmlspecialchars($finalMetaTitle); ?></title>
+    <meta name="description" content="<?php echo htmlspecialchars($finalMetaDesc); ?>">
+    
+    <meta property="og:title" content="<?php echo htmlspecialchars($finalOgTitle); ?>">
+    <meta property="og:description" content="<?php echo htmlspecialchars($finalOgDesc); ?>">
+    <meta property="og:url" content="<?php echo htmlspecialchars($finalOgUrl); ?>">
 
     <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/bootstrap.min.css">
     <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/all.min.css">
