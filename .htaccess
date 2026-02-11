@@ -1,3 +1,7 @@
 RewriteEngine On
 
-ErrorDocument 404 /src/pages/error404.php
+# Security: Block direct access to the "src" folder from the browser
+
+RewriteRule ^src/ - [F,L]
+
+ErrorDocument 404 /error404.php

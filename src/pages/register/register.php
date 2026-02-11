@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/../../../init.php'; 
 
-require_once BASE_PATH . 'config/urls.php'; 
+require_once BASE_PATH . 'urls.php'; 
 require_once BASE_PATH . 'functions.php';
 
 // Set page variables BEFORE including header
@@ -115,56 +115,103 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <html lang="<?php echo defined('SITE_LANG') ? SITE_LANG : 'zh-CN'; ?>">
 <?php require_once __DIR__ . '/../../../include/header.php'; ?>
 <body class="auth-page">
-<div class="reg-card">
-    <div class="logo">Star<span>Admin</span></div>
-    <h3>新用户？</h3>
-    <p style="color: #666;">简单几步即可完成注册</p>
-    
-    <?php if($message): ?>
-        <div class="error-msg"><?php echo htmlspecialchars($message); ?></div>
-    <?php endif; ?>
+<?php require_once BASE_PATH . 'common/menu/header.php'; ?>
 
-    <form id="regForm" method="POST" autocomplete="off">
-        <input type="text" name="name" placeholder="姓名" 
-               value="<?php echo htmlspecialchars($name); ?>" required>
-        
-        <input type="email" name="email" placeholder="请输入邮箱" 
-               value="<?php echo htmlspecialchars($email); ?>" required>
-        
-        <input type="password" name="password" id="password" placeholder="请输入密码" required>
-        <div id="strength-meter">密码强度提示: <span id="strength-text">未填写</span></div>
-        
-        <select name="gender">
-            <?php foreach ($GENDER_OPTIONS as $value => $label): ?>
-                <option value="<?php echo htmlspecialchars($value); ?>" <?php echo ($gender == $value) ? 'selected' : ''; ?>>
-                    <?php echo htmlspecialchars($label); ?>
-                </option>
-            <?php endforeach; ?>
-        </select>
-        
-        <label class="form-label-sm">生日 (可选):</label>
-        
-        <input type="date" name="birthday" id="birthday"
-               max="<?php echo date('Y-m-d'); ?>"
-               value="<?php echo htmlspecialchars($birthday); ?>"
-               oninvalid="this.setCustomValidity('日期不能晚于今天')"
-               oninput="this.setCustomValidity('')">
+<main class="dashboard-main">
+    <div class="auth-layout">
+        <div class="reg-card">
+            <div class="logo">Star<span>Admin</span></div>
+            <h3>新用户？</h3>
+            <p style="color: #666;">简单几步即可完成注册</p>
+            
+            <?php if($message): ?>
+                <div class="error-msg"><?php echo htmlspecialchars($message); ?></div>
+            <?php endif; ?>
 
-        <div class="terms-container">
-            <input type="checkbox" id="terms" required class="terms-checkbox">
-            <label for="terms" style="cursor:pointer;">我同意所有条款与条件</label>
+            <form id="regForm" method="POST" autocomplete="off">
+                <div class="auth-field">
+                    <label class="form-label" for="name">姓名</label>
+                    <input
+                        type="text"
+                        class="form-control"
+                        id="name"
+                        name="name"
+                        placeholder="姓名"
+                        value="<?php echo htmlspecialchars($name); ?>"
+                        required
+                    >
+                </div>
+
+                <div class="auth-field">
+                    <label class="form-label" for="email">邮箱地址</label>
+                    <input
+                        type="email"
+                        class="form-control"
+                        id="email"
+                        name="email"
+                        placeholder="请输入邮箱"
+                        value="<?php echo htmlspecialchars($email); ?>"
+                        required
+                    >
+                </div>
+
+                <div class="auth-field">
+                    <label class="form-label" for="password">密码</label>
+                    <input
+                        type="password"
+                        class="form-control"
+                        name="password"
+                        id="password"
+                        placeholder="请输入密码"
+                        required
+                    >
+                    <div id="strength-meter">密码强度提示: <span id="strength-text">未填写</span></div>
+                </div>
+
+                <div class="auth-field">
+                    <label class="form-label" for="gender">性别 (可选)</label>
+                    <select class="form-control" id="gender" name="gender">
+                        <?php foreach ($GENDER_OPTIONS as $value => $label): ?>
+                            <option value="<?php echo htmlspecialchars($value); ?>" <?php echo ($gender == $value) ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($label); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <div class="auth-field">
+                    <label class="form-label" for="birthday">生日 (可选)</label>
+                    <input
+                        type="date"
+                        class="form-control"
+                        name="birthday"
+                        id="birthday"
+                        max="<?php echo date('Y-m-d'); ?>"
+                        value="<?php echo htmlspecialchars($birthday); ?>"
+                        oninvalid="this.setCustomValidity('日期不能晚于今天')"
+                        oninput="this.setCustomValidity('')"
+                    >
+                </div>
+
+                <div class="auth-field">
+                    <div class="terms-container">
+                        <input type="checkbox" id="terms" required class="terms-checkbox">
+                        <label for="terms" style="cursor:pointer;">我同意所有条款与条件</label>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-reg" id="submitBtn" disabled>注册</button>
+            </form>
+
+           <div class="footer-links">
+            已有账号？
+            <a href="<?= URL_LOGIN ?>" style="color: #233dd2; text-decoration: none;">
+                直接登录
+            </a>
         </div>
-
-        <button type="submit" class="btn-reg" id="submitBtn" disabled>注册</button>
-    </form>
-
-   <div class="footer-links">
-    已有账号？
-    <a href="<?= URL_LOGIN ?>" style="color: #233dd2; text-decoration: none;">
-        直接登录
-    </a>
-</div>
-</div>
+        </div>
+    </div>
+</main>
 
 <script src="<?php echo URL_ASSETS; ?>/js/register-script.js"></script>
 </body>

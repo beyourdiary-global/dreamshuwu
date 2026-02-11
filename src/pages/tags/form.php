@@ -1,8 +1,9 @@
 <?php
 // Path: src/pages/tags/form.php
 require_once __DIR__ . '/../../../init.php';
-defined('URL_HOME') || require_once BASE_PATH . 'config/urls.php';
+defined('URL_HOME') || require_once BASE_PATH . 'urls.php';
 require_once BASE_PATH . 'functions.php';
+
 
 // 1. Auth Check
 if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
@@ -38,10 +39,6 @@ $isEditMode = !empty($tagId);
 $viewQuery = $isEditMode
     ? "SELECT id, name, created_at, updated_at, created_by, updated_by FROM $dbTable WHERE id = ?"
     : "SELECT id, name FROM $dbTable";
-
-if ($isEditMode && $isEmbeddedTagForm) {
-    $formActionUrl .= '&id=' . intval($tagId);
-}
 
 $tagName = "";
 $message = ""; 
@@ -179,7 +176,9 @@ try {
                         ]);
                     }
                     
-                    $redirectUrl = $listPageUrl . (strpos($listPageUrl, '?') !== false ? '&' : '?') . "msg=saved";
+                    $_SESSION['flash_msg'] = '标签保存成功！';
+                    $_SESSION['flash_type'] = 'success';
+                    $redirectUrl = $listPageUrl;
                     if (!headers_sent()) header("Location: " . $redirectUrl);
                     else echo "<script>window.location.href = '" . $redirectUrl . "';</script>";
                     exit();

@@ -1,7 +1,8 @@
 <?php
 require_once __DIR__ . '/../../../init.php'; 
-require_once BASE_PATH . 'config/urls.php'; 
+require_once BASE_PATH . 'urls.php'; 
 require_once BASE_PATH . 'functions.php';
+
 
 // 1. Auth Check
 if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
@@ -26,6 +27,9 @@ $isTagSection    = $isTagListView || $isTagFormView;
 $isCatListView   = ($currentView === 'categories');
 $isCatFormView   = ($currentView === 'cat_form');
 $isCatSection    = $isCatListView || $isCatFormView;
+
+// Profile View
+$isProfileView   = ($currentView === 'profile');
 
 // Data Fetching
 $userQuery = "SELECT name FROM " . $userTable . " WHERE id = ? LIMIT 1";
@@ -78,7 +82,7 @@ $profileComponents = [
 ];
 
 $sidebarItems = [
-    ['label' => '首页',     'url' => URL_USER_DASHBOARD, 'icon' => 'fa-solid fa-house-user', 'active' => (!$isTagSection && !$isCatSection)],
+    ['label' => '首页',     'url' => URL_USER_DASHBOARD, 'icon' => 'fa-solid fa-house-user', 'active' => (!$isTagSection && !$isCatSection && !$isProfileView)],
     ['label' => '账号中心', 'url' => URL_HOME,           'icon' => 'fa-solid fa-id-card',   'active' => false],
     ['label' => '写小说',   'url' => URL_AUTHOR_DASHBOARD, 'icon' => 'fa-solid fa-pen-nib',  'active' => false],
     // [NEW] Category Item
@@ -126,7 +130,7 @@ $customCSS[] = 'dashboard.css';
     </aside>
 
     <main class="dashboard-main">
-        <?php if (!$isTagSection && !$isCatSection): ?>
+        <?php if (!$isTagSection && !$isCatSection && !$isProfileView): ?>
         <div class="profile-card">
             <?php foreach ($profileComponents as $component): ?>
                 <?php if ($component['type'] === 'avatar'): ?>
@@ -150,7 +154,7 @@ $customCSS[] = 'dashboard.css';
                 <?php endif; ?>
             <?php endforeach; ?>
 
-            <a href="<?php echo URL_USER_SETTING; ?>" class="settings-btn">
+            <a href="<?php echo URL_USER_DASHBOARD; ?>?view=profile" class="settings-btn">
                 <i class="fa-solid fa-gear desktop-icon"></i>
                 <i class="fa-solid fa-chevron-right mobile-icon"></i>
             </a>
@@ -158,7 +162,13 @@ $customCSS[] = 'dashboard.css';
         <?php endif; ?>
 
         <?php 
-        if ($isTagListView):
+        if ($isProfileView):
+            if (!defined('PROFILE_EMBEDDED')) {
+                define('PROFILE_EMBEDDED', true);
+            }
+            require BASE_PATH . PATH_PROFILE;
+
+        elseif ($isTagListView):
             $EMBED_TAGS_PAGE = true;
             require BASE_PATH . PATH_NOVEL_TAGS_INDEX;
         
@@ -194,6 +204,10 @@ $customCSS[] = 'dashboard.css';
 <script src="<?php echo URL_ASSETS; ?>/js/jquery-3.6.0.min.js"></script>
 <script src="<?php echo URL_ASSETS; ?>/js/bootstrap.bundle.min.js"></script>
 <script src="<?php echo URL_ASSETS; ?>/js/sweetalert2@11.js"></script>
+
+<?php if ($isProfileView): ?>
+    <script src="<?php echo URL_ASSETS; ?>/js/user-profile.js?v=<?php echo time(); ?>"></script>
+<?php endif; ?>
 
 <?php if ($isTagListView): ?>
     <script src="<?php echo URL_ASSETS; ?>/js/jquery.dataTables.min.js"></script>
