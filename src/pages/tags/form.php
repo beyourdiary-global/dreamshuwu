@@ -11,10 +11,10 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
     exit();
 }
 
-$dbTable = defined('NOVEL_TAGS') ? NOVEL_TAGS : 'novel_tag';
+$tagTable = NOVEL_TAGS;
 $auditPage = 'Tag Management';
-$insertQuery = "INSERT INTO $dbTable (name, created_by, updated_by) VALUES (?, ?, ?)";
-$updateQuery = "UPDATE $dbTable SET name = ?, updated_by = ? WHERE id = ?";
+$insertQuery = "INSERT INTO $tagTable (name, created_by, updated_by) VALUES (?, ?, ?)";
+$updateQuery = "UPDATE $tagTable SET name = ?, updated_by = ? WHERE id = ?";
 
 // 2. Context Detection
 $isEmbeddedTagForm = isset($EMBED_TAG_FORM_PAGE) && $EMBED_TAG_FORM_PAGE === true;
@@ -31,20 +31,44 @@ $tagId = $_GET['id'] ?? null;
 $tagId = $tagId !== null ? (int) $tagId : null;
 $isEditMode = !empty($tagId);
 
-// Define View Query for Audit Log
+// Define View Query for Audit Log (Correctly interpolated)
 $viewQuery = $isEditMode
-    ? "SELECT id, name, created_at, updated_at, created_by, updated_by FROM $dbTable WHERE id = ?"
-    : "SELECT id, name FROM $dbTable";
+    ? "SELECT id, name, created_at, updated_at, created_by, updated_by FROM $tagTable WHERE id = " . intval($tagId)
+    : "SELECT id, name FROM $tagTable";
 
 $tagName = "";
 $message = ""; 
 $msgType = "";
 $existingTagRow = null;
 
+// [NEW] Flash Message Check (Reads message after redirect)
+if (isset($_SESSION['flash_msg'])) {
+    $message = $_SESSION['flash_msg'];
+    $msgType = $_SESSION['flash_type'];
+    unset($_SESSION['flash_msg'], $_SESSION['flash_type']);
+}
+
+// [NEW] Log "View" Action (Run only on GET request)
+if ($_SERVER["REQUEST_METHOD"] !== "POST") {
+    if (!defined('TAG_FORM_VIEW_LOGGED')) {
+        define('TAG_FORM_VIEW_LOGGED', true);
+        if (function_exists('logAudit')) {
+            logAudit([
+                'page'           => $auditPage,
+                'action'         => 'V',
+                'action_message' => $isEditMode ? "Viewing Edit Tag Form (ID: $tagId)" : "Viewing Add Tag Form",
+                'query'          => $viewQuery,
+                'query_table'    => $tagTable,
+                'user_id'        => $_SESSION['user_id'] ?? 0
+            ]);
+        }
+    }
+}
+
 try {
     // 3. Load Existing Data (Initial Page Load)
     if ($isEditMode) {
-        $stmt = $conn->prepare("SELECT id, name, created_at, updated_at, created_by, updated_by FROM " . $dbTable . " WHERE id = ?");
+        $stmt = $conn->prepare("SELECT id, name, created_at, updated_at, created_by, updated_by FROM " . $tagTable . " WHERE id = ?");
         $stmt->bind_param("i", $tagId);
         $stmt->execute();
         $stmt->bind_result($rowId, $rowName, $rowCreatedAt, $rowUpdatedAt, $rowCreatedBy, $rowUpdatedBy);
@@ -82,8 +106,13 @@ try {
         if (empty($tagName)) {
             $message = "标签名称不能为空"; $msgType = "danger";
         } else {
+            // [NEW] Use global helper to check changes and redirect
+            if ($isEditMode && !empty($existingTagRow)) {
+                checkNoChangesAndRedirect(['name' => $tagName], $existingTagRow);
+            }
+
             // Check for duplicates
-            $sql = $isEditMode ? "SELECT id FROM $dbTable WHERE name = ? AND id != ?" : "SELECT id FROM $dbTable WHERE name = ?";
+            $sql = $isEditMode ? "SELECT id FROM $tagTable WHERE name = ? AND id != ?" : "SELECT id FROM $tagTable WHERE name = ?";
             $chk = $conn->prepare($sql);
             if (!$chk) {
                 throw new Exception($conn->error ?: 'Failed to prepare duplicate check.');
@@ -100,7 +129,7 @@ try {
 
                 // [CRITICAL] If Edit Mode, ensure we have Old Data for Audit Log BEFORE updating
                 if ($isEditMode && empty($existingTagRow)) {
-                    $fetchOld = $conn->prepare("SELECT id, name, created_at, updated_at, created_by, updated_by FROM " . $dbTable . " WHERE id = ?");
+                    $fetchOld = $conn->prepare("SELECT id, name, created_at, updated_at, created_by, updated_by FROM " . $tagTable . " WHERE id = ?");
                     $fetchOld->bind_param("i", $tagId);
                     $fetchOld->execute();
                     $fetchOld->bind_result($oId, $oName, $oCr, $oUp, $oCb, $oUb);
@@ -122,13 +151,13 @@ try {
                 }
 
                 if ($stmt->execute()) {
-                    // [CRITICAL FIX] Capture ID and Close Statement immediately so we can run the next query
+                    // [CRITICAL FIX] Capture ID and Close Statement immediately
                     $targetId = $isEditMode ? $tagId : $conn->insert_id;
                     $stmt->close(); 
 
-                    // Now it is safe to fetch New Data for Audit Log
+                    // 1. [NEW] Prepare Data for Audit Log (Fetch fresh data)
                     $newData = null;
-                    $reload = $conn->prepare("SELECT id, name, created_at, updated_at, created_by, updated_by FROM " . $dbTable . " WHERE id = ?");
+                    $reload = $conn->prepare("SELECT id, name, created_at, updated_at, created_by, updated_by FROM " . $tagTable . " WHERE id = ?");
                     if ($reload) {
                         $reload->bind_param("i", $targetId);
                         $reload->execute();
@@ -146,27 +175,28 @@ try {
                         $reload->close();
                     }
 
-                    // Fallback: ensure new_value is not empty even if reload fails on some hosts
+                    // Fallback if fetch failed
                     if (empty($newData)) {
                         $now = date('Y-m-d H:i:s');
-                        $newData = [
-                            'id' => $targetId,
-                            'name' => $tagName,
-                            'created_at' => $isEditMode ? ($existingTagRow['created_at'] ?? null) : $now,
-                            'updated_at' => $now,
-                            'created_by' => $isEditMode ? ($existingTagRow['created_by'] ?? $currentUserId) : $currentUserId,
-                            'updated_by' => $currentUserId,
-                        ];
+                        $newData = ['id' => $targetId, 'name' => $tagName, 'updated_at' => $now];
                     }
 
+                    // Ensure Old Value exists for Edit Mode
+                    if ($isEditMode && empty($existingTagRow)) {
+                        $existingTagRow = ['id' => $targetId, 'name' => $tagName];
+                    }
+
+                    // 2. [AUDIT] Log the Action (ONLY ONCE)
                     if (function_exists('logAudit')) {
                         logAudit([
                             'page'           => $auditPage,
                             'action'         => $action,
                             'action_message' => "$logMsg: $tagName",
                             'query'          => $isEditMode ? $updateQuery : $insertQuery,
-                            'query_table'    => $dbTable,
+                            'query_table'    => $tagTable,
                             'user_id'        => $currentUserId,
+                            'record_id'      => $targetId,
+                            'record_name'    => $tagName,
                             'old_value'      => $existingTagRow,
                             'new_value'      => $newData
                         ]);
@@ -184,22 +214,6 @@ try {
             }
         }
     } 
-    // 5. Handle Page View (GET) Audit Log
-    else {
-        if (!defined('TAG_FORM_VIEW_LOGGED')) {
-            define('TAG_FORM_VIEW_LOGGED', true);
-            if (function_exists('logAudit')) {
-                logAudit([
-                    'page'           => $auditPage,
-                    'action'         => 'V',
-                    'action_message' => $isEditMode ? "Viewing Edit Tag Form: $tagName" : "Viewing Add Tag Form",
-                    'query'          => $viewQuery,
-                    'query_table'    => $dbTable,
-                    'user_id'        => $_SESSION['user_id']
-                ]);
-            }
-        }
-    }
 
 } catch (Exception $e) {
     $message = "System Error: " . $e->getMessage(); $msgType = "danger";

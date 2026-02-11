@@ -182,48 +182,146 @@ function sendPasswordResetEmail($email, $resetLink) {
 }
 
 /**
+ * [NEW] Helper: Check for Changes and Redirect
+ * Automatically checks if new form data matches old DB data.
+ * If NO changes are found (and no file uploaded), sets a flash message and redirects.
+ *
+ * @param array  $newData       New data from form (key => value)
+ * @param array  $oldData       Old data from DB (key => value)
+ * @param string $fileInputName (Optional) The name attribute of a file input to check
+ * @param string $redirectUrl   (Optional) Custom redirect URL. Defaults to current page.
+ */
+function checkNoChangesAndRedirect($newData, $oldData, $fileInputName = null, $redirectUrl = null) {
+    // 1. Check for File Upload
+    if ($fileInputName && isset($_FILES[$fileInputName]) && $_FILES[$fileInputName]['size'] > 0) {
+        return; // File detected, proceed to save
+    }
+
+    // 2. Check for Text Changes
+    foreach ($newData as $key => $newVal) {
+        // Skip keys that don't exist in old data (or you can choose to treat them as changes)
+        if (!array_key_exists($key, $oldData)) continue;
+
+        // Use loose comparison (!=) to handle string vs int (e.g. "1" vs 1), and null vs ""
+        if ($newVal != $oldData[$key]) {
+            return; // Change detected, proceed to save
+        }
+    }
+
+    // 3. No Changes Found -> Redirect
+    if (session_status() === PHP_SESSION_NONE) session_start();
+
+    $_SESSION['flash_msg'] = "没有修改，无需保存"; 
+    $_SESSION['flash_type'] = "warning";
+
+    $url = $redirectUrl ?? $_SERVER['REQUEST_URI'];
+
+    if (!headers_sent()) {
+        header("Location: " . $url);
+    } else {
+        echo "<script>window.location.href = '" . $url . "';</script>";
+    }
+    exit();
+}
+
+/**
  * Logs a database operation to the audit_log table.
  */
+if (!function_exists('encodeAuditValue')) {
+    function encodeAuditValue($value) {
+        if ($value === null) return null;
+        
+        // If it's a string, trim it. If empty/null string, return null.
+        if (is_string($value)) {
+            $trimmed = trim($value);
+            return $trimmed === '' ? null : $trimmed;
+        }
+        
+        // Use the global safeJsonEncode for arrays/objects
+        return safeJsonEncode($value);
+    }
+}
+
+// [UNIVERSAL FIX] Fetch using Query + Explicit Free
+// This prevents "Commands out of sync" errors that block the INSERT
+if (!function_exists('fetchAuditRow')) {
+    function fetchAuditRow($conn, $table, $recordId) {
+        if (empty($table) || empty($recordId)) return null;
+        
+        // Safety: Force ID to be an integer
+        $safeId = (int) $recordId;
+        
+        // Direct Query
+        $sql = "SELECT * FROM {$table} WHERE id = $safeId LIMIT 1";
+        $result = $conn->query($sql);
+        
+        if ($result) {
+            if ($result->num_rows > 0) {
+                $row = $result->fetch_assoc();
+                $result->free(); // [CRITICAL] Unlock DB for the next query
+                return $row;
+            }
+            $result->free(); // [CRITICAL] Unlock even if empty
+        }
+        return null;
+    }
+}
+
+// [CRITICAL FIX] The Logger Logic
 function logAudit($params) {
     global $conn;
 
-    // 1. Set Defaults
     $page        = $params['page'] ?? 'Unknown';
-    $action      = $params['action'] ?? 'V';
+    $action      = $params['action'] ?? 'V'; // Default to View
     $message     = $params['action_message'] ?? '';
     $query       = $params['query'] ?? '';
     $table       = $params['query_table'] ?? '';
     $userId      = $params['user_id'] ?? 0;
     
-    // Arrays for JSON columns
+    $recordId    = $params['record_id'] ?? null;
+    $recordName  = $params['record_name'] ?? null;
     $oldData     = $params['old_value'] ?? null;
     $newData     = $params['new_value'] ?? null;
     $changes     = null;
 
-    // 2. Calculate Changes (Improved Logic: From -> To)
+    // A. Auto-Detect ID for New Inserts
+    if (empty($recordId) && ($action === 'A' || $action === 'ADD') && isset($conn->insert_id) && $conn->insert_id > 0) {
+        $recordId = $conn->insert_id;
+    }
+
+    // B. Auto-Fetch Missing Data
+    // Note: fetchAuditRow now properly frees memory, so this won't block the INSERT below
+    if (($action === 'A' || $action === 'E') && empty($newData) && !empty($recordId) && !empty($table)) {
+        $newData = fetchAuditRow($conn, $table, (int) $recordId);
+    }
+    if (($action === 'E' || $action === 'D') && empty($oldData) && !empty($recordId) && !empty($table)) {
+        $oldData = fetchAuditRow($conn, $table, (int) $recordId);
+    }
+
+    // C. Fallback to ensure NO NULLS in DB
+    if (empty($oldData) && ($action === 'E' || $action === 'D') && ($recordId || $recordName)) {
+        $oldData = ['id' => $recordId, 'name' => $recordName, 'note' => 'Data fetch skipped'];
+    }
+    if (empty($newData) && ($action === 'A' || $action === 'E') && ($recordId || $recordName)) {
+        $newData = ['id' => $recordId, 'name' => $recordName, 'note' => 'Data fetch skipped'];
+    }
+
+    // D. Calculate Changes
     if ($action === 'E' && is_array($oldData) && is_array($newData)) {
         $changes = [];
         foreach ($newData as $key => $value) {
-            // Check if key exists in old data AND is different
-            if (array_key_exists($key, $oldData) && $oldData[$key] !== $value) {
-                $changes[$key] = [
-                    'from' => $oldData[$key],
-                    'to'   => $value
-                ];
+            if (array_key_exists($key, $oldData) && $oldData[$key] != $value) {
+                $changes[$key] = ['from' => $oldData[$key], 'to' => $value];
             }
         }
-        // If no actual changes found, set to null
-        if (empty($changes)) {
-            $changes = null;
-        }
+        if (empty($changes)) $changes = null;
     }
 
-    // 3. JSON Encode (WITH SAFETY CHECK)
-    $jsonOld     = !empty($oldData) ? safeJsonEncode($oldData) : null;
-    $jsonNew     = !empty($newData) ? safeJsonEncode($newData) : null;
-    $jsonChanges = !empty($changes) ? safeJsonEncode($changes) : null;
+    // E. Save
+    $jsonOld     = encodeAuditValue($oldData);
+    $jsonNew     = encodeAuditValue($newData);
+    $jsonChanges = encodeAuditValue($changes);
 
-    // 4. Prepare SQL
     $sql = "INSERT INTO " . AUDIT_LOG . " 
             (page, action, action_message, query, query_table, 
              old_value, new_value, changes, user_id, 
@@ -231,17 +329,19 @@ function logAudit($params) {
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ?, ?)";
 
     $stmt = $conn->prepare($sql);
-
     if ($stmt) {
         $stmt->bind_param(
             "ssssssssiii", 
             $page, $action, $message, $query, $table, 
             $jsonOld, $jsonNew, $jsonChanges, $userId, $userId, $userId
         );
-        $stmt->execute();
+        if (!$stmt->execute()) {
+             // Log error to PHP error log if insert fails
+             error_log("Audit Insert Failed: " . $stmt->error);
+        }
         $stmt->close();
     } else {
-        error_log("Audit Log SQL Error: " . $conn->error);
+        error_log("Audit Prepare Failed: " . $conn->error);
     }
 }
 

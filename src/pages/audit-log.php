@@ -11,187 +11,134 @@ $auditActions = ['V' => 'View', 'E' => 'Edit', 'A' => 'Add', 'D' => 'Delete'];
 
 if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
     header('Content-Type: application/json');
+    ini_set('display_errors', 0); 
+    error_reporting(E_ALL);
 
-    /**
-     * Error helper so DataTables always receives valid JSON instead of a PHP fatal.
-     */
+    // FIX: Handle Data Types "In Front" (Sanitize Early)
+    // We force the types here so we don't need complex binding later.
+    
+    $draw   = (int)($_GET['draw'] ?? 0);
+    $start  = (int)($_GET['start'] ?? 0);
+    $length = (int)($_GET['length'] ?? 10);
+    
+    // Clean strings immediately
+    $searchRaw = isset($_GET['search']['value']) ? trim($_GET['search']['value']) : '';
+    $actionRaw = isset($_GET['filter_action']) ? trim($_GET['filter_action']) : '';
+
+    // Helper: Send Error
     if (!function_exists('sendAuditTableError')) {
-        function sendAuditTableError($message) {
-            $draw = isset($_GET['draw']) ? (int) $_GET['draw'] : 0;
-            echo safeJsonEncode([
-                "draw" => $draw,
-                "recordsTotal" => 0,
-                "recordsFiltered" => 0,
-                "data" => [],
-                "error" => $message,
-            ]);
+        function sendAuditTableError($message, $draw) {
+            echo safeJsonEncode(["draw"=>$draw, "recordsTotal"=>0, "recordsFiltered"=>0, "data"=>[], "error"=>$message]);
             exit();
         }
     }
 
-    if (!isset($conn) || !$conn) {
-        sendAuditTableError('Database connection is not available.');
-    }
+    if (!isset($conn) || !$conn) sendAuditTableError('Database connection unavailable.', $draw);
 
-    $sql = "SELECT * FROM " . AUDIT_LOG . " WHERE 1=1";
-    $countSql = "SELECT COUNT(*) FROM " . AUDIT_LOG . " WHERE 1=1";
+    // STEP 2: PREPARE FILTERS (2-Query Logic)
     
-    $mainParams = []; $mainTypes = "";
-    $countParams = []; $countTypes = "";
+    $whereClauses = [];
 
-    // 1. Search Logic
-    if (!empty($_GET['search']['value'])) {
-        $search = "%" . $_GET['search']['value'] . "%";
-        $userSubQuery = "(SELECT id FROM " . USR_LOGIN . " WHERE name LIKE ?)";
-        $clause = " AND (page LIKE ? OR action_message LIKE ? OR user_id IN $userSubQuery)";
+    // A. SEARCH (Find User IDs -> Then Filter Log)
+    if ($searchRaw !== '') {
+        $safeSearch = $conn->real_escape_string($searchRaw);
         
-        $sql .= $clause;
-        $countSql .= $clause;
-        
-        $searchParams = [$search, $search, $search];
-        foreach($searchParams as $p) { $mainParams[] = $p; $countParams[] = $p; }
-        $mainTypes .= "sss"; $countTypes .= "sss";
-    }
-    
-    // 2. Filter Action
-    if (!empty($_GET['filter_action'])) {
-        $clause = " AND action = ?";
-        $sql .= $clause;
-        $countSql .= $clause;
-        
-        $mainParams[] = $_GET['filter_action']; $countParams[] = $_GET['filter_action'];
-        $mainTypes .= "s"; $countTypes .= "s";
-    }
-
-    // Safe Parameter Binding Helper (shared name but guarded)
-    if (!function_exists('bindDynamicParams')) {
-        function bindDynamicParams($stmt, $types, $params) {
-            if (!empty($params) && $stmt instanceof mysqli_stmt) {
-                $bindParams = [];
-                $bindParams[] = $types;
-                for ($i = 0; $i < count($params); $i++) {
-                    $bindParams[] = &$params[$i];
-                }
-                call_user_func_array(array($stmt, 'bind_param'), $bindParams);
-            }
+        // Query 1: Get User IDs
+        $userIds = [];
+        $uSql = "SELECT id FROM " . USR_LOGIN . " WHERE name LIKE '%{$safeSearch}%'";
+        $uRes = $conn->query($uSql);
+        if ($uRes) {
+            while ($row = $uRes->fetch_assoc()) $userIds[] = (int)$row['id'];
+            $uRes->free();
         }
-    }
 
-    // 3. Count Query
-    $countStmt = $conn->prepare($countSql);
-    if ($countStmt === false) {
-        error_log("Audit log count query prepare failed: " . $conn->error);
-        sendAuditTableError('System error while loading audit log.');
-    }
-    bindDynamicParams($countStmt, $countTypes, $countParams);
-    if (!$countStmt->execute()) {
-        error_log("Audit log count query execute failed: " . $countStmt->error);
-        sendAuditTableError('System error while loading audit log.');
-    }
-    $countStmt->bind_result($totalRecords);
-    $countStmt->fetch();
-    $countStmt->close();
-
-    // 4. Sort & Limit
-    $sortCols = ['page', 'action', 'action_message', 'user_id', 'created_at', 'created_at']; 
-    $colIdx = $_GET['order'][0]['column'] ?? 5; 
-    $realColIdx = ($colIdx > 0) ? $colIdx - 1 : 4; // Adjust for hidden column
-    $colName = $sortCols[$realColIdx] ?? 'created_at';
-    $dir = ($_GET['order'][0]['dir'] ?? 'desc') === 'asc' ? 'ASC' : 'DESC';
-    $sql .= " ORDER BY " . $colName . " " . $dir;
-
-    $start = $_GET['start'] ?? 0;
-    $length = $_GET['length'] ?? 10;
-    $sql .= " LIMIT ?, ?";
-    $mainParams[] = $start; $mainParams[] = $length;
-    $mainTypes .= "ii";
-
-    // 5. Execute Main
-    $stmt = $conn->prepare($sql);
-    if ($stmt === false) {
-        error_log("Audit log data query prepare failed: " . $conn->error);
-        sendAuditTableError('System error while loading audit log.');
-    }
-    bindDynamicParams($stmt, $mainTypes, $mainParams);
-    if (!$stmt->execute()) {
-        error_log("Audit log data query execute failed: " . $stmt->error);
-        sendAuditTableError('System error while loading audit log.');
+        // Query 2: Build Clause
+        $orParts = [];
+        $orParts[] = "page LIKE '%{$safeSearch}%'";
+        $orParts[] = "action_message LIKE '%{$safeSearch}%'";
+        if (!empty($userIds)) {
+            $idList = implode(',', $userIds);
+            $orParts[] = "user_id IN ({$idList})";
+        }
+        $whereClauses[] = "(" . implode(' OR ', $orParts) . ")";
     }
     
-    $results = [];
-    $meta = $stmt->result_metadata();
-    $row = []; $bindResult = [];
-    while ($field = $meta->fetch_field()) { $bindResult[] = &$row[$field->name]; }
-    call_user_func_array(array($stmt, 'bind_result'), $bindResult);
-    while ($stmt->fetch()) {
-        $cRow = []; foreach($row as $k => $v) { $cRow[$k] = $v; }
-        $results[] = $cRow;
+    // B. FILTER ACTION
+    if ($actionRaw !== '') {
+        $safeAction = $conn->real_escape_string($actionRaw);
+        $whereClauses[] = "action = '{$safeAction}'";
     }
-    $stmt->close();
 
-    // 6. User Mapping
+    $whereSQL = empty($whereClauses) ? '' : ' AND ' . implode(' AND ', $whereClauses);
+
+    // STEP 3: EXECUTE (Direct Query - Treat as String)
+    
+    // 1. Count
+    $countSql = "SELECT COUNT(*) as total FROM " . AUDIT_LOG . " WHERE 1=1" . $whereSQL;
+    $countResult = $conn->query($countSql);
+    if (!$countResult) sendAuditTableError('Count Failed: ' . $conn->error, $draw);
+    $countRow = $countResult->fetch_assoc();
+    $totalRecords = (int)$countRow['total'];
+    $countResult->free();
+
+    // 2. Sort Logic
+    $sortCols = ['page', 'action', 'action_message', 'user_id', 'created_at', 'created_at']; 
+    $colIdx = (int)($_GET['order'][0]['column'] ?? 5); 
+    $colName = $sortCols[($colIdx > 0) ? $colIdx - 1 : 4] ?? 'created_at';
+    $dir = ($_GET['order'][0]['dir'] ?? 'desc') === 'asc' ? 'ASC' : 'DESC';
+
+    // 3. Fetch Data (Directly use sanitized $start/$length)
+    $sql = "SELECT page, action, action_message, query, old_value, new_value, user_id, created_at FROM " . AUDIT_LOG . " WHERE 1=1" . $whereSQL . " ORDER BY {$colName} {$dir} LIMIT {$start}, {$length}";
+
+    $result = $conn->query($sql);
+    if (!$result) sendAuditTableError('Data Failed: ' . $conn->error, $draw);
+
+    $results = [];
+    while ($row = $result->fetch_assoc()) {
+        $results[] = $row;
+    }
+    $result->free();
+
+    // STEP 4: CONVERT IN PHP
+
+    // User Map
     $userIds = array_unique(array_column($results, 'user_id'));
     $userMap = [];
     if (!empty($userIds)) {
-        $idList = implode(',', array_map('intval', $userIds));
-        $uRes = $conn->query("SELECT id, name FROM " . USR_LOGIN . " WHERE id IN ($idList)");
+        $uList = implode(',', array_map('intval', $userIds));
+        $uRes = $conn->query("SELECT id, name FROM " . USR_LOGIN . " WHERE id IN ({$uList})");
         if($uRes) while ($uRow = $uRes->fetch_assoc()) $userMap[$uRow['id']] = $uRow['name'];
     }
 
-    // 7. Output Data
     $data = [];
     foreach ($results as $cRow) {
-        $badgeClass = 'secondary';
         $actCode = trim($cRow['action'] ?? '');
+        $badgeClass = ($actCode=='D')?'danger':(($actCode=='E')?'warning':(($actCode=='A')?'success':'info'));
         
-        switch ($actCode) {
-            case 'V': $badgeClass = 'info'; break;
-            case 'E': $badgeClass = 'warning'; break;
-            case 'D': $badgeClass = 'danger'; break;
-            case 'A': $badgeClass = 'success'; break;
+        $dateStr = ''; $timeStr = '';
+        if (!empty($cRow['created_at'])) {
+            try { $dt = new DateTime($cRow['created_at']); $dateStr=$dt->format('Y-m-d'); $timeStr=$dt->format('H:i:s'); } catch(Exception $e){}
         }
 
-        // Ensure Action Text is never empty
-        $actionLabel = $auditActions[$actCode] ?? $actCode;
-        if (empty($actionLabel)) $actionLabel = "Record"; 
-
-        $createdAt = $cRow['created_at'] ?? null;
-        $dateStr = '';
-        $timeStr = '';
-        if (!empty($createdAt)) {
-            try {
-                $dt = new DateTime($createdAt);
-                $dateStr = $dt->format('Y-m-d');
-                $timeStr = $dt->format('H:i:s');
-            } catch (Exception $e) {
-                // Leave date/time empty if parsing fails
-            }
-        }
-
-        // Build details payload for expandable row (query + old/new values)
-        $details = [
-            'query' => $cRow['query'] ?? '',
-            'old'   => $cRow['old_value'] ?? null,
-            'new'   => $cRow['new_value'] ?? null,
-        ];
+        // Fetch as string -> Decode in PHP
+        $old = $cRow['old_value']; 
+        if($old && is_string($old)) { $j=json_decode($old,true); if(json_last_error()===JSON_ERROR_NONE)$old=$j; }
+        
+        $new = $cRow['new_value'];
+        if($new && is_string($new)) { $j=json_decode($new,true); if(json_last_error()===JSON_ERROR_NONE)$new=$j; }
 
         $data[] = [
             'page'    => htmlspecialchars($cRow['page']),
-            'action'  => '<span class="badge badge-custom badge-'.$badgeClass.'">' . htmlspecialchars($actionLabel) . '</span>',
+            'action'  => '<span class="badge badge-custom badge-'.$badgeClass.'">' . htmlspecialchars($auditActions[$actCode]??$actCode) . '</span>',
             'message' => htmlspecialchars($cRow['action_message']),
             'user'    => htmlspecialchars(($userMap[$cRow['user_id']] ?? 'Unknown') . " (ID:" . $cRow['user_id'] . ")"),
             'date'    => $dateStr,
             'time'    => $timeStr,
-            'details' => $details,
+            'details' => ['query'=>$cRow['query']??'', 'old'=>$old, 'new'=>$new]
         ];
     }
 
-    echo safeJsonEncode([
-        "draw" => intval($_GET['draw'] ?? 0),
-        "recordsTotal" => (int) $totalRecords,
-        "recordsFiltered" => (int) $totalRecords,
-        "data" => $data
-    ]);
+    echo safeJsonEncode(["draw"=>$draw, "recordsTotal"=>$totalRecords, "recordsFiltered"=>$totalRecords, "data"=>$data]);
     exit();
 }
 
