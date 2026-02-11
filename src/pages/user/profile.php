@@ -357,6 +357,3 @@ $sidebarItems = [
         </form>
     </div>
 </div>
-
-        </div>
-                <input type="password" name="current_password" class="form-control">
