@@ -35,9 +35,9 @@ if ($isEmbeddedTagForm) {
 $id = $_GET['id'] ?? null;
 $isEdit = !empty($id);
 
-// Define View Query
+// Define View Query (Correctly interpolated)
 $viewQuery = $isEdit
-    ? "SELECT id, name, created_at, updated_at, created_by, updated_by FROM $catTable WHERE id = ?"
+    ? "SELECT id, name, created_at, updated_at, created_by, updated_by FROM $catTable WHERE id = " . intval($id)
     : "SELECT id, name FROM $catTable";
 
 if ($isEdit && $isEmbeddedTagForm) {
@@ -48,6 +48,30 @@ $name = "";
 $selectedTags = [];
 $message = ""; $msgType = "";
 $existingCatRow = null;
+
+// [NEW] Flash Message Check (Reads message after redirect)
+if (isset($_SESSION['flash_msg'])) {
+    $message = $_SESSION['flash_msg'];
+    $msgType = $_SESSION['flash_type'];
+    unset($_SESSION['flash_msg'], $_SESSION['flash_type']);
+}
+
+// [NEW] Log "View" Action (Run only on GET request)
+if ($_SERVER["REQUEST_METHOD"] !== "POST") {
+    if (!defined('CAT_FORM_VIEW_LOGGED')) {
+        define('CAT_FORM_VIEW_LOGGED', true);
+        if (function_exists('logAudit')) {
+            logAudit([
+                'page'           => $auditPage,
+                'action'         => 'V',
+                'action_message' => $isEdit ? "Viewing Edit Category Form (ID: $id)" : "Viewing Add Category Form",
+                'query'          => $viewQuery,
+                'query_table'    => $catTable,
+                'user_id'        => $_SESSION['user_id']
+            ]);
+        }
+    }
+}
 
 // 1. Fetch Data
 if ($isEdit) {
@@ -134,6 +158,26 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                         $existingCatRow = ['id' => $oId, 'name' => $oName, 'created_at' => $oCr, 'updated_at' => $oUp, 'created_by' => $oCb, 'updated_by' => $oUb];
                     }
                     $fetchOld->close();
+                }
+
+                // [REUSE] Check for Changes using Helper
+                if ($isEdit && !empty($existingCatRow)) {
+                    // Prepare Tags for comparison (Sort to ignore order differences)
+                    $oldTags = $selectedTags; 
+                    sort($oldTags);
+                    
+                    $newTags = $tagIds; 
+                    sort($newTags);
+
+                    // Create comparison array
+                    $oldCompare = $existingCatRow;
+                    $oldCompare['tags'] = $oldTags;
+
+                    // Pass name and tags to check
+                    checkNoChangesAndRedirect(
+                        ['name' => $name, 'tags' => $newTags], 
+                        $oldCompare
+                    );
                 }
 
                 $conn->begin_transaction();
@@ -245,22 +289,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     $msgType = "danger";
                 }
             } // End if tagsValid
-        }
-    }
-}
-// 4. Handle Page View (GET) Audit Log
-else {
-    if (!defined('CAT_FORM_VIEW_LOGGED')) {
-        define('CAT_FORM_VIEW_LOGGED', true);
-        if (function_exists('logAudit')) {
-            logAudit([
-                'page'           => $auditPage,
-                'action'         => 'V',
-                'action_message' => $isEdit ? "Viewing Edit Category Form: $name" : "Viewing Add Category Form",
-                'query'          => $viewQuery,
-                'query_table'    => $catTable,
-                'user_id'        => $_SESSION['user_id']
-            ]);
         }
     }
 }

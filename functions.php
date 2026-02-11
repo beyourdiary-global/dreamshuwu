@@ -182,6 +182,49 @@ function sendPasswordResetEmail($email, $resetLink) {
 }
 
 /**
+ * [NEW] Helper: Check for Changes and Redirect
+ * Automatically checks if new form data matches old DB data.
+ * If NO changes are found (and no file uploaded), sets a flash message and redirects.
+ *
+ * @param array  $newData       New data from form (key => value)
+ * @param array  $oldData       Old data from DB (key => value)
+ * @param string $fileInputName (Optional) The name attribute of a file input to check
+ * @param string $redirectUrl   (Optional) Custom redirect URL. Defaults to current page.
+ */
+function checkNoChangesAndRedirect($newData, $oldData, $fileInputName = null, $redirectUrl = null) {
+    // 1. Check for File Upload
+    if ($fileInputName && isset($_FILES[$fileInputName]) && $_FILES[$fileInputName]['size'] > 0) {
+        return; // File detected, proceed to save
+    }
+
+    // 2. Check for Text Changes
+    foreach ($newData as $key => $newVal) {
+        // Skip keys that don't exist in old data (or you can choose to treat them as changes)
+        if (!array_key_exists($key, $oldData)) continue;
+
+        // Use loose comparison (!=) to handle string vs int (e.g. "1" vs 1), and null vs ""
+        if ($newVal != $oldData[$key]) {
+            return; // Change detected, proceed to save
+        }
+    }
+
+    // 3. No Changes Found -> Redirect
+    if (session_status() === PHP_SESSION_NONE) session_start();
+
+    $_SESSION['flash_msg'] = "没有修改，无需保存"; 
+    $_SESSION['flash_type'] = "warning";
+
+    $url = $redirectUrl ?? $_SERVER['REQUEST_URI'];
+
+    if (!headers_sent()) {
+        header("Location: " . $url);
+    } else {
+        echo "<script>window.location.href = '" . $url . "';</script>";
+    }
+    exit();
+}
+
+/**
  * Logs a database operation to the audit_log table.
  */
 if (!function_exists('encodeAuditValue')) {
