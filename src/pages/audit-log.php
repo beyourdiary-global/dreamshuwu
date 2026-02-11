@@ -1,34 +1,8 @@
 <?php
 // Path: src/pages/audit-log.php
-ob_start(); // 1. Start buffering to catch unwanted whitespace
-
-// 2. CRASH CATCHER: If PHP crashes (Fatal Error), this runs
-register_shutdown_function(function() {
-    $error = error_get_last();
-    // Check for Fatal (E_ERROR) or Parse (E_PARSE) errors
-    if ($error && ($error['type'] === E_ERROR || $error['type'] === E_PARSE || $error['type'] === E_CORE_ERROR)) {
-        // Clear any half-written HTML/JSON
-        if (ob_get_length()) ob_clean(); 
-        
-        // Force valid JSON response so DataTables shows the error alert
-        header('Content-Type: application/json');
-        echo json_encode([
-            "draw" => 0,
-            "recordsTotal" => 0,
-            "recordsFiltered" => 0,
-            "data" => [],
-            "error" => "FATAL CRASH: " . $error['message'] . " on line " . $error['line']
-        ]);
-        exit();
-    }
-});
-
 require_once __DIR__ . '/../../init.php';
 require_once BASE_PATH . 'config/urls.php';
 require_once BASE_PATH . 'functions.php';
-
-// [CRITICAL] Clean output buffer to prevent 500 Errors
-if (ob_get_length()) ob_clean();
 
 if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
     header("Location: " . URL_LOGIN);
@@ -38,8 +12,6 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
 $auditActions = ['V' => 'View', 'E' => 'Edit', 'A' => 'Add', 'D' => 'Delete'];
 
 if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
-    // [FIX 1] Clean Buffer & Header
-    if (ob_get_length()) ob_clean();
     header('Content-Type: application/json');
     ini_set('display_errors', 0); 
     error_reporting(E_ALL);
