@@ -4,7 +4,6 @@ require_once __DIR__ . '/../../../init.php';
 require_once BASE_PATH . 'urls.php';
 require_once BASE_PATH . 'functions.php';
 
-
 // 1. Handle AJAX "Cancel" Request
 // We must intercept POST requests here. If we don't, the script will 
 // continue to the bottom and log the user out, even if they clicked "Cancel".
