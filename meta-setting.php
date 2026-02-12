@@ -78,10 +78,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // 3. DELETE PAGE POST
     if (isset($_POST['form_type']) && $_POST['form_type'] === 'delete_page') {
         $delKey = $_POST['page_key'] ?? '';
-        if (!empty($delKey)) {
-            $conn->query("DELETE FROM $pageMetaTable WHERE page_key = '$delKey'");
-            $pageMessage = "已恢复为全局默认设置！";
-            $pageMsgType = "success";
+        if (!empty($delKey) && array_key_exists($delKey, $PAGE_META_REGISTRY)) {
+            $sql = "DELETE FROM $pageMetaTable WHERE page_key = ?";
+            if ($stmt = $conn->prepare($sql)) {
+                $stmt->bind_param("s", $delKey);
+                if ($stmt->execute()) {
+                    $pageMessage = "已恢复为全局默认设置！";
+                    $pageMsgType = "success";
+                } else {
+                    $pageMessage = "删除失败: " . $conn->error;
+                    $pageMsgType = "danger";
+                }
+                $stmt->close();
+            } else {
+                $pageMessage = "删除失败: 无法准备删除语句。";
+                $pageMsgType = "danger";
+            }
         }
     }
 }
@@ -89,7 +101,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // ========== FETCH DATA ==========
 // Global Data
 $current = array_fill_keys(array_keys($seoFields), '');
-$res = $conn->query("SELECT * FROM $metaTable WHERE page_type = 'global' LIMIT 1");
+$res = $conn->query("SELECT * FROM $metaTable WHERE page_type = 'global' AND page_id = 0 LIMIT 1");
 if ($res && $row = $res->fetch_assoc()) $current = $row;
 
 // Page Data
@@ -244,7 +256,7 @@ while ($cpRes && $row = $cpRes->fetch_assoc()) $customizedPages[] = $row['page_k
                             <?php if (in_array($selectedPageKey, $customizedPages)): ?>
                             <form method="POST" class="reset-form">
                                 <input type="hidden" name="form_type" value="delete_page">
-                                <input type="hidden" name="page_key" value="<?php echo $selectedPageKey; ?>">
+                                <input type="hidden" name="page_key" value="<?php echo htmlspecialchars($selectedPageKey, ENT_QUOTES, 'UTF-8'); ?>">
                                 <button type="submit" class="btn btn-outline-danger btn-sm">
                                 <i class="fa-solid fa-rotate-left"></i> Reset
                                 </button>
@@ -254,7 +266,7 @@ while ($cpRes && $row = $cpRes->fetch_assoc()) $customizedPages[] = $row['page_k
 
                         <form method="POST">
                             <input type="hidden" name="form_type" value="page">
-                            <input type="hidden" name="page_key" value="<?php echo $selectedPageKey; ?>">
+                            <input type="hidden" name="page_key" value="<?php echo htmlspecialchars($selectedPageKey, ENT_QUOTES, 'UTF-8'); ?>">
 
                             <?php foreach ($seoFields as $key => $config): 
                                 $fieldName = 'page_' . $key;
