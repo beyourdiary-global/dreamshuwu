@@ -128,6 +128,21 @@ CREATE TABLE IF NOT EXISTS category_tag (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ";
 
+$tables['meta_settings'] = "
+CREATE TABLE IF NOT EXISTS meta_settings (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    page_type VARCHAR(50) NOT NULL,
+    page_id BIGINT NOT NULL DEFAULT 0,
+    meta_title VARCHAR(255) DEFAULT NULL,      -- Browser Tab Title
+    meta_description TEXT DEFAULT NULL,        -- Search Engine Description
+    og_title VARCHAR(255) DEFAULT NULL,        -- Social Media Title
+    og_description TEXT DEFAULT NULL,          -- Social Media Description
+    og_url VARCHAR(255) DEFAULT NULL,          -- Social Media Canonical URL
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_meta_page (page_type, page_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+";
+
 // 4. Run Queries
 
 foreach ($tables as $name => $sql) {

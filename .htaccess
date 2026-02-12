@@ -1,6 +1,16 @@
 RewriteEngine On
 
-# Security: Block direct access to the "src" folder from the browser
+# Security: Block direct access to "src", EXCEPT for specific files
+
+# 1. Allow Category API
+
+RewriteCond %{REQUEST_URI} !^/src/pages/category/index\.php$
+
+# 2. Allow Tag API
+
+RewriteCond %{REQUEST_URI} !^/src/pages/tags/index\.php$
+
+# 3. Block everything else in src/
 
 RewriteRule ^src/ - [F,L]
 

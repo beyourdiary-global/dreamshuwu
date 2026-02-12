@@ -220,6 +220,8 @@ defined('NOVEL_TAGS') || define('NOVEL_TAGS', 'novel_tag');
 defined('NOVEL_CATEGORY') || define('NOVEL_CATEGORY', 'novel_category');
 defined('CATEGORY_TAG')   || define('CATEGORY_TAG', 'category_tag');
 
+// --- Meta Settings Table ---
+defined('META_SETTINGS') || define('META_SETTINGS', 'meta_settings');
 // --- Application Constants ---
 defined('MIN_AGE_REQUIREMENT') || define('MIN_AGE_REQUIREMENT', 13);
 defined('MIN_PWD_LENGTH')      || define('MIN_PWD_LENGTH', 8);
