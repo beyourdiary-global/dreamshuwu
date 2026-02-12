@@ -11,6 +11,12 @@ if (!function_exists('safeJsonEncode')) {
     function safeJsonEncode($data) {
         if (function_exists('json_encode')) {
             $flags = defined('JSON_UNESCAPED_UNICODE') ? JSON_UNESCAPED_UNICODE : 0;
+            if (defined('JSON_PARTIAL_OUTPUT_ON_ERROR')) {
+                $flags |= JSON_PARTIAL_OUTPUT_ON_ERROR;
+            }
+            if (defined('JSON_INVALID_UTF8_SUBSTITUTE')) {
+                $flags |= JSON_INVALID_UTF8_SUBSTITUTE;
+            }
             $encoded = json_encode($data, $flags);
             if ($encoded !== false) {
                 return $encoded;
@@ -50,6 +56,46 @@ if (!function_exists('safeJsonEncode')) {
         }
 
         return (string)$data;
+    }
+}
+
+if (!function_exists('sanitizeUtf8')) {
+    function sanitizeUtf8($value) {
+        if (is_array($value)) {
+            $sanitized = [];
+            foreach ($value as $key => $item) {
+                $sanitized[$key] = sanitizeUtf8($item);
+            }
+            return $sanitized;
+        }
+
+        if (is_object($value)) {
+            $obj = clone $value;
+            foreach ($obj as $k => $v) {
+                $obj->$k = sanitizeUtf8($v);
+            }
+            return $obj;
+        }
+
+        if (!is_string($value)) {
+            return $value;
+        }
+
+        if (function_exists('mb_check_encoding') && function_exists('mb_convert_encoding')) {
+            if (!mb_check_encoding($value, 'UTF-8')) {
+                return mb_convert_encoding($value, 'UTF-8', 'UTF-8');
+            }
+            return $value;
+        }
+
+        if (function_exists('iconv')) {
+            $converted = @iconv('UTF-8', 'UTF-8//IGNORE', $value);
+            if ($converted !== false) {
+                return $converted;
+            }
+        }
+
+        return preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', '', $value);
     }
 }
 
@@ -233,12 +279,12 @@ if (!function_exists('encodeAuditValue')) {
         
         // If it's a string, trim it. If empty/null string, return null.
         if (is_string($value)) {
-            $trimmed = trim($value);
+            $trimmed = trim(sanitizeUtf8($value));
             return $trimmed === '' ? null : $trimmed;
         }
         
         // Use the global safeJsonEncode for arrays/objects
-        return safeJsonEncode($value);
+        return safeJsonEncode(sanitizeUtf8($value));
     }
 }
 
@@ -273,15 +319,15 @@ function logAudit($params) {
 
     $page        = $params['page'] ?? 'Unknown';
     $action      = $params['action'] ?? 'V'; // Default to View
-    $message     = $params['action_message'] ?? '';
-    $query       = $params['query'] ?? '';
-    $table       = $params['query_table'] ?? '';
+    $message     = sanitizeUtf8($params['action_message'] ?? '');
+    $query       = sanitizeUtf8($params['query'] ?? '');
+    $table       = sanitizeUtf8($params['query_table'] ?? '');
     $userId      = $params['user_id'] ?? 0;
     
     $recordId    = $params['record_id'] ?? null;
-    $recordName  = $params['record_name'] ?? null;
-    $oldData     = $params['old_value'] ?? null;
-    $newData     = $params['new_value'] ?? null;
+    $recordName  = sanitizeUtf8($params['record_name'] ?? null);
+    $oldData     = sanitizeUtf8($params['old_value'] ?? null);
+    $newData     = sanitizeUtf8($params['new_value'] ?? null);
     $changes     = null;
 
     // A. Auto-Detect ID for New Inserts

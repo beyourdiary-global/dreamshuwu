@@ -1,12 +1,6 @@
 <?php
 // Path: src/pages/audit-log.php
 
-//Added to show errors for debugs purpose
-ini_set('display_errors', 1);
-    ini_set('display_startup_errors', 1);
-    error_reporting(E_ALL);
-
-
 require_once dirname(__DIR__, 2) . '/common.php';
 
 if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
@@ -17,9 +11,9 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
 $auditActions = ['V' => 'View', 'E' => 'Edit', 'A' => 'Add', 'D' => 'Delete'];
 
 if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
-    header('Content-Type: application/json');
+    header('Content-Type: application/json; charset=utf-8');
     ini_set('display_errors', 0); 
-    error_reporting(E_ALL);
+    error_reporting(0);
 
     // FIX: Handle Data Types "In Front" (Sanitize Early)
     // We force the types here so we don't need complex binding later.
@@ -41,6 +35,9 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
     }
 
     if (!isset($conn) || !$conn) sendAuditTableError('Database connection unavailable.', $draw);
+    if (method_exists($conn, 'set_charset')) {
+        $conn->set_charset('utf8mb4');
+    }
 
     // STEP 2: PREPARE FILTERS (2-Query Logic)
     
@@ -117,35 +114,60 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
         if($uRes) while ($uRow = $uRes->fetch_assoc()) $userMap[$uRow['id']] = $uRow['name'];
     }
 
-    $data = [];
-    foreach ($results as $cRow) {
-        $actCode = trim($cRow['action'] ?? '');
-        $badgeClass = ($actCode=='D')?'danger':(($actCode=='E')?'warning':(($actCode=='A')?'success':'info'));
-        
-        $dateStr = ''; $timeStr = '';
-        if (!empty($cRow['created_at'])) {
-            try { $dt = new DateTime($cRow['created_at']); $dateStr=$dt->format('Y-m-d'); $timeStr=$dt->format('H:i:s'); } catch(Exception $e){}
+    try {
+        $data = [];
+        foreach ($results as $cRow) {
+            $actCode = trim((string)($cRow['action'] ?? ''));
+            $badgeClass = ($actCode=='D')?'danger':(($actCode=='E')?'warning':(($actCode=='A')?'success':'info'));
+            
+            $dateStr = ''; $timeStr = '';
+            if (!empty($cRow['created_at'])) {
+                try {
+                    $dt = new DateTime($cRow['created_at']);
+                    $dateStr = $dt->format('Y-m-d');
+                    $timeStr = $dt->format('H:i:s');
+                } catch(Exception $e) {}
+            }
+
+            $old = null;
+            if (!empty($cRow['old_value'])) {
+                $rawOld = sanitizeUtf8($cRow['old_value']);
+                $decodedOld = json_decode($rawOld, true);
+                $old = (json_last_error() === JSON_ERROR_NONE) ? sanitizeUtf8($decodedOld) : $rawOld;
+            }
+
+            $new = null;
+            if (!empty($cRow['new_value'])) {
+                $rawNew = sanitizeUtf8($cRow['new_value']);
+                $decodedNew = json_decode($rawNew, true);
+                $new = (json_last_error() === JSON_ERROR_NONE) ? sanitizeUtf8($decodedNew) : $rawNew;
+            }
+
+            $queryStr = '';
+            if (!empty($cRow['query'])) {
+                $queryStr = sanitizeUtf8($cRow['query']);
+            }
+
+            $pageLabel = sanitizeUtf8($cRow['page'] ?? '');
+            $messageLabel = sanitizeUtf8($cRow['action_message'] ?? '');
+            $userLabel = sanitizeUtf8(($userMap[$cRow['user_id']] ?? 'Unknown') . " (ID:" . $cRow['user_id'] . ")");
+            $actionLabel = sanitizeUtf8($auditActions[$actCode] ?? $actCode);
+
+            $data[] = [
+                'page'    => htmlspecialchars((string)$pageLabel, ENT_QUOTES, 'UTF-8'),
+                'action'  => '<span class="badge badge-custom badge-'.$badgeClass.'">' . htmlspecialchars((string)$actionLabel, ENT_QUOTES, 'UTF-8') . '</span>',
+                'message' => htmlspecialchars((string)$messageLabel, ENT_QUOTES, 'UTF-8'),
+                'user'    => htmlspecialchars((string)$userLabel, ENT_QUOTES, 'UTF-8'),
+                'date'    => $dateStr,
+                'time'    => $timeStr,
+                'details' => ['query' => $queryStr, 'old' => $old, 'new' => $new]
+            ];
         }
 
-        // Fetch as string -> Decode in PHP
-        $old = $cRow['old_value']; 
-        if($old && is_string($old)) { $j=json_decode($old,true); if(json_last_error()===JSON_ERROR_NONE)$old=$j; }
-        
-        $new = $cRow['new_value'];
-        if($new && is_string($new)) { $j=json_decode($new,true); if(json_last_error()===JSON_ERROR_NONE)$new=$j; }
-
-        $data[] = [
-            'page'    => htmlspecialchars($cRow['page']),
-            'action'  => '<span class="badge badge-custom badge-'.$badgeClass.'">' . htmlspecialchars($auditActions[$actCode]??$actCode) . '</span>',
-            'message' => htmlspecialchars($cRow['action_message']),
-            'user'    => htmlspecialchars(($userMap[$cRow['user_id']] ?? 'Unknown') . " (ID:" . $cRow['user_id'] . ")"),
-            'date'    => $dateStr,
-            'time'    => $timeStr,
-            'details' => ['query'=>$cRow['query']??'', 'old'=>$old, 'new'=>$new]
-        ];
+        echo safeJsonEncode(["draw"=>$draw, "recordsTotal"=>$totalRecords, "recordsFiltered"=>$totalRecords, "data"=>$data]);
+    } catch (Throwable $e) {
+        sendAuditTableError('Audit processing failed.', $draw);
     }
-
-    echo safeJsonEncode(["draw"=>$draw, "recordsTotal"=>$totalRecords, "recordsFiltered"=>$totalRecords, "data"=>$data]);
     exit();
 }
 

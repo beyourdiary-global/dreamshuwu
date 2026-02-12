@@ -28,6 +28,9 @@ $isCatSection    = $isCatListView || $isCatFormView;
 // Profile View
 $isProfileView   = ($currentView === 'profile');
 
+// Meta Settings Views
+$isMetaView      = ($currentView === 'meta_settings');
+
 // Data Fetching
 $userQuery = "SELECT name FROM " . $userTable . " WHERE id = ? LIMIT 1";
 $dashQuery = "SELECT avatar, level, following_count, followers_count FROM " . $dashTable . " WHERE user_id = ? LIMIT 1";
@@ -50,9 +53,8 @@ call_user_func_array(array($dashStmt, 'bind_result'), $params);
 if ($dashStmt->fetch()) { foreach($row as $key => $val) { $dashRow[$key] = $val; } }
 $dashStmt->close();
 
-// [FIX] Only log "User viewed dashboard" if we are NOT in a sub-section (Tags or Categories)
-// This prevents double logging when viewing lists or forms.
-if (!$isTagSection && !$isCatSection && function_exists('logAudit')) {
+// [FIX] Only log "User viewed dashboard" if we are on dashboard home (not any sub-view)
+if (!$isTagSection && !$isCatSection && !$isMetaView && !$isProfileView && function_exists('logAudit')) {
     logAudit([
         'page'           => $auditPage,
         'action'         => 'V',
@@ -74,18 +76,20 @@ $statsArray = [
 ];
 
 $profileComponents = [
-    ['type' => 'avatar', 'url' => URL_PROFILE, 'src' => $rawAvatar],
-    ['type' => 'info', 'url' => URL_PROFILE, 'name' => $rawName, 'level' => $rawLevel, 'stats' => $statsArray]
+    ['type' => 'avatar', 'url' => URL_USER_DASHBOARD . '?view=profile', 'src' => $rawAvatar],
+    ['type' => 'info', 'url' => URL_USER_DASHBOARD . '?view=profile', 'name' => $rawName, 'level' => $rawLevel, 'stats' => $statsArray]
 ];
 
 $sidebarItems = [
-    ['label' => '首页',     'url' => URL_USER_DASHBOARD, 'icon' => 'fa-solid fa-house-user', 'active' => (!$isTagSection && !$isCatSection && !$isProfileView)],
+    ['label' => '首页',     'url' => URL_USER_DASHBOARD, 'icon' => 'fa-solid fa-house-user', 'active' => (!$isTagSection && !$isCatSection && !$isProfileView && !$isMetaView)],
     ['label' => '账号中心', 'url' => URL_HOME,           'icon' => 'fa-solid fa-id-card',   'active' => false],
     ['label' => '写小说',   'url' => URL_AUTHOR_DASHBOARD, 'icon' => 'fa-solid fa-pen-nib',  'active' => false],
-    // [NEW] Category Item
+    // Category Item
     ['label' => '小说分类', 'url' => URL_NOVEL_CATS,     'icon' => 'fa-solid fa-layer-group','active' => $isCatSection],
     // Tag Item
-    ['label' => '小说标签', 'url' => URL_NOVEL_TAGS,     'icon' => 'fa-solid fa-tags',      'active' => $isTagSection]
+    ['label' => '小说标签', 'url' => URL_NOVEL_TAGS,     'icon' => 'fa-solid fa-tags',      'active' => $isTagSection],
+    // Meta Settings Item
+    ['label' => 'META 设置',  'url' => URL_USER_DASHBOARD . '?view=meta_settings', 'icon' => 'fa-solid fa-sliders', 'active' => $isMetaView]
 ];
 
 $quickActions = [
@@ -95,6 +99,7 @@ $quickActions = [
 ];
 
 if ($isTagListView || $isCatListView) $customCSS[] = 'dataTables.bootstrap.min.css';
+if ($isMetaView) $customCSS[] = 'meta.css';
 $customCSS[] = 'dashboard.css';
 switch ($currentView) {
     // --- Category Views ---
@@ -116,6 +121,11 @@ switch ($currentView) {
     // --- Profile ---
     case 'profile':
         $pageMetaKey = 'profile';
+        break;
+
+    // --- Meta Settings ---
+    case 'meta_settings':
+        $pageMetaKey = 'meta_settings';
         break;
 
     // --- Default Dashboard ---
@@ -155,7 +165,7 @@ switch ($currentView) {
     </aside>
 
     <main class="dashboard-main">
-        <?php if (!$isTagSection && !$isCatSection && !$isProfileView): ?>
+        <?php if (!$isTagSection && !$isCatSection && !$isProfileView && !$isMetaView): ?>
         <div class="profile-card">
             <?php foreach ($profileComponents as $component): ?>
                 <?php if ($component['type'] === 'avatar'): ?>
@@ -210,6 +220,11 @@ switch ($currentView) {
             $EMBED_CAT_FORM_PAGE = true;
             require BASE_PATH . PATH_NOVEL_CATS_FORM;
         
+        // [NEW] Embed Meta Settings
+        elseif ($isMetaView):
+            $EMBED_META_PAGE = true;
+            require BASE_PATH . PATH_META_SETTINGS;
+        
         else: ?>
             <div class="quick-actions-grid">
                 <?php foreach ($quickActions as $action): ?>
@@ -241,6 +256,8 @@ switch ($currentView) {
     <script src="<?php echo URL_ASSETS; ?>/js/jquery.dataTables.min.js"></script>
     <script src="<?php echo URL_ASSETS; ?>/js/dataTables.bootstrap.min.js"></script>
     <script src="<?php echo URL_ASSETS; ?>/js/category.js"></script>
+<?php elseif ($isMetaView): ?>
+    <script src="<?php echo URL_ASSETS; ?>/js/meta.js"></script>
 <?php endif; ?>
 
 <script src="<?php echo URL_ASSETS; ?>/js/login-script.js"></script>

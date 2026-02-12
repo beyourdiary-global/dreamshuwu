@@ -10,7 +10,11 @@ RewriteCond %{REQUEST_URI} !^/src/pages/category/index\.php$
 
 RewriteCond %{REQUEST_URI} !^/src/pages/tags/index\.php$
 
-# 3. Block everything else in src/
+# 3. Allow Meta API
+
+RewriteCond %{REQUEST_URI} !^/src/pages/meta/index\.php$
+
+# 4. Block everything else in src/
 
 RewriteRule ^src/ - [F,L]
 
