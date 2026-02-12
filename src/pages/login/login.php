@@ -1,7 +1,6 @@
 <?php
 require_once dirname(__DIR__, 3) . '/common.php';
 
-$pageTitle = "登录 - " . WEBSITE_NAME;
 $dbTable = USR_LOGIN; 
 $loginQuery = "SELECT * FROM " . $dbTable . " WHERE email = ?";
 $auditPage = 'Login Page'; 

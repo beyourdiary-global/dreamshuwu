@@ -219,7 +219,6 @@ try {
     $message = "System Error: " . $e->getMessage(); $msgType = "danger";
 }
 
-$pageTitle = ($isEditMode ? "编辑标签" : "新增标签") . " - " . WEBSITE_NAME;
 
 if ($isEmbeddedTagForm): ?>
     <div class="tag-container">
