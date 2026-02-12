@@ -11,115 +11,108 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
 $auditActions = ['V' => 'View', 'E' => 'Edit', 'A' => 'Add', 'D' => 'Delete'];
 
 if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
+    // 1. Ensure clean JSON output (no HTML errors mixed in)
     header('Content-Type: application/json; charset=utf-8');
     ini_set('display_errors', 0); 
     error_reporting(0);
 
-    // FIX: Handle Data Types "In Front" (Sanitize Early)
-    // We force the types here so we don't need complex binding later.
-    
-    $draw   = (int)($_GET['draw'] ?? 0);
-    $start  = (int)($_GET['start'] ?? 0);
-    $length = (int)($_GET['length'] ?? 10);
-    
-    // Clean strings immediately
-    $searchRaw = isset($_GET['search']['value']) ? trim($_GET['search']['value']) : '';
-    $actionRaw = isset($_GET['filter_action']) ? trim($_GET['filter_action']) : '';
-
-    // Helper: Send Error
-    if (!function_exists('sendAuditTableError')) {
-        function sendAuditTableError($message, $draw) {
-            echo safeJsonEncode(["draw"=>$draw, "recordsTotal"=>0, "recordsFiltered"=>0, "data"=>[], "error"=>$message]);
-            exit();
-        }
-    }
-
-    if (!isset($conn) || !$conn) sendAuditTableError('Database connection unavailable.', $draw);
-    if (method_exists($conn, 'set_charset')) {
-        $conn->set_charset('utf8mb4');
-    }
-
-    // STEP 2: PREPARE FILTERS (2-Query Logic)
-    
-    $whereClauses = [];
-
-    // A. SEARCH (Find User IDs -> Then Filter Log)
-    if ($searchRaw !== '') {
-        $safeSearch = $conn->real_escape_string($searchRaw);
-        
-        // Query 1: Get User IDs
-        $userIds = [];
-        $uSql = "SELECT id FROM " . USR_LOGIN . " WHERE name LIKE '%{$safeSearch}%'";
-        $uRes = $conn->query($uSql);
-        if ($uRes) {
-            while ($row = $uRes->fetch_assoc()) $userIds[] = (int)$row['id'];
-            $uRes->free();
-        }
-
-        // Query 2: Build Clause
-        $orParts = [];
-        $orParts[] = "page LIKE '%{$safeSearch}%'";
-        $orParts[] = "action_message LIKE '%{$safeSearch}%'";
-        if (!empty($userIds)) {
-            $idList = implode(',', $userIds);
-            $orParts[] = "user_id IN ({$idList})";
-        }
-        $whereClauses[] = "(" . implode(' OR ', $orParts) . ")";
-    }
-    
-    // B. FILTER ACTION
-    if ($actionRaw !== '') {
-        $safeAction = $conn->real_escape_string($actionRaw);
-        $whereClauses[] = "action = '{$safeAction}'";
-    }
-
-    $whereSQL = empty($whereClauses) ? '' : ' AND ' . implode(' AND ', $whereClauses);
-
-    // STEP 3: EXECUTE (Direct Query - Treat as String)
-    
-    // 1. Count
-    $countSql = "SELECT COUNT(*) as total FROM " . AUDIT_LOG . " WHERE 1=1" . $whereSQL;
-    $countResult = $conn->query($countSql);
-    if (!$countResult) sendAuditTableError('Count Failed: ' . $conn->error, $draw);
-    $countRow = $countResult->fetch_assoc();
-    $totalRecords = (int)$countRow['total'];
-    $countResult->free();
-
-    // 2. Sort Logic
-    $sortCols = ['page', 'action', 'action_message', 'user_id', 'created_at', 'created_at']; 
-    $colIdx = (int)($_GET['order'][0]['column'] ?? 5); 
-    $colName = $sortCols[($colIdx > 0) ? $colIdx - 1 : 4] ?? 'created_at';
-    $dir = ($_GET['order'][0]['dir'] ?? 'desc') === 'asc' ? 'ASC' : 'DESC';
-
-    // 3. Fetch Data (Directly use sanitized $start/$length)
-    $sql = "SELECT page, action, action_message, query, old_value, new_value, user_id, created_at FROM " . AUDIT_LOG . " WHERE 1=1" . $whereSQL . " ORDER BY {$colName} {$dir} LIMIT {$start}, {$length}";
-
-    $result = $conn->query($sql);
-    if (!$result) sendAuditTableError('Data Failed: ' . $conn->error, $draw);
-
-    $results = [];
-    while ($row = $result->fetch_assoc()) {
-        $results[] = $row;
-    }
-    $result->free();
-
-    // STEP 4: CONVERT IN PHP
-
-    // User Map
-    $userIds = array_unique(array_column($results, 'user_id'));
-    $userMap = [];
-    if (!empty($userIds)) {
-        $uList = implode(',', array_map('intval', $userIds));
-        $uRes = $conn->query("SELECT id, name FROM " . USR_LOGIN . " WHERE id IN ({$uList})");
-        if($uRes) while ($uRow = $uRes->fetch_assoc()) $userMap[$uRow['id']] = $uRow['name'];
-    }
-
     try {
+        // 2. DataTables Parameters
+        $draw   = (int)($_GET['draw'] ?? 0);
+        $start  = (int)($_GET['start'] ?? 0);
+        $length = (int)($_GET['length'] ?? 10);
+        
+        $searchRaw = isset($_GET['search']['value']) ? trim($_GET['search']['value']) : '';
+        $actionRaw = isset($_GET['filter_action']) ? trim($_GET['filter_action']) : '';
+
+        if (!isset($conn) || !$conn) {
+            throw new Exception('Database connection unavailable.');
+        }
+        if (method_exists($conn, 'set_charset')) {
+            $conn->set_charset('utf8mb4');
+        }
+
+        // 3. Build Query Filters
+        $whereClauses = [];
+
+        // A. Search
+        if ($searchRaw !== '') {
+            $safeSearch = $conn->real_escape_string($searchRaw);
+            
+            // Find users matching search
+            $userIds = [];
+            $uSql = "SELECT id FROM " . USR_LOGIN . " WHERE name LIKE '%{$safeSearch}%'";
+            $uRes = $conn->query($uSql);
+            if ($uRes) {
+                while ($row = $uRes->fetch_assoc()) $userIds[] = (int)$row['id'];
+                $uRes->free();
+            }
+
+            $orParts = [];
+            $orParts[] = "page LIKE '%{$safeSearch}%'";
+            $orParts[] = "action_message LIKE '%{$safeSearch}%'";
+            if (!empty($userIds)) {
+                $idList = implode(',', $userIds);
+                $orParts[] = "user_id IN ({$idList})";
+            }
+            $whereClauses[] = "(" . implode(' OR ', $orParts) . ")";
+        }
+        
+        // B. Filter Action
+        if ($actionRaw !== '') {
+            $safeAction = $conn->real_escape_string($actionRaw);
+            $whereClauses[] = "action = '{$safeAction}'";
+        }
+
+        $whereSQL = empty($whereClauses) ? '' : ' AND ' . implode(' AND ', $whereClauses);
+
+        // 4. Get Total Count
+        $countSql = "SELECT COUNT(*) as total FROM " . AUDIT_LOG . " WHERE 1=1" . $whereSQL;
+        $countResult = $conn->query($countSql);
+        if (!$countResult) throw new Exception('Count Failed: ' . $conn->error);
+        
+        $countRow = $countResult->fetch_assoc();
+        $totalRecords = (int)$countRow['total'];
+        $countResult->free();
+
+        // 5. Sorting
+        $sortCols = ['page', 'action', 'action_message', 'user_id', 'created_at', 'created_at']; 
+        $colIdx = (int)($_GET['order'][0]['column'] ?? 5); 
+        $colName = $sortCols[($colIdx > 0) ? $colIdx - 1 : 4] ?? 'created_at';
+        $dir = ($_GET['order'][0]['dir'] ?? 'desc') === 'asc' ? 'ASC' : 'DESC';
+
+        // 6. Fetch Data
+        $sql = "SELECT page, action, action_message, query, old_value, new_value, user_id, created_at 
+                FROM " . AUDIT_LOG . " 
+                WHERE 1=1" . $whereSQL . " 
+                ORDER BY {$colName} {$dir} 
+                LIMIT {$start}, {$length}";
+
+        $result = $conn->query($sql);
+        if (!$result) throw new Exception('Data Failed: ' . $conn->error);
+
+        $results = [];
+        while ($row = $result->fetch_assoc()) {
+            $results[] = $row;
+        }
+        $result->free();
+
+        // 7. Map User IDs to Names
+        $userIds = array_unique(array_column($results, 'user_id'));
+        $userMap = [];
+        if (!empty($userIds)) {
+            $uList = implode(',', array_map('intval', $userIds));
+            $uRes = $conn->query("SELECT id, name FROM " . USR_LOGIN . " WHERE id IN ({$uList})");
+            if($uRes) while ($uRow = $uRes->fetch_assoc()) $userMap[$uRow['id']] = $uRow['name'];
+        }
+
+        // 8. Process Output (The Critical Fix)
         $data = [];
         foreach ($results as $cRow) {
             $actCode = trim((string)($cRow['action'] ?? ''));
             $badgeClass = ($actCode=='D')?'danger':(($actCode=='E')?'warning':(($actCode=='A')?'success':'info'));
             
+            // Format Date
             $dateStr = ''; $timeStr = '';
             if (!empty($cRow['created_at'])) {
                 try {
@@ -129,29 +122,40 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
                 } catch(Exception $e) {}
             }
 
-            $old = null;
+            // [FIXED LOGIC] 1. Try Decode First -> 2. Then Sanitize
+            
+            // Handle Old Value
+            $oldVal = null;
             if (!empty($cRow['old_value'])) {
-                $rawOld = sanitizeUtf8($cRow['old_value']);
-                $decodedOld = json_decode($rawOld, true);
-                $old = (json_last_error() === JSON_ERROR_NONE) ? sanitizeUtf8($decodedOld) : $rawOld;
+                // Attempt to decode the RAW string from DB first
+                $decoded = json_decode($cRow['old_value'], true);
+                if (json_last_error() === JSON_ERROR_NONE) {
+                    // It's valid JSON (array/object), so sanitize the array structure
+                    $oldVal = sanitizeUtf8($decoded);
+                } else {
+                    // It's just a string, sanitize the string
+                    $oldVal = sanitizeUtf8($cRow['old_value']);
+                }
             }
 
-            $new = null;
+            // Handle New Value
+            $newVal = null;
             if (!empty($cRow['new_value'])) {
-                $rawNew = sanitizeUtf8($cRow['new_value']);
-                $decodedNew = json_decode($rawNew, true);
-                $new = (json_last_error() === JSON_ERROR_NONE) ? sanitizeUtf8($decodedNew) : $rawNew;
+                $decoded = json_decode($cRow['new_value'], true);
+                if (json_last_error() === JSON_ERROR_NONE) {
+                    $newVal = sanitizeUtf8($decoded);
+                } else {
+                    $newVal = sanitizeUtf8($cRow['new_value']);
+                }
             }
 
-            $queryStr = '';
-            if (!empty($cRow['query'])) {
-                $queryStr = sanitizeUtf8($cRow['query']);
-            }
-
-            $pageLabel = sanitizeUtf8($cRow['page'] ?? '');
+            // Sanitize other simple strings
+            $pageLabel    = sanitizeUtf8($cRow['page'] ?? '');
             $messageLabel = sanitizeUtf8($cRow['action_message'] ?? '');
-            $userLabel = sanitizeUtf8(($userMap[$cRow['user_id']] ?? 'Unknown') . " (ID:" . $cRow['user_id'] . ")");
-            $actionLabel = sanitizeUtf8($auditActions[$actCode] ?? $actCode);
+            $queryStr     = sanitizeUtf8($cRow['query'] ?? '');
+            $userName     = $userMap[$cRow['user_id']] ?? 'Unknown';
+            $userLabel    = sanitizeUtf8($userName . " (ID:" . $cRow['user_id'] . ")");
+            $actionLabel  = sanitizeUtf8($auditActions[$actCode] ?? $actCode);
 
             $data[] = [
                 'page'    => htmlspecialchars((string)$pageLabel, ENT_QUOTES, 'UTF-8'),
@@ -160,13 +164,28 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
                 'user'    => htmlspecialchars((string)$userLabel, ENT_QUOTES, 'UTF-8'),
                 'date'    => $dateStr,
                 'time'    => $timeStr,
-                'details' => ['query' => $queryStr, 'old' => $old, 'new' => $new]
+                // Pass the correctly processed array/string to the frontend
+                'details' => ['query' => $queryStr, 'old' => $oldVal, 'new' => $newVal]
             ];
         }
 
-        echo safeJsonEncode(["draw"=>$draw, "recordsTotal"=>$totalRecords, "recordsFiltered"=>$totalRecords, "data"=>$data]);
+        // Output using the safe encoder from functions.php
+        echo safeJsonEncode([
+            "draw"            => $draw, 
+            "recordsTotal"    => $totalRecords, 
+            "recordsFiltered" => $totalRecords, 
+            "data"            => $data
+        ]);
+
     } catch (Throwable $e) {
-        sendAuditTableError('Audit processing failed.', $draw);
+        // Return JSON error so DataTable handles it gracefully
+        echo safeJsonEncode([
+            "draw"            => $draw,
+            "recordsTotal"    => 0,
+            "recordsFiltered" => 0,
+            "data"            => [],
+            "error"           => "Error: " . $e->getMessage()
+        ]);
     }
     exit();
 }
