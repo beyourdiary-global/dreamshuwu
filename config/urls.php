@@ -42,4 +42,7 @@ defined('PATH_NOVEL_CATS_FORM')  || define('PATH_NOVEL_CATS_FORM', 'src/pages/ca
 
 // -- 8. Audit Log Page ---
 defined('URL_AUDIT_LOG') || define('URL_AUDIT_LOG', SITEURL . '/audit-log.php');
+
+// -- 9. Meta Settings Page ---
+defined('URL_META_SETTINGS') || define('URL_META_SETTINGS', SITEURL . '/meta-setting.php');
 ?>
