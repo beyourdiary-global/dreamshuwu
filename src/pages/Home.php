@@ -27,7 +27,8 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
 }
 // -----------------------------------------
 
-$pageTitle = "首页 - " . WEBSITE_NAME; 
+$pageTitle = "首页 - " . WEBSITE_NAME;
+$pageMetaKey = 'home';
 ?>
 
 <!DOCTYPE html>

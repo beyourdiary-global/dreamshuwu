@@ -222,6 +222,24 @@ defined('CATEGORY_TAG')   || define('CATEGORY_TAG', 'category_tag');
 
 // --- Meta Settings Table ---
 defined('META_SETTINGS') || define('META_SETTINGS', 'meta_settings');
+defined('META_SETTINGS_PAGE') || define('META_SETTINGS_PAGE', 'meta_settings_page');
+
+// --- Page Meta Registry (Dropdown Options) ---
+$PAGE_META_REGISTRY = [
+    'home'            => '首页 (Home)',
+    'login'           => '登录 (Login)',
+    'register'        => '注册 (Register)',
+    'forgot_password'  => '忘记密码 (Forgot Password)',
+    'reset_password'   => '重置密码 (Reset Password)',
+    'dashboard'       => '仪表盘 (Dashboard)',
+    'profile'         => '个人资料 (Profile)',
+    'audit_log'       => '审计日志 (Audit Log)',
+    'categories'      => '分类管理 (Categories)',
+    'category_form'   => '分类表单 (Category Form)',
+    'tags'            => '标签管理 (Tags)',
+    'tag_form'        => '标签表单 (Tag Form)',
+];
+
 // --- Application Constants ---
 defined('MIN_AGE_REQUIREMENT') || define('MIN_AGE_REQUIREMENT', 13);
 defined('MIN_PWD_LENGTH')      || define('MIN_PWD_LENGTH', 8);

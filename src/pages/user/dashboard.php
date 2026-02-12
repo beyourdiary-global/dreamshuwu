@@ -20,7 +20,7 @@ $isTagListView   = ($currentView === 'tags');
 $isTagFormView   = ($currentView === 'tag_form');
 $isTagSection    = $isTagListView || $isTagFormView;
 
-// [NEW] Category Views
+// Category Views
 $isCatListView   = ($currentView === 'categories');
 $isCatFormView   = ($currentView === 'cat_form');
 $isCatSection    = $isCatListView || $isCatFormView;
@@ -94,9 +94,36 @@ $quickActions = [
     ['label' => '写小说',   'url' => URL_AUTHOR_DASHBOARD, 'icon' => 'fa-solid fa-feather-pointed',      'style' => 'background: #eef2ff; color: #233dd2;']
 ];
 
-$pageTitle = "个人中心 - " . WEBSITE_NAME;
 if ($isTagListView || $isCatListView) $customCSS[] = 'dataTables.bootstrap.min.css';
 $customCSS[] = 'dashboard.css';
+switch ($currentView) {
+    // --- Category Views ---
+    case 'categories': // The list view
+        $pageMetaKey = 'categories';
+        break;
+    case 'cat_form':   // The add/edit form
+        $pageMetaKey = 'category_form';
+        break;
+
+    // --- Tag Views ---
+    case 'tags':       // The list view
+        $pageMetaKey = 'tags';
+        break;
+    case 'tag_form':   // The add/edit form
+        $pageMetaKey = 'tag_form';
+        break;
+
+    // --- Profile ---
+    case 'profile':
+        $pageMetaKey = 'profile';
+        break;
+
+    // --- Default Dashboard ---
+    default:
+        $pageMetaKey = 'dashboard';
+        break;
+}
+?>
 ?>
 
 <!DOCTYPE html>
@@ -174,8 +201,7 @@ $customCSS[] = 'dashboard.css';
         elseif ($isTagFormView):
             $EMBED_TAG_FORM_PAGE = true;
             require BASE_PATH . PATH_NOVEL_TAGS_FORM;
-        
-        // [NEW] Embed Category List
+
         elseif ($isCatListView):
             $EMBED_CATS_PAGE = true;
             require BASE_PATH . PATH_NOVEL_CATS_INDEX;

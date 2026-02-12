@@ -418,15 +418,82 @@ function uploadImage($file, $targetDir) {
  */
 function getMetaSettings($conn, $type, $id) {
     if (!$conn) return null;
+
     $stmt = $conn->prepare("SELECT meta_title, meta_description, og_title, og_description, og_url FROM " . META_SETTINGS . " WHERE page_type = ? AND page_id = ? LIMIT 1");
-    if ($stmt) {
-        $stmt->bind_param("si", $type, $id);
-        $stmt->execute();
-        $result = $stmt->get_result()->fetch_assoc();
+    if (!$stmt) return null;
+
+    $stmt->bind_param("si", $type, $id);
+    $stmt->execute();
+    $stmt->store_result();
+
+    if ($stmt->num_rows === 0) {
         $stmt->close();
-        return $result;
+        return null;
     }
-    return null;
+
+    $metaTitle = null;
+    $metaDesc = null;
+    $ogTitle = null;
+    $ogDesc = null;
+    $ogUrl = null;
+
+    $stmt->bind_result($metaTitle, $metaDesc, $ogTitle, $ogDesc, $ogUrl);
+    $stmt->fetch();
+    $stmt->close();
+
+    return [
+        'meta_title' => $metaTitle,
+        'meta_description' => $metaDesc,
+        'og_title' => $ogTitle,
+        'og_description' => $ogDesc,
+        'og_url' => $ogUrl,
+    ];
+}
+
+/**
+ * [NEW] Helper: Fetch Per-Page SEO Meta Settings
+ * Queries the meta_settings_page table by page_key.
+ * Returns null if no custom meta is set for the page.
+ */
+function getPageMetaSettings($conn, $pageKey) {
+    if (!$conn || empty($pageKey)) return null;
+
+    $stmt = $conn->prepare(
+        "SELECT meta_title, meta_description, og_title, og_description, og_url FROM " . META_SETTINGS_PAGE . " WHERE page_key = ? LIMIT 1"
+    );
+    if (!$stmt) return null;
+
+    $stmt->bind_param("s", $pageKey);
+    $stmt->execute();
+    $stmt->store_result();
+
+    if ($stmt->num_rows === 0) {
+        $stmt->close();
+        return null;
+    }
+
+    $metaTitle = null;
+    $metaDesc = null;
+    $ogTitle = null;
+    $ogDesc = null;
+    $ogUrl = null;
+
+    $stmt->bind_result($metaTitle, $metaDesc, $ogTitle, $ogDesc, $ogUrl);
+    $stmt->fetch();
+    $stmt->close();
+
+    // Only return if at least one field is set
+    if (empty($metaTitle) && empty($metaDesc) && empty($ogTitle) && empty($ogDesc) && empty($ogUrl)) {
+        return null;
+    }
+
+    return [
+        'meta_title' => $metaTitle,
+        'meta_description' => $metaDesc,
+        'og_title' => $ogTitle,
+        'og_description' => $ogDesc,
+        'og_url' => $ogUrl,
+    ];
 }
 
 ?>

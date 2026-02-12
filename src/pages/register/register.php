@@ -108,6 +108,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 }
 ?>
 
+<?php $pageMetaKey = 'register'; ?>
 <!DOCTYPE html>
 <html lang="<?php echo defined('SITE_LANG') ? SITE_LANG : 'zh-CN'; ?>">
 <?php require_once __DIR__ . '/../../../include/header.php'; ?>

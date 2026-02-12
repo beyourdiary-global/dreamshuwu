@@ -1,5 +1,12 @@
 <?php
 // Path: src/pages/audit-log.php
+
+//Added to show errors for debugs purpose
+ini_set('display_errors', 1);
+    ini_set('display_startup_errors', 1);
+    error_reporting(E_ALL);
+
+
 require_once dirname(__DIR__, 2) . '/common.php';
 
 if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
@@ -142,7 +149,7 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
     exit();
 }
 
-$pageTitle = "System Audit Log - " . WEBSITE_NAME;
+$pageMetaKey = 'audit_log';
 ?>
 <!DOCTYPE html>
 <html lang="<?php echo defined('SITE_LANG') ? SITE_LANG : 'zh-CN'; ?>">

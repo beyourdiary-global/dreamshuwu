@@ -255,6 +255,7 @@ if ($isEmbeddedTagForm): ?>
         </div>
     </div>
 <?php else: ?>
+<?php $pageMetaKey = 'tag_form'; ?>
 <!DOCTYPE html>
 <html lang="<?php echo defined('SITE_LANG') ? SITE_LANG : 'zh-CN'; ?>">
 <head>

@@ -309,6 +309,7 @@ if ($isEmbeddedInDashboard): ?>
         </div>
     </div>
 <?php else: ?>
+<?php $pageMetaKey = 'tags'; ?>
 <!DOCTYPE html>
 <html lang="<?php echo defined('SITE_LANG') ? SITE_LANG : 'zh-CN'; ?>">
 <head>
