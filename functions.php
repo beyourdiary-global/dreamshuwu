@@ -59,6 +59,50 @@ if (!function_exists('safeJsonEncode')) {
     }
 }
 
+if (!function_exists('safeJsonDecode')) {
+    /**
+     * Decode a JSON string even when the json extension is disabled.
+     * Returns the decoded value, or null on failure.
+     * Sets $success by reference so the caller knows if decoding worked.
+     */
+    function safeJsonDecode($json, $assoc = true, &$success = null) {
+        $success = false;
+        if (!is_string($json)) {
+            $success = true;
+            return $json;
+        }
+
+        // 1. Use native json_decode if available
+        if (function_exists('json_decode')) {
+            $result = json_decode($json, $assoc);
+            if (function_exists('json_last_error')) {
+                $success = (json_last_error() === JSON_ERROR_NONE);
+            } else {
+                $success = ($result !== null || trim($json) === 'null');
+            }
+            return $result;
+        }
+
+        // 2. Fallback: handle simple literals without the json extension
+        $trimmed = trim($json);
+        if ($trimmed === 'null')  { $success = true; return null; }
+        if ($trimmed === 'true')  { $success = true; return true; }
+        if ($trimmed === 'false') { $success = true; return false; }
+        if (is_numeric($trimmed)) { $success = true; return $trimmed + 0; }
+
+        // 3. Quoted string
+        if (strlen($trimmed) >= 2 && $trimmed[0] === '"' && substr($trimmed, -1) === '"') {
+            $success = true;
+            return stripslashes(substr($trimmed, 1, -1));
+        }
+
+        // 4. Object/Array: cannot parse without json_decode → return null, success=false
+        //    The caller will fall back to using the raw string.
+        $success = false;
+        return null;
+    }
+}
+
 if (!function_exists('sanitizeUtf8')) {
     function sanitizeUtf8($value) {
         if (is_array($value)) {

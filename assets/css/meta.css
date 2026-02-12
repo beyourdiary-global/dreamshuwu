@@ -2,7 +2,7 @@
 
 /* 1. GLOBAL LAYOUT & CARD */
 body {
-  background-color: #f8f9fa;
+  background-color: #ffffff;
   min-height: 100vh;
   /* Adds extra scroll space at the bottom so the menu has room to go down */
   padding-bottom: 500px;
