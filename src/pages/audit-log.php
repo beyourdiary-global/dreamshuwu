@@ -127,13 +127,10 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
             // Handle Old Value
             $oldVal = null;
             if (!empty($cRow['old_value'])) {
-                // Attempt to decode the RAW string from DB first
-                $decoded = json_decode($cRow['old_value'], true);
-                if (json_last_error() === JSON_ERROR_NONE) {
-                    // It's valid JSON (array/object), so sanitize the array structure
+                $decoded = safeJsonDecode($cRow['old_value'], true, $decodeOk);
+                if ($decodeOk && $decoded !== null) {
                     $oldVal = sanitizeUtf8($decoded);
                 } else {
-                    // It's just a string, sanitize the string
                     $oldVal = sanitizeUtf8($cRow['old_value']);
                 }
             }
@@ -141,8 +138,8 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
             // Handle New Value
             $newVal = null;
             if (!empty($cRow['new_value'])) {
-                $decoded = json_decode($cRow['new_value'], true);
-                if (json_last_error() === JSON_ERROR_NONE) {
+                $decoded = safeJsonDecode($cRow['new_value'], true, $decodeOk);
+                if ($decodeOk && $decoded !== null) {
                     $newVal = sanitizeUtf8($decoded);
                 } else {
                     $newVal = sanitizeUtf8($cRow['new_value']);

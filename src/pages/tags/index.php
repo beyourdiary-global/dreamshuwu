@@ -29,16 +29,7 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
     exit();
 }
 
-// 2. Helper Functions
-if (!function_exists('safeJsonEncode')) {
-    function safeJsonEncode($data) {
-        if (function_exists('json_encode')) {
-            $flags = defined('JSON_UNESCAPED_UNICODE') ? JSON_UNESCAPED_UNICODE : 0;
-            return json_encode($data, $flags);
-        }
-        return '[]';
-    }
-}
+// 2. Helper Functions (safeJsonEncode is loaded from functions.php via common.php)
 
 if (!function_exists('jsonEncodeWrapper')) {
     function jsonEncodeWrapper($data) {
