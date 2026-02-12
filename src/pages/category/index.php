@@ -198,8 +198,6 @@ if (isset($_POST['mode']) && $_POST['mode'] === 'delete') {
 // API URL for DataTables
 $fullApiUrl = URL_NOVEL_CATS_API;
 
-$pageTitle = "分类管理 - " . WEBSITE_NAME;
-
 // [NEW] Log that user viewed this page
 if (function_exists('logAudit')) {
     logAudit([

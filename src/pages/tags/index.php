@@ -262,7 +262,6 @@ if ($flashMsg !== '') {
 }
 
 // 5. Audit Log (View) & HTML Render
-$pageTitle = "小说标签 - " . WEBSITE_NAME;
 
 // [NEW] Log that user viewed this page
 if (function_exists('logAudit')) {

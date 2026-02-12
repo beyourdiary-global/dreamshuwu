@@ -256,8 +256,6 @@ defined('PWD_REGEX_PATTERN')   || define('PWD_REGEX_PATTERN', '^(?=.*[a-z])(?=.*
 // List of hostnames/IPs considered as local development environments
 // Using comma-separated string for PHP 5.6 compatibility
 defined('LOCAL_WHITELIST') || define('LOCAL_WHITELIST', '127.0.0.1,::1,localhost');
-// Central variable for the company/website name used in emails and UI
-defined('WEBSITE_NAME') || define('WEBSITE_NAME', 'Dreamshuwu');
 // Site language setting
 defined('SITE_LANG') || define('SITE_LANG', 'zh-CN');
 

@@ -2,7 +2,6 @@
 require_once dirname(__DIR__, 3) . '/common.php';
 
 // Set page variables BEFORE including header
-$pageTitle = "注册 - " . WEBSITE_NAME;
 $auditPage = 'Register Page';
 
 $dbTable = USR_LOGIN;

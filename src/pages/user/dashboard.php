@@ -124,7 +124,6 @@ switch ($currentView) {
         break;
 }
 ?>
-?>
 
 <!DOCTYPE html>
 <html lang="<?php echo defined('SITE_LANG') ? SITE_LANG : 'zh-CN'; ?>">
