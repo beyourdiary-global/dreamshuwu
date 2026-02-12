@@ -182,6 +182,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['action']) && $_POST['
             }
 
             session_destroy(); 
+            $pageMetaKey = 'profile';
             ?>
             <!DOCTYPE html>
             <html lang="<?php echo defined('SITE_LANG') ? SITE_LANG : 'zh-CN'; ?>">
@@ -237,7 +238,6 @@ $dashStmt->close();
 
 $currentUser = array_merge($userRow, $dashRow ?? ['avatar' => null]);
 $avatarUrl = !empty($currentUser['avatar']) ? URL_ASSETS . '/uploads/avatars/' . $currentUser['avatar'] : URL_ASSETS . '/images/default-avatar.png';
-$pageTitle = "编辑个人资料 - " . WEBSITE_NAME;
 
 // [AUDIT] Log View Action (Only for GET requests)
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && function_exists('logAudit') && !defined('PROFILE_VIEW_LOGGED')) {
@@ -251,24 +251,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && function_exists('logAudit') && !defi
         'user_id'        => $userId
     ]);
 }
-?>
-
-$isEmbeddedProfile = defined('PROFILE_EMBEDDED') && PROFILE_EMBEDDED === true;
-
-if (!$isEmbeddedProfile) {
-    $_GET['view'] = 'profile';
-    define('PROFILE_EMBEDDED', true);
-    require BASE_PATH . 'src/pages/user/dashboard.php';
-    exit();
-}
-
-$sidebarItems = [
-    ['label' => '首页',     'url' => URL_USER_DASHBOARD, 'icon' => 'fa-solid fa-house-user', 'active' => false],
-    ['label' => '账号中心', 'url' => URL_PROFILE,        'icon' => 'fa-solid fa-id-card',   'active' => true],
-    ['label' => '写小说',   'url' => URL_AUTHOR_DASHBOARD, 'icon' => 'fa-solid fa-pen-nib',  'active' => false],
-    ['label' => '小说分类', 'url' => URL_NOVEL_CATS,     'icon' => 'fa-solid fa-layer-group','active' => false],
-    ['label' => '小说标签', 'url' => URL_NOVEL_TAGS,     'icon' => 'fa-solid fa-tags',      'active' => false]
-];
 ?>
 
     <div class="profile-container">

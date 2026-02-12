@@ -450,4 +450,50 @@ function getMetaSettings($conn, $type, $id) {
     ];
 }
 
+/**
+ * [NEW] Helper: Fetch Per-Page SEO Meta Settings
+ * Queries the meta_settings_page table by page_key.
+ * Returns null if no custom meta is set for the page.
+ */
+function getPageMetaSettings($conn, $pageKey) {
+    if (!$conn || empty($pageKey)) return null;
+
+    $stmt = $conn->prepare(
+        "SELECT meta_title, meta_description, og_title, og_description, og_url FROM " . META_SETTINGS_PAGE . " WHERE page_key = ? LIMIT 1"
+    );
+    if (!$stmt) return null;
+
+    $stmt->bind_param("s", $pageKey);
+    $stmt->execute();
+    $stmt->store_result();
+
+    if ($stmt->num_rows === 0) {
+        $stmt->close();
+        return null;
+    }
+
+    $metaTitle = null;
+    $metaDesc = null;
+    $ogTitle = null;
+    $ogDesc = null;
+    $ogUrl = null;
+
+    $stmt->bind_result($metaTitle, $metaDesc, $ogTitle, $ogDesc, $ogUrl);
+    $stmt->fetch();
+    $stmt->close();
+
+    // Only return if at least one field is set
+    if (empty($metaTitle) && empty($metaDesc) && empty($ogTitle) && empty($ogDesc) && empty($ogUrl)) {
+        return null;
+    }
+
+    return [
+        'meta_title' => $metaTitle,
+        'meta_description' => $metaDesc,
+        'og_title' => $ogTitle,
+        'og_description' => $ogDesc,
+        'og_url' => $ogUrl,
+    ];
+}
+
 ?>

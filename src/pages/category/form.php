@@ -297,8 +297,6 @@ if ($atRes) {
     while ($row = $atRes->fetch_assoc()) { $allTags[] = $row; }
 }
 
-$pageTitle = ($isEdit ? "编辑分类" : "新增分类") . " - " . WEBSITE_NAME;
-
 if ($isEmbeddedTagForm): ?>
 <div class="category-container">
     <div class="card category-card">

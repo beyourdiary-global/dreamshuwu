@@ -1,7 +1,6 @@
 <?php
 require_once dirname(__DIR__, 3) . '/common.php';
 
-$pageTitle = "登录 - " . WEBSITE_NAME;
 $dbTable = USR_LOGIN; 
 $loginQuery = "SELECT * FROM " . $dbTable . " WHERE email = ?";
 $auditPage = 'Login Page'; 
@@ -119,6 +118,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     }
 }
 ?>
+<?php $pageMetaKey = 'login'; ?>
 <!DOCTYPE html>
 <html lang="<?php echo defined('SITE_LANG') ? SITE_LANG : 'zh-CN'; ?>">
 <?php require_once __DIR__ . '/../../../include/header.php'; ?>

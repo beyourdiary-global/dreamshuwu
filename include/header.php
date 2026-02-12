@@ -2,12 +2,21 @@
 /**
  * include/header.php
  * Shared HTML head component.
+ * 
+ * Meta Priority: Per-Page Custom -> Global Setting -> Site Default
+ * Each page sets $pageMetaKey (e.g. 'home', 'login') before including this file.
  */
 
 $globalSeo = getMetaSettings($conn, 'global', 0);
 $specificSeo = null;
 
-if (isset($category['id'])) {
+// 1. Check for per-page custom meta (from meta_settings_page table)
+if (isset($pageMetaKey) && !empty($pageMetaKey)) {
+    $specificSeo = getPageMetaSettings($conn, $pageMetaKey);
+}
+
+// 2. Fallback: Check category-specific meta (legacy support)
+if (!$specificSeo && isset($category['id'])) {
     $specificSeo = getMetaSettings($conn, 'category', $category['id']);
 }
 
@@ -27,6 +36,8 @@ $finalOgUrl     = !empty($specificSeo['og_url']) ? $specificSeo['og_url'] : ($gl
     <meta property="og:description" content="<?php echo htmlspecialchars($finalOgDesc); ?>">
     <meta property="og:url" content="<?php echo htmlspecialchars($finalOgUrl); ?>">
 
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    
     <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/bootstrap.min.css">
     <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/all.min.css">
     <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/header.css">

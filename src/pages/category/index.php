@@ -198,8 +198,6 @@ if (isset($_POST['mode']) && $_POST['mode'] === 'delete') {
 // API URL for DataTables
 $fullApiUrl = URL_NOVEL_CATS_API;
 
-$pageTitle = "分类管理 - " . WEBSITE_NAME;
-
 // [NEW] Log that user viewed this page
 if (function_exists('logAudit')) {
     logAudit([
@@ -218,6 +216,7 @@ $flashType = $_SESSION['flash_type'] ?? 'success';
 if ($flashMsg !== '') {
     unset($_SESSION['flash_msg'], $_SESSION['flash_type']);
 }
+
 
 // HTML Output
 if ($isEmbeddedInDashboard): ?>
@@ -244,3 +243,4 @@ if ($isEmbeddedInDashboard): ?>
 <a href="<?php echo URL_USER_DASHBOARD; ?>?view=cat_form" class="btn btn-primary btn-add-mobile"><i class="fa-solid fa-plus fa-lg"></i></a>
 <?php else: ?>
 <?php endif; ?>
+<?php $pageMetaKey = 'category'; ?>

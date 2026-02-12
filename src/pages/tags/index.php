@@ -262,7 +262,6 @@ if ($flashMsg !== '') {
 }
 
 // 5. Audit Log (View) & HTML Render
-$pageTitle = "小说标签 - " . WEBSITE_NAME;
 
 // [NEW] Log that user viewed this page
 if (function_exists('logAudit')) {
@@ -309,6 +308,7 @@ if ($isEmbeddedInDashboard): ?>
         </div>
     </div>
 <?php else: ?>
+<?php $pageMetaKey = 'tags'; ?>
 <!DOCTYPE html>
 <html lang="<?php echo defined('SITE_LANG') ? SITE_LANG : 'zh-CN'; ?>">
 <head>
