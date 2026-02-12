@@ -128,8 +128,8 @@ CREATE TABLE IF NOT EXISTS category_tag (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ";
 
-$tables['meta-settings'] = "
-CREATE TABLE IF NOT EXISTS `meta-settings` (
+$tables['meta_settings'] = "
+CREATE TABLE IF NOT EXISTS meta_settings (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     page_type VARCHAR(50) NOT NULL,
     page_id BIGINT NOT NULL DEFAULT 0,

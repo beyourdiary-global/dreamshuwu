@@ -5,6 +5,8 @@ require_once __DIR__ . '/common.php';
 $message = ""; 
 $msgType = "";
 
+$metaTable = META_SETTINGS;
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $mTitle  = $_POST['meta_title'] ?? '';
     $mDesc   = $_POST['meta_description'] ?? '';
@@ -12,7 +14,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $ogDesc  = $_POST['og_description'] ?? '';
     $ogUrl   = $_POST['og_url'] ?? '';
 
-    $sql = "INSERT INTO `meta-settings` (page_type, page_id, meta_title, meta_description, og_title, og_description, og_url) 
+    $sql = "INSERT INTO $metaTable (page_type, page_id, meta_title, meta_description, og_title, og_description, og_url) 
             VALUES ('global', 0, ?, ?, ?, ?, ?) 
             ON DUPLICATE KEY UPDATE 
             meta_title = VALUES(meta_title), 
@@ -44,7 +46,7 @@ $current = [
     'og_description' => '', 
     'og_url' => ''
 ];
-$res = $conn->query("SELECT * FROM `meta-settings` WHERE page_type = 'global' AND page_id = 0 LIMIT 1");
+$res = $conn->query("SELECT * FROM $metaTable WHERE page_type = 'global' AND page_id = 0 LIMIT 1");
 if ($row = $res->fetch_assoc()) {
     $current = $row;
 }

@@ -418,7 +418,7 @@ function uploadImage($file, $targetDir) {
  */
 function getMetaSettings($conn, $type, $id) {
     if (!$conn) return null;
-    $stmt = $conn->prepare("SELECT meta_title, meta_description, og_title, og_description, og_url FROM `meta-settings` WHERE page_type = ? AND page_id = ? LIMIT 1");
+    $stmt = $conn->prepare("SELECT meta_title, meta_description, og_title, og_description, og_url FROM " . META_SETTINGS . " WHERE page_type = ? AND page_id = ? LIMIT 1");
     if ($stmt) {
         $stmt->bind_param("si", $type, $id);
         $stmt->execute();
