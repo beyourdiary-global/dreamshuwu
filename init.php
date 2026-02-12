@@ -182,7 +182,7 @@ define('LAZADA_ORDER_REQ', 'lazada_order_request');
 $isLocal = in_array($_SERVER['SERVER_NAME'] ?? '', ['localhost', '127.0.0.1'], true);
 
 //-- Error Page URL Constant --
-defined('URL_ERROR') || define('URL_ERROR', SITEURL . '/src/pages/error404.php');
+defined('URL_ERROR') || define('URL_ERROR', SITEURL . '/error404.php');
 
 
 // This gets the absolute path to the directory containing init.php
@@ -238,6 +238,7 @@ $PAGE_META_REGISTRY = [
     'category_form'   => '分类表单 (Category Form)',
     'tags'            => '标签管理 (Tags)',
     'tag_form'        => '标签表单 (Tag Form)',
+    'meta_settings'   => 'META 设置 (Meta Settings)'
 ];
 
 // --- Application Constants ---
@@ -283,7 +284,7 @@ try {
 // 3. Check connection & Debug
 if (!$conn || mysqli_connect_errno()) {
     if (!defined('SKIP_DB_CHECK')) {
-        header("Location: " . SITEURL . "/src/pages/error404.php");
+        header("Location: " . URL_ERROR);
         exit();
     }
 }

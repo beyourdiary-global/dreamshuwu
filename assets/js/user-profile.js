@@ -1,4 +1,16 @@
+// Used when user changed password
 document.addEventListener("DOMContentLoaded", () => {
+  const pwdRedirect = document.getElementById("pwd-redirect");
+  if (pwdRedirect) {
+    const targetUrl = pwdRedirect.dataset.url || "";
+    const delay = Number(pwdRedirect.dataset.delay || 10000);
+    if (targetUrl) {
+      setTimeout(() => {
+        window.location.href = targetUrl;
+      }, delay);
+    }
+  }
+
   // --- Helper: Show Custom Error Message ---
   const alertBox = document.getElementById("js-alert-box");
 

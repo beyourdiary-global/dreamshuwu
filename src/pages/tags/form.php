@@ -19,17 +19,17 @@ $updateQuery = "UPDATE $tagTable SET name = ?, updated_by = ? WHERE id = ?";
 // 2. Context Detection
 $isEmbeddedTagForm = isset($EMBED_TAG_FORM_PAGE) && $EMBED_TAG_FORM_PAGE === true;
 
+$tagId = $_GET['id'] ?? null;
+$tagId = $tagId !== null ? (int) $tagId : null;
+$isEditMode = !empty($tagId);
+
 if ($isEmbeddedTagForm) {
     $listPageUrl = URL_USER_DASHBOARD . '?view=tags';
-    $formActionUrl = URL_USER_DASHBOARD . '?view=tag_form'; 
+    $formActionUrl = URL_USER_DASHBOARD . '?view=tag_form' . ($isEditMode ? '&id=' . intval($tagId) : ''); 
 } else {
     $listPageUrl = defined('URL_NOVEL_TAGS') ? URL_NOVEL_TAGS : 'index.php';
     $formActionUrl = ''; 
 }
-
-$tagId = $_GET['id'] ?? null;
-$tagId = $tagId !== null ? (int) $tagId : null;
-$isEditMode = !empty($tagId);
 
 // Define View Query for Audit Log (Correctly interpolated)
 $viewQuery = $isEditMode

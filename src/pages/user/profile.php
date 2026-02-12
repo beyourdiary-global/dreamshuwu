@@ -11,6 +11,11 @@ $userId = $_SESSION['user_id'];
 $message = "";
 $msgType = ""; 
 $auditPage = 'User Profile'; 
+$passwordChangeSuccess = false;
+$passwordRedirectUrl = '';
+
+// Determine redirect URL based on context (embedded in dashboard or standalone)
+$profileRedirectUrl = defined('PROFILE_EMBEDDED') ? URL_USER_DASHBOARD . '?view=profile' : URL_PROFILE;
 
 // Flash Message Check (This reads the message after redirect)
 if (isset($_SESSION['flash_msg'])) {
@@ -49,7 +54,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['action']) && $_POST['
             ['name' => $name, 'email' => $email, 'gender' => $gender, 'birthday' => $birthday], 
             $oldUserData, 
             'avatar', 
-            URL_PROFILE
+            $profileRedirectUrl
         );
 
         // --- CHANGES DETECTED - PROCEED ---
@@ -127,7 +132,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['action']) && $_POST['
                 $_SESSION['user_name'] = $name; 
                 $_SESSION['flash_msg'] = "资料已更新";
                 $_SESSION['flash_type'] = "success";
-                header("Location: " . URL_PROFILE); exit(); 
+                if (!headers_sent()) {
+                    header("Location: " . $profileRedirectUrl);
+                } else {
+                    echo "<script>window.location.href='" . $profileRedirectUrl . "';</script>";
+                }
+                exit(); 
             }
         }
     }
@@ -181,32 +191,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['action']) && $_POST['
                 ]);
             }
 
-            session_destroy(); 
-            $pageMetaKey = 'profile';
-            ?>
-            <!DOCTYPE html>
-            <html lang="<?php echo defined('SITE_LANG') ? SITE_LANG : 'zh-CN'; ?>">
-            <head>
-                <?php require_once BASE_PATH . 'include/header.php'; ?>
-                <style>
-                    body { background: #f8f9fa; display: flex; align-items: center; justify-content: center; height: 100vh; }
-                    .success-card { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); text-align: center; max-width: 400px; width: 100%; }
-                    .icon-box { font-size: 50px; color: #198754; margin-bottom: 20px; }
-                    .btn-login { background: #0d6efd; color: white; padding: 10px 30px; text-decoration: none; border-radius: 6px; display: inline-block; margin-top: 20px; transition: 0.2s; }
-                    .btn-login:hover { background: #0b5ed7; color: white; }
-                </style>
-            </head>
-            <body>
-                <div class="success-card">
-                    <div class="icon-box"><i class="fa-solid fa-circle-check"></i></div>
-                    <h3>密码修改成功</h3>
-                    <p class="text-muted">您的密码已更新，请使用新密码重新登录。</p>
-                    <a href="<?php echo URL_LOGIN; ?>" class="btn-login">立即登录</a>
-                </div>
-            </body>
-            </html>
-            <?php
-            exit(); 
+            $_SESSION = [];
+            $message = '密码修改成功，请使用新密码重新登录。';
+            $msgType = 'success';
+            $passwordChangeSuccess = true;
+            $passwordRedirectUrl = URL_LOGIN;
         }
     }
 }
@@ -267,8 +256,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && function_exists('logAudit') && !defi
         </div>
     <?php endif; ?>
 
+    <?php if ($passwordChangeSuccess): ?>
+        <div id="pwd-redirect" data-url="<?php echo htmlspecialchars($passwordRedirectUrl, ENT_QUOTES, 'UTF-8'); ?>" data-delay="1500"></div>
+        <div class="profile-form-card text-center">
+            <div class="form-title"><i class="fa-solid fa-circle-check text-success"></i> 密码修改成功</div>
+            <p class="text-muted mb-3">请使用新密码重新登录，页面即将自动跳转。</p>
+            <a href="<?php echo htmlspecialchars($passwordRedirectUrl, ENT_QUOTES, 'UTF-8'); ?>" class="btn btn-primary">立即登录</a>
+        </div>
+    <?php endif; ?>
+
     <div id="js-alert-box" class="alert alert-danger d-none"></div>
 
+    <?php if (!$passwordChangeSuccess): ?>
     <div class="profile-form-card">
         <div class="form-title"><i class="fa-solid fa-user-pen"></i> 编辑个人资料</div>
         <form method="POST" enctype="multipart/form-data" id="infoForm" novalidate>
@@ -336,4 +335,5 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && function_exists('logAudit') && !defi
             </div>
         </form>
     </div>
+    <?php endif; ?>
 </div>

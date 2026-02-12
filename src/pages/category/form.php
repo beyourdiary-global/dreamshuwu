@@ -22,16 +22,16 @@ $updateQuery = "UPDATE $catTable SET name = ?, updated_by = ? WHERE id = ?";
 // Context Detection
 $isEmbeddedTagForm = isset($EMBED_CAT_FORM_PAGE) && $EMBED_CAT_FORM_PAGE === true;
 
+$id = $_GET['id'] ?? null;
+$isEdit = !empty($id);
+
 if ($isEmbeddedTagForm) {
     $listPageUrl = URL_USER_DASHBOARD . '?view=categories';
-    $formActionUrl = URL_USER_DASHBOARD . '?view=cat_form'; 
+    $formActionUrl = URL_USER_DASHBOARD . '?view=cat_form' . ($isEdit ? '&id=' . intval($id) : ''); 
 } else {
     $listPageUrl = URL_NOVEL_CATS; 
     $formActionUrl = '';
 }
-
-$id = $_GET['id'] ?? null;
-$isEdit = !empty($id);
 
 // Define View Query (Correctly interpolated)
 $viewQuery = $isEdit
