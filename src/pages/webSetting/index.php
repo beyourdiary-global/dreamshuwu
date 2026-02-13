@@ -58,6 +58,9 @@ if (!$current) {
     $current = array_fill_keys(['website_name', 'website_logo', 'website_favicon', 'theme_bg_color', 'theme_text_color', 'button_color', 'button_text_color', 'background_color'], '');
 }
 
+// Define Upload Directory
+$uploadDir = dirname(__DIR__, 3) . '/assets/uploads/settings/';
+
 // [AUDIT] Log View
 if ($_SERVER['REQUEST_METHOD'] !== 'POST' && function_exists('logAudit') && !defined('WEB_SETTINGS_VIEW_LOGGED')) {
     define('WEB_SETTINGS_VIEW_LOGGED', true);
@@ -97,6 +100,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     // --- 2. REMOVE LOGO ---
     elseif ($actionType === 'remove_logo') {
+        // [NEW] Delete physical file
+        if (!empty($current['website_logo'])) {
+            $fileToDelete = $uploadDir . $current['website_logo'];
+            if (file_exists($fileToDelete)) {
+                unlink($fileToDelete);
+            }
+        }
+
         if ($conn->query($sqlRemoveLogo)) {
             $_SESSION['flash_msg'] = "网站 Logo 已移除！";
             $_SESSION['flash_type'] = "success";
@@ -107,6 +118,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     // --- 3. REMOVE FAVICON ---
     elseif ($actionType === 'remove_favicon') {
+        // [NEW] Delete physical file
+        if (!empty($current['website_favicon'])) {
+            $fileToDelete = $uploadDir . $current['website_favicon'];
+            if (file_exists($fileToDelete)) {
+                unlink($fileToDelete);
+            }
+        }
+
         if ($conn->query($sqlRemoveFavicon)) {
             $_SESSION['flash_msg'] = "网站 Favicon 已移除！";
             $_SESSION['flash_type'] = "success";
@@ -115,6 +134,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $logQuery = $sqlRemoveFavicon;
         }
     }
+
     // --- 4. SAVE SETTINGS (Default) ---
     else {
         // Prepare Data
@@ -137,18 +157,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Handle File Uploads
         $logoName = $current['website_logo'];
         $favName = $current['website_favicon'];
-        $uploadDir = dirname(__DIR__, 3) . '/assets/uploads/settings/';
 
+        // Handle Logo Upload
         if (!empty($_FILES['website_logo']['name'])) {
             $upRes = uploadImage($_FILES['website_logo'], $uploadDir);
-            if ($upRes['success']) $logoName = $upRes['filename'];
-            else { $message = "Logo Error: " . $upRes['message']; $msgType = "danger"; }
+            if ($upRes['success']) {
+                // [NEW] Delete OLD logo if it exists
+                if (!empty($current['website_logo']) && file_exists($uploadDir . $current['website_logo'])) {
+                    unlink($uploadDir . $current['website_logo']);
+                }
+                $logoName = $upRes['filename'];
+            } else {
+                $message = "Logo Error: " . $upRes['message']; 
+                $msgType = "danger"; 
+            }
         }
 
+        // Handle Favicon Upload
         if (!empty($_FILES['website_favicon']['name'])) {
             $upRes = uploadImage($_FILES['website_favicon'], $uploadDir);
-            if ($upRes['success']) $favName = $upRes['filename'];
-            else { $message = "Favicon Error: " . $upRes['message']; $msgType = "danger"; }
+            if ($upRes['success']) {
+                // [NEW] Delete OLD favicon if it exists
+                if (!empty($current['website_favicon']) && file_exists($uploadDir . $current['website_favicon'])) {
+                    unlink($uploadDir . $current['website_favicon']);
+                }
+                $favName = $upRes['filename'];
+            } else { 
+                $message = "Favicon Error: " . $upRes['message']; 
+                $msgType = "danger"; 
+            }
         }
 
         if ($msgType !== 'danger') {
