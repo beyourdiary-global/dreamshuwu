@@ -10,7 +10,7 @@ $webSettings = getWebSettings($conn);
 // Fallback defaults
 if (!$webSettings) {
     $webSettings = [
-        'website_name'      => 'StarAdmin',
+        'website_name'      => 'Website Name',
         'website_favicon'   => '',
         'theme_bg_color'    => '#ffffff',
         'theme_text_color'  => '#333333',
@@ -50,7 +50,7 @@ $finalOgUrl     = !empty($specificSeo['og_url']) ? $specificSeo['og_url'] : ($gl
     <meta name="viewport" content="width=device-width, initial-scale=1">
     
     <?php if (!empty($webSettings['website_favicon'])): ?>
-        <link rel="icon" type="image/png" href="<?php echo URL_ASSETS . '/uploads/settings/' . $webSettings['website_favicon']; ?>">
+        <link rel="icon" type="image/png" href="<?php echo URL_ASSETS . '/uploads/settings/' . htmlspecialchars($webSettings['website_favicon'], ENT_QUOTES, 'UTF-8'); ?>">
     <?php endif; ?>
 
     <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/bootstrap.min.css">

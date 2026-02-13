@@ -16,15 +16,15 @@
             <?php if(!empty($current['website_logo'])): ?>
                 <div class="d-flex align-items-center mb-2 gap-3">
                     <div style="border: 1px solid #ddd; padding: 4px; border-radius: 4px; background: #fff;">
-                        <img src="<?php echo URL_ASSETS . '/uploads/settings/' . $current['website_logo']; ?>" alt="Logo" style="height: 50px;">
+                        <img src="<?php echo htmlspecialchars(URL_ASSETS . '/uploads/settings/' . $current['website_logo']); ?>" alt="Logo" style="height: 50px;">
                     </div>
                     <button type="button" class="btn btn-outline-danger btn-sm" onclick="confirmAction('remove_logo', '确定要移除 Logo 吗？')">
                         <i class="fa-solid fa-trash"></i> Remove
                     </button>
                 </div>
             <?php endif; ?>
-            <input type="file" name="website_logo" class="form-control" accept=".jpg,.jpeg,.png">
-            <small class="text-muted">Recommended height: 50px. Formats: JPG, JPEG, PNG.</small>
+            <input type="file" name="website_logo" class="form-control" accept=".jpg,.jpeg,.png,.svg">
+            <small class="text-muted">Recommended height: 50px. Formats: JPG, JPEG, PNG, SVG.</small>
         </div>
     </div>
 
@@ -34,15 +34,15 @@
             <?php if(!empty($current['website_favicon'])): ?>
                 <div class="d-flex align-items-center mb-2 gap-3">
                     <div style="border: 1px solid #ddd; padding: 4px; border-radius: 4px; background: #fff;">
-                        <img src="<?php echo URL_ASSETS . '/uploads/settings/' . $current['website_favicon']; ?>" alt="Favicon" style="width: 32px; height: 32px;">
+                        <img src="<?php echo htmlspecialchars(URL_ASSETS . '/uploads/settings/' . $current['website_favicon']); ?>" alt="Favicon" style="width: 32px; height: 32px;">
                     </div>
                     <button type="button" class="btn btn-outline-danger btn-sm" onclick="confirmAction('remove_favicon', '确定要移除 Favicon 吗？')">
                         <i class="fa-solid fa-trash"></i> Remove
                     </button>
                 </div>
             <?php endif; ?>
-            <input type="file" name="website_favicon" class="form-control" accept=".jpg,.jpeg,.png,.ico">
-            <small class="text-muted">Recommended size: 32x32. Formats: JPG, JPEG, PNG, ICO.</small>
+            <input type="file" name="website_favicon" class="form-control" accept=".jpg,.jpeg,.png,.svg">
+            <small class="text-muted">Recommended size: 32x32. Formats: JPG, JPEG, PNG, SVG.</small>
         </div>
     </div>
 

@@ -44,7 +44,7 @@ $navLinks = [
     <div class="header-container">
         <a href="<?php echo URL_HOME; ?>" class="logo">
             <?php if (!empty($siteLogo)): ?>
-                <img src="<?php echo URL_ASSETS . '/uploads/settings/' . $siteLogo; ?>" 
+                <img src="<?php echo htmlspecialchars(URL_ASSETS . '/uploads/settings/' . $siteLogo, ENT_QUOTES, 'UTF-8'); ?>"
                      alt="<?php echo htmlspecialchars($siteName); ?>" 
                      style="height: 40px; width: auto; object-fit: contain;">
             <?php else: ?>

@@ -604,7 +604,7 @@ function getWebSettings($conn) {
         $stmt->close();
         // Return safe defaults if DB is empty
         return [
-            'website_name' => 'My Website',
+            'website_name' => 'Website Name',
             'website_logo' => '',
             'website_favicon' => '',
             'theme_bg_color' => '#ffffff',
