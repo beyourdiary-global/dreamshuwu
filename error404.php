@@ -2,6 +2,8 @@
 
 // 1. Skip DB Check to prevent infinite loops
 define('SKIP_DB_CHECK', true);
+// [NEW] Force a specific background color for this page only
+define('CUSTOM_PAGE_BG', '#ffffff');
 
 // 2. Load Common (Init + URLs + Functions)
 require_once __DIR__ . '/common.php';
