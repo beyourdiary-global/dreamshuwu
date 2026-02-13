@@ -503,7 +503,7 @@ function uploadImage($file, $targetDir) {
 }
 
 /**
- * [NEW] Helper: Fetch SEO Meta Settings
+ * Helper: Fetch SEO Meta Settings
  * Supports hyphenated table names using backticks.
  */
 function getMetaSettings($conn, $type, $id) {
@@ -541,7 +541,7 @@ function getMetaSettings($conn, $type, $id) {
 }
 
 /**
- * [NEW] Helper: Fetch Per-Page SEO Meta Settings
+ * Helper: Fetch Per-Page SEO Meta Settings
  * Queries the meta_settings_page table by page_key.
  * Returns null if no custom meta is set for the page.
  */
@@ -586,4 +586,71 @@ function getPageMetaSettings($conn, $pageKey) {
     ];
 }
 
+/**
+ * [NEW] Helper: Fetch Website Settings
+ * Returns the single configuration row (id=1).
+ */
+function getWebSettings($conn) {
+    if (!$conn) return null;
+
+    // Use prepared statement style
+    $stmt = $conn->prepare("SELECT website_name, website_logo, website_favicon, theme_bg_color, theme_text_color, button_color, button_text_color, background_color FROM " . WEB_SETTINGS . " WHERE id = 1 LIMIT 1");
+    if (!$stmt) return null;
+
+    $stmt->execute();
+    $stmt->store_result();
+
+    if ($stmt->num_rows === 0) {
+        $stmt->close();
+        // Return safe defaults if DB is empty
+        return [
+            'website_name' => 'My Website',
+            'website_logo' => '',
+            'website_favicon' => '',
+            'theme_bg_color' => '#ffffff',
+            'theme_text_color' => '#333333',
+            'button_color' => '#233dd2',
+            'button_text_color' => '#ffffff',
+            'background_color' => '#f4f7f6'
+        ];
+    }
+
+    // Define variables to bind results to
+    $websiteName = null;
+    $websiteLogo = null;
+    $websiteFavicon = null;
+    $themeBgColor = null;
+    $themeTextColor = null;
+    $buttonColor = null;
+    $buttonTextColor = null;
+    $backgroundColor = null;
+
+    $stmt->bind_result(
+        $websiteName, 
+        $websiteLogo, 
+        $websiteFavicon, 
+        $themeBgColor, 
+        $themeTextColor, 
+        $buttonColor, 
+        $buttonTextColor, 
+        $backgroundColor
+    );
+    
+    $stmt->fetch();
+    $stmt->close();
+
+    return [
+        'website_name' => $websiteName,
+        'website_logo' => $websiteLogo,
+        'website_favicon' => $websiteFavicon,
+        'theme_bg_color' => $themeBgColor,
+        'theme_text_color' => $themeTextColor,
+        'button_color' => $buttonColor,
+        'button_text_color' => $buttonTextColor,
+        'background_color' => $backgroundColor
+    ];
+}
+
 ?>
+
+

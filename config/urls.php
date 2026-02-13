@@ -46,4 +46,8 @@ defined('URL_AUDIT_LOG') || define('URL_AUDIT_LOG', SITEURL . '/audit-log.php');
 // -- 9. Meta Settings Page ---
 defined('URL_META_SETTINGS') || define('URL_META_SETTINGS', SITEURL . '/meta-setting.php');
 defined('PATH_META_SETTINGS') || define('PATH_META_SETTINGS', 'src/pages/meta/index.php');
+
+// -- 10. Web Settings Page ---
+defined('URL_WEB_SETTINGS')  || define('URL_WEB_SETTINGS', URL_USER_DASHBOARD . '?view=web_settings');
+defined('PATH_WEB_SETTINGS') || define('PATH_WEB_SETTINGS', 'src/pages/webSetting/index.php');
 ?>

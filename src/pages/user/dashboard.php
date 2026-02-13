@@ -31,6 +31,9 @@ $isProfileView   = ($currentView === 'profile');
 // Meta Settings Views
 $isMetaView      = ($currentView === 'meta_settings');
 
+// Web Settings View
+$isWebSettingView = ($currentView === 'web_settings');
+
 // Data Fetching
 $userQuery = "SELECT name FROM " . $userTable . " WHERE id = ? LIMIT 1";
 $dashQuery = "SELECT avatar, level, following_count, followers_count FROM " . $dashTable . " WHERE user_id = ? LIMIT 1";
@@ -54,7 +57,7 @@ if ($dashStmt->fetch()) { foreach($row as $key => $val) { $dashRow[$key] = $val;
 $dashStmt->close();
 
 // [FIX] Only log "User viewed dashboard" if we are on dashboard home (not any sub-view)
-if (!$isTagSection && !$isCatSection && !$isMetaView && !$isProfileView && function_exists('logAudit')) {
+if (!$isTagSection && !$isCatSection && !$isMetaView && !$isProfileView && !$isWebSettingView && function_exists('logAudit')) {
     logAudit([
         'page'           => $auditPage,
         'action'         => 'V',
@@ -81,7 +84,7 @@ $profileComponents = [
 ];
 
 $sidebarItems = [
-    ['label' => '首页',     'url' => URL_USER_DASHBOARD, 'icon' => 'fa-solid fa-house-user', 'active' => (!$isTagSection && !$isCatSection && !$isProfileView && !$isMetaView)],
+    ['label' => '首页',     'url' => URL_USER_DASHBOARD, 'icon' => 'fa-solid fa-house-user', 'active' => (!$isTagSection && !$isCatSection && !$isProfileView && !$isMetaView && !$isWebSettingView)],
     ['label' => '账号中心', 'url' => URL_HOME,           'icon' => 'fa-solid fa-id-card',   'active' => false],
     ['label' => '写小说',   'url' => URL_AUTHOR_DASHBOARD, 'icon' => 'fa-solid fa-pen-nib',  'active' => false],
     // Category Item
@@ -89,7 +92,9 @@ $sidebarItems = [
     // Tag Item
     ['label' => '小说标签', 'url' => URL_NOVEL_TAGS,     'icon' => 'fa-solid fa-tags',      'active' => $isTagSection],
     // Meta Settings Item
-    ['label' => 'META 设置',  'url' => URL_USER_DASHBOARD . '?view=meta_settings', 'icon' => 'fa-solid fa-sliders', 'active' => $isMetaView]
+    ['label' => 'META 设置',  'url' => URL_USER_DASHBOARD . '?view=meta_settings', 'icon' => 'fa-solid fa-sliders', 'active' => $isMetaView],
+
+    ['label' => '网站设置',   'url' => URL_USER_DASHBOARD . '?view=web_settings', 'icon' => 'fa-solid fa-paintbrush', 'active' => $isWebSettingView]
 ];
 
 $quickActions = [
@@ -126,6 +131,11 @@ switch ($currentView) {
     // --- Meta Settings ---
     case 'meta_settings':
         $pageMetaKey = 'meta_settings';
+        break;
+
+    // --- Web Settings ---
+    case 'web_settings':
+        $pageMetaKey = 'web_settings';
         break;
 
     // --- Default Dashboard ---
@@ -165,7 +175,7 @@ switch ($currentView) {
     </aside>
 
     <main class="dashboard-main">
-        <?php if (!$isTagSection && !$isCatSection && !$isProfileView && !$isMetaView): ?>
+        <?php if (!$isTagSection && !$isCatSection && !$isProfileView && !$isMetaView && !$isWebSettingView): ?>
         <div class="profile-card">
             <?php foreach ($profileComponents as $component): ?>
                 <?php if ($component['type'] === 'avatar'): ?>
@@ -215,15 +225,17 @@ switch ($currentView) {
             $EMBED_CATS_PAGE = true;
             require BASE_PATH . PATH_NOVEL_CATS_INDEX;
         
-        // [NEW] Embed Category Form
         elseif ($isCatFormView):
             $EMBED_CAT_FORM_PAGE = true;
             require BASE_PATH . PATH_NOVEL_CATS_FORM;
         
-        // [NEW] Embed Meta Settings
         elseif ($isMetaView):
             $EMBED_META_PAGE = true;
             require BASE_PATH . PATH_META_SETTINGS;
+        
+        elseif ($isWebSettingView):
+            $EMBED_WEB_SETTING_PAGE = true;
+            require BASE_PATH . PATH_WEB_SETTINGS;
         
         else: ?>
             <div class="quick-actions-grid">

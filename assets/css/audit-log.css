@@ -59,16 +59,6 @@
   background-color: #e9ecef !important;
 }
 
-/* Pagination links: no underline unless hover */
-.dataTables_wrapper .dataTables_paginate a,
-.dataTables_wrapper .dataTables_paginate .page-link {
-  text-decoration: none !important;
-}
-.dataTables_wrapper .dataTables_paginate a:hover,
-.dataTables_wrapper .dataTables_paginate .page-link:hover {
-  text-decoration: underline !important;
-}
-
 /* 4. Expand Button */
 td.dt-control {
   text-align: center;

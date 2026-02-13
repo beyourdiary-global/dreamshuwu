@@ -224,6 +224,8 @@ defined('CATEGORY_TAG')   || define('CATEGORY_TAG', 'category_tag');
 defined('META_SETTINGS') || define('META_SETTINGS', 'meta_settings');
 defined('META_SETTINGS_PAGE') || define('META_SETTINGS_PAGE', 'meta_settings_page');
 
+// --- Web Settings Table ---
+defined('WEB_SETTINGS') || define('WEB_SETTINGS', 'web_settings');
 // --- Page Meta Registry (Dropdown Options) ---
 $PAGE_META_REGISTRY = [
     'home'            => '首页 (Home)',
@@ -238,7 +240,8 @@ $PAGE_META_REGISTRY = [
     'category_form'   => '分类表单 (Category Form)',
     'tags'            => '标签管理 (Tags)',
     'tag_form'        => '标签表单 (Tag Form)',
-    'meta_settings'   => 'META 设置 (Meta Settings)'
+    'meta_settings'   => 'META 设置 (Meta Settings)',
+    'web_settings'   => '网站设置 (Web Settings)'
 ];
 
 // --- Application Constants ---

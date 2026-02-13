@@ -117,7 +117,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <main class="dashboard-main">
     <div class="auth-layout">
         <div class="reg-card">
-            <div class="logo">Star<span>Admin</span></div>
+            <div class="logo text-center mb-3">
+                <span class="fw-bold" style="font-size: 26px; color: var(--btn-color);">
+                <?php echo htmlspecialchars($siteName); ?>
+                </span>
+            </div>
             <h3>新用户？</h3>
             <p style="color: #666;">简单几步即可完成注册</p>
             
