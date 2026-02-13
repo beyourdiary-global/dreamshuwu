@@ -131,7 +131,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             <div class="row justify-content-center">
                 <div class="col-12 col-md-7 col-lg-5">
                     <div class="login-card shadow-lg p-4 bg-white rounded">
-                        <div class="logo text-center mb-4">Star<span class="text-primary fw-bold">Admin</span></div>
+                        <div class="logo text-center mb-4">
+                            <span class="fw-bold" style="font-size: 28px; color: var(--btn-color);">
+                            <?php echo htmlspecialchars($siteName); ?>
+                            </span>
+                    </div>
                         <h3 class="text-center">欢迎回来</h3>
                         <p class="subtext text-center text-muted">请登录您的管理后台</p>
                         <div id="loginError" class="alert alert-danger" style="<?php echo $message ? '' : 'display:none;'; ?>">

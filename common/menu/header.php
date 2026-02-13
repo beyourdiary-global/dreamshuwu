@@ -4,17 +4,22 @@
  * Responsive Navigation Bar UI Component
  */
 
+// 1. Fetch Website Settings if not already loaded
+if (!isset($webSettings)) {
+    $webSettings = function_exists('getWebSettings') ? getWebSettings($conn) : null;
+}
+
+// Prepare display variables
+$siteName = !empty($webSettings['website_name']) ? $webSettings['website_name'] : 'Logo';
+$siteLogo = !empty($webSettings['website_logo']) ? $webSettings['website_logo'] : '';
+
 $currentPage = basename($_SERVER['PHP_SELF']);
 $isLoggedIn = (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true);
 
 // Helper to create navigation items with login logic
 function createNavItem($title, $url, $mobile = false, $icon = null) {
     global $isLoggedIn;
-    
-    // Define which URLs require login
     $loginRequiredUrls = [URL_BOOKSHELF, URL_PROFILE];
-    
-    // Apply login logic if needed
     $finalUrl = in_array($url, $loginRequiredUrls) 
         ? ($isLoggedIn ? $url : URL_LOGIN) 
         : $url;
@@ -22,12 +27,11 @@ function createNavItem($title, $url, $mobile = false, $icon = null) {
     return [
         'title'  => $title,
         'url'    => $finalUrl,
-        'active' => $url, // Original URL for active state check
+        'active' => $url,
         'icon'   => $icon,
         'mobile' => $mobile
     ];
 }
-// Navigation Links Configuration
 $navLinks = [
     createNavItem('首页', URL_HOME, true, 'fa-solid fa-house'),
     createNavItem('分类', URL_CATEGORIES),
@@ -39,11 +43,16 @@ $navLinks = [
 <header class="site-header">
     <div class="header-container">
         <a href="<?php echo URL_HOME; ?>" class="logo">
-            <span class="logo-text">Logo</span>
+            <?php if (!empty($siteLogo)): ?>
+                <img src="<?php echo htmlspecialchars(URL_ASSETS . '/uploads/settings/' . $siteLogo, ENT_QUOTES, 'UTF-8'); ?>"
+                     alt="<?php echo htmlspecialchars($siteName); ?>" 
+                     style="height: 40px; width: auto; object-fit: contain;">
+            <?php else: ?>
+                <span class="logo-text"><?php echo htmlspecialchars($siteName); ?></span>
+            <?php endif; ?>
         </a>
 
         <nav class="desktop-nav">
-            <!-- Desktop Navigation Links -->
             <div class="nav-links-group">
                 <?php foreach ($navLinks as $link): ?>
                     <a href="<?php echo $link['url']; ?>" 
@@ -53,18 +62,15 @@ $navLinks = [
                 <?php endforeach; ?>
             </div>
 
-            <!-- Search Form -->
             <form action="<?php echo URL_SEARCH; ?>" method="GET" class="search-form">
                 <input type="text" name="q" placeholder="请输入书籍名或作者名">
                 <button type="submit"><i class="fa-solid fa-search"></i></button>
             </form>
 
-            <!-- Author Dashboard Link -->
             <a href="<?php echo $isLoggedIn ? URL_USER_DASHBOARD : URL_LOGIN; ?>" class="author-link">
                 作者专区
             </a>
 
-            <!-- Auth Buttons (Desktop) -->
             <?php if (!$isLoggedIn): ?>
                 <div class="auth-buttons">
                     <a href="<?php echo URL_LOGIN; ?>" class="login-btn">登录</a>
@@ -74,7 +80,6 @@ $navLinks = [
             <?php endif; ?>
         </nav>
 
-        <!-- Mobile Auth Dropdown (Top Right) -->
         <?php if (!$isLoggedIn): ?>
             <div class="mobile-top-bar">
                 <div class="user-trigger" onclick="toggleMobileDropdown()">
@@ -89,7 +94,6 @@ $navLinks = [
     </div>
 </header>
 
-<!-- Mobile Bottom Navigation -->
 <nav class="mobile-bottom-nav">
     <?php foreach ($navLinks as $link): ?>
         <?php if ($link['mobile']): ?>

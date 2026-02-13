@@ -1,0 +1,239 @@
+/* assets/css/webSetting.css */
+
+/* --- Global Overrides --- */
+body {
+  background-color: var(--page-bg-color) !important;
+  color: var(--theme-text-color) !important;
+}
+
+/* Header Background - Single Solid Color */
+.site-header {
+  background: var(--theme-bg-color) !important;
+}
+
+/* [UPDATED] Remove Bottom Border/Line to keep it solid */
+.site-header::after {
+  display: none !important;
+  background: transparent !important;
+}
+
+/* [UPDATED] Header Text Links (Force Theme Text Color) */
+.site-header a,
+.site-header .nav-link,
+.site-header .author-link,
+.site-header .logo-text,
+.site-header .auth-buttons a,
+.mobile-top-bar .user-trigger {
+  color: var(--theme-text-color) !important;
+}
+
+/* Hover State for Header Links */
+.site-header a:hover,
+.site-header .nav-link:hover,
+.site-header .author-link:hover,
+.site-header .auth-buttons a:hover,
+.mobile-top-bar .user-trigger:hover {
+  color: var(--btn-color) !important;
+}
+
+/* Active Link State */
+.nav-link.active::after {
+  background-color: var(--btn-color) !important;
+}
+.nav-link.active {
+  color: var(--btn-color) !important;
+}
+
+/* --- Sidebar Overrides --- */
+.sidebar-menu a {
+  color: var(--theme-text-color) !important;
+}
+
+.sidebar-menu a:hover:not(.active) {
+  color: var(--btn-color) !important;
+  background-color: rgba(0, 0, 0, 0.03);
+}
+
+.sidebar-menu a.active {
+  background-color: var(--btn-color) !important;
+  color: var(--btn-text-color) !important;
+  border-radius: 8px;
+  font-weight: 600;
+}
+.sidebar-menu a.active i {
+  color: var(--btn-text-color) !important;
+}
+
+/* --- Button Overrides --- */
+.btn-primary,
+.btn-save,
+.btn-reg,
+.btn-success,
+.desktop-add-btn,
+.btn-add-mobile {
+  background-color: var(--btn-color) !important;
+  color: var(--btn-text-color) !important;
+  border-color: var(--btn-color) !important;
+}
+
+.btn-primary:hover,
+.btn-save:hover,
+.btn-reg:hover,
+.btn-success:hover,
+.desktop-add-btn:hover {
+  opacity: 0.9;
+}
+
+.btn-outline-primary {
+  color: var(--btn-color) !important;
+  border-color: var(--btn-color) !important;
+}
+.btn-outline-primary:hover {
+  background-color: var(--btn-color) !important;
+  color: var(--btn-text-color) !important;
+}
+
+/* --- General Text & Icons --- */
+.text-primary,
+.header-title i,
+.card-header i,
+.fa-paintbrush {
+  color: var(--btn-color) !important;
+}
+
+/* --- Pagination & Forms --- */
+.dataTables_wrapper .dataTables_paginate .paginate_button.current {
+  background-color: var(--btn-color) !important;
+  border-color: var(--btn-color) !important;
+  color: var(--btn-text-color) !important;
+}
+
+.form-control:focus,
+input:focus,
+select:focus {
+  border-color: var(--btn-color) !important;
+  box-shadow: 0 0 0 3.2px rgba(35, 61, 210, 0.15);
+}
+
+/* --- Dashboard Specific --- */
+.dashboard-main,
+.dashboard-container {
+  background-color: var(--page-bg-color) !important;
+  color: var(--theme-text-color) !important;
+}
+
+/* ======================================================== */
+/* --- Theme Text Color overrides --- */
+/* ======================================================== */
+.card-header h4,
+.card-header h5,
+.header-title,
+.section-header h2,
+.form-title,
+.meta-card-header h4,
+.meta-card-header .header-title,
+.header-subtitle,
+.meta-card-header .header-subtitle,
+.table th,
+.table td,
+table.dataTable thead th,
+table.dataTable tbody td,
+.dataTables_wrapper .dataTables_info,
+.dataTables_wrapper .dataTables_length,
+.dataTables_wrapper .dataTables_length label,
+.dataTables_wrapper .dataTables_filter label,
+.table .text-muted,
+table.dataTable .text-muted,
+.form-label,
+.col-form-label,
+.form-group label,
+small.text-muted,
+.form-text,
+.nav-pills .nav-link,
+.nav-pills .nav-link.active,
+h5.text-primary,
+.category-container,
+.tag-container,
+.audit-container,
+.meta-card,
+.web-settings-container,
+.profile-container h2,
+.profile-form-card .form-title,
+.page-select-toggle,
+.page-select-item,
+.card-body,
+.meta-card-body,
+.text-center p,
+.text-center h5 {
+  color: var(--theme-text-color) !important;
+}
+
+.dataTables_wrapper .dataTables_paginate .paginate_button {
+  color: var(--btn-color) !important;
+}
+
+.dataTables_wrapper .dataTables_filter input,
+.form-control,
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="date"],
+textarea.form-control,
+select.form-control,
+.form-select {
+  color: #212529 !important;
+}
+
+.card-header .desktop-add-btn {
+  padding: 12px 20px;
+  padding-left: 12px;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition:
+    opacity 0.2s,
+    box-shadow 0.2s;
+}
+.card-header .desktop-add-btn:hover {
+  opacity: 0.92;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* ======================================================== */
+/* [NEW] Mobile View Adjustments (Max-width 767px) */
+/* ======================================================== */
+@media (max-width: 767px) {
+  /* 1. Stack Card Header (Title + Button) */
+  .card-header {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 15px !important;
+    padding: 15px !important;
+  }
+
+  /* 2. Center Title */
+  .card-header h4 {
+    text-align: center;
+    margin-bottom: 5px;
+    width: 100%;
+  }
+
+  /* 3. Force Button to Full Width & Correct Position */
+  .card-header .desktop-add-btn {
+    width: 100% !important;
+    display: flex !important;
+    justify-content: center !important;
+    margin-left: 0 !important;
+    margin-top: 0 !important;
+  }
+
+  /* 4. Form Action Buttons (Save/Reset) */
+  .mobile-full-width {
+    width: 100% !important;
+    display: block;
+  }
+}
