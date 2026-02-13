@@ -96,8 +96,7 @@ body {
 /* --- General Text & Icons --- */
 .text-primary,
 .header-title i,
-.card-header i,
-.fa-paintbrush {
+.card-header i {
   color: var(--btn-color) !important;
 }
 

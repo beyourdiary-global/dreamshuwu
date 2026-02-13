@@ -100,7 +100,7 @@ $sidebarItems = [
 $quickActions = [
     ['label' => '浏览历史', 'url' => URL_USER_HISTORY,     'icon' => 'fa-solid fa-clock-rotate-left',    'style' => ''],
     ['label' => '我的消息', 'url' => URL_USER_MESSAGES,    'icon' => 'fa-solid fa-comment-dots',         'style' => ''],
-    ['label' => '写小说',   'url' => URL_AUTHOR_DASHBOARD, 'icon' => 'fa-solid fa-feather-pointed',      'style' => 'background: #eef2ff; color: #233dd2;']
+    ['label' => '写小说',   'url' => URL_AUTHOR_DASHBOARD, 'icon' => 'fa-solid fa-feather-pointed',      'style' => '']
 ];
 
 if ($isTagListView || $isCatListView) $customCSS[] = 'dataTables.bootstrap.min.css';

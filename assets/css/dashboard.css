@@ -68,15 +68,19 @@
 
 /* --- Profile Card --- */
 .profile-card {
-  background: linear-gradient(135deg, #233dd2 0%, #5b73e8 100%);
+  background: linear-gradient(
+    135deg,
+    var(--btn-color, #233dd2) 0%,
+    var(--btn-color, #233dd2) 100%
+  );
   border-radius: 12px;
   padding: 30px;
-  color: white;
+  color: var(--btn-text-color, #ffffff);
   display: flex;
   align-items: center;
   position: relative;
   margin-bottom: 30px;
-  box-shadow: 0 8px 20px rgba(35, 61, 210, 0.2);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
 }
 
 .profile-avatar {
@@ -94,7 +98,8 @@
 }
 
 .level-badge {
-  background: #ff9f43;
+  background: var(--theme-bg-color, #ffffff);
+  color: var(--theme-text-color, #333333);
   font-size: 11px;
   padding: 2px 6px;
   border-radius: 4px;
@@ -114,7 +119,7 @@
 .settings-btn {
   position: absolute;
   right: 20px;
-  color: white;
+  color: var(--btn-text-color, #ffffff);
   opacity: 0.8;
   font-size: 18px;
   transition: opacity 0.2s;
@@ -134,12 +139,12 @@
 }
 
 .action-card {
-  background: #fff;
+  background: var(--theme-bg-color, #ffffff);
   padding: 25px 15px;
   border-radius: 12px;
   text-align: center;
   text-decoration: none;
-  color: #333;
+  color: var(--theme-text-color, #333333);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   transition: transform 0.2s;
   display: flex;
@@ -156,14 +161,14 @@
 .action-icon-wrapper {
   width: 50px;
   height: 50px;
-  background: #f4f7f6;
+  background: var(--page-bg-color, #f4f7f6);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   margin-bottom: 10px;
   font-size: 20px;
-  color: #233dd2;
+  color: var(--btn-color, #233dd2);
 }
 
 .action-card h4 {

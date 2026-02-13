@@ -157,6 +157,22 @@ CREATE TABLE IF NOT EXISTS meta_settings_page (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ";
 
+$tables['web_settings'] = "
+CREATE TABLE IF NOT EXISTS web_settings (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    website_name VARCHAR(255) DEFAULT NULL COMMENT 'Global Website Name',
+    website_logo VARCHAR(255) DEFAULT NULL COMMENT 'Path to Website Logo',
+    website_favicon VARCHAR(255) DEFAULT NULL COMMENT 'Path to Website Favicon',
+    theme_bg_color VARCHAR(50) DEFAULT '#ffffff' COMMENT 'Main Theme Background Color',
+    theme_text_color VARCHAR(50) DEFAULT '#333333' COMMENT 'Main Theme Text Color',
+    button_color VARCHAR(50) DEFAULT '#233dd2' COMMENT 'Primary Button Color',
+    button_text_color VARCHAR(50) DEFAULT '#ffffff' COMMENT 'Primary Button Text Color',
+    background_color VARCHAR(50) DEFAULT '#f4f7f6' COMMENT 'Global Page Background Color',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT 'Record Creation Time',
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Last Update Time'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+";
+
 // 4. Run Queries
 
 foreach ($tables as $name => $sql) {
