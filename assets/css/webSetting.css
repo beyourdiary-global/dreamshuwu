@@ -236,3 +236,26 @@ select.form-control,
     display: block;
   }
 }
+
+/* [NEW] Tablet Action Buttons (768px - 1023px) */
+@media (min-width: 768px) and (max-width: 1023px) {
+  #webSettingsForm .row.mt-5.pt-3.border-top {
+    align-items: center;
+  }
+
+  #webSettingsForm .row.mt-5.pt-3.border-top .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+    min-height: 42px;
+  }
+
+  #webSettingsForm .row.mt-5.pt-3.border-top .col-md-6:first-child .btn {
+    min-width: 155px;
+  }
+
+  #webSettingsForm .row.mt-5.pt-3.border-top .col-md-6:last-child .btn {
+    min-width: 165px;
+  }
+}

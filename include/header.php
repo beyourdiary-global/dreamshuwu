@@ -78,7 +78,7 @@ $finalOgUrl     = !empty($specificSeo['og_url']) ? $specificSeo['og_url'] : ($gl
             --theme-text-color: <?php echo htmlspecialchars($webSettings['theme_text_color']); ?>;
             --btn-color: <?php echo htmlspecialchars($webSettings['button_color']); ?>;
             --btn-text-color: <?php echo htmlspecialchars($webSettings['button_text_color']); ?>;
-            --page-bg-color: <?php echo htmlspecialchars($webSettings['background_color']); ?>;
+            --page-bg-color: <?php echo defined('CUSTOM_PAGE_BG') ? CUSTOM_PAGE_BG : htmlspecialchars($webSettings['background_color']); ?>;
         }
     </style>
 

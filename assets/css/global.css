@@ -686,3 +686,44 @@ input[type="password"]::-ms-clear {
     display: table-cell !important;
   }
 }
+
+/* 9. Ultra-small Mobile (280px - 420px) */
+@media screen and (max-width: 420px) {
+  .dataTables_wrapper .dataTables_info {
+    display: none !important;
+  }
+
+  .dataTables_wrapper .dataTables_paginate {
+    justify-content: flex-start !important;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .dataTables_wrapper .dataTables_paginate .paginate_button {
+    padding: 4px 8px;
+    font-size: 12px;
+  }
+}
+
+/* --- 404 Error Page Responsive Image --- */
+.container .text-center img[alt="404 Error"] {
+  width: 100%; /* Forces image to scale down to container width */
+  height: auto; /* Maintains aspect ratio */
+  max-width: 500px; /* Keeps original desktop max-size */
+}
+
+/* Mobile & Tablet Adjustments (280px - 1023px) */
+@media screen and (max-width: 1023px) {
+  .container .text-center img[alt="404 Error"] {
+    max-width: 80%; /* Slightly smaller on tablets/mobile for better balance */
+    margin-bottom: 20px;
+  }
+}
+
+/* Small Mobile Adjustments (280px - 480px) */
+@media screen and (max-width: 480px) {
+  .container .text-center img[alt="404 Error"] {
+    max-width: 100%; /* Use full width on very small screens */
+  }
+}
