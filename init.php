@@ -226,6 +226,9 @@ defined('META_SETTINGS_PAGE') || define('META_SETTINGS_PAGE', 'meta_settings_pag
 
 // --- Web Settings Table ---
 defined('WEB_SETTINGS') || define('WEB_SETTINGS', 'web_settings');
+
+// --- Page Action Table ---
+defined('PAGE_ACTION') || define('PAGE_ACTION', 'page_action');
 // --- Page Meta Registry (Dropdown Options) ---
 $PAGE_META_REGISTRY = [
     'home'            => '首页 (Home)',
@@ -241,7 +244,9 @@ $PAGE_META_REGISTRY = [
     'tags'            => '标签管理 (Tags)',
     'tag_form'        => '标签表单 (Tag Form)',
     'meta_settings'   => 'META 设置 (Meta Settings)',
-    'web_settings'   => '网站设置 (Web Settings)'
+    'web_settings'   => '网站设置 (Web Settings)',
+    'admin'          => '管理员 (Admin)',
+    'page_action'   => '页面操作 (Page Action)'
 ];
 
 // --- Application Constants ---
