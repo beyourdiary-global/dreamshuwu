@@ -15,24 +15,23 @@ $auditPage = 'User Dashboard';
 // --- VIEW LOGIC ---
 $currentView     = isset($_GET['view']) ? $_GET['view'] : 'home';
 
-// Tag Views
-$isTagListView   = ($currentView === 'tags');
-$isTagFormView   = ($currentView === 'tag_form');
-$isTagSection    = $isTagListView || $isTagFormView;
+// Define View States
+$isTagListView    = ($currentView === 'tags');
+$isTagFormView    = ($currentView === 'tag_form');
+$isTagSection     = $isTagListView || $isTagFormView;
 
-// Category Views
-$isCatListView   = ($currentView === 'categories');
-$isCatFormView   = ($currentView === 'cat_form');
-$isCatSection    = $isCatListView || $isCatFormView;
+$isCatListView    = ($currentView === 'categories');
+$isCatFormView    = ($currentView === 'cat_form');
+$isCatSection     = $isCatListView || $isCatFormView;
 
-// Profile View
-$isProfileView   = ($currentView === 'profile');
-
-// Meta Settings Views
-$isMetaView      = ($currentView === 'meta_settings');
-
-// Web Settings View
+$isProfileView    = ($currentView === 'profile');
+$isMetaView       = ($currentView === 'meta_settings');
 $isWebSettingView = ($currentView === 'web_settings');
+
+// [NEW] Admin States
+$isAdminHome      = ($currentView === 'admin');
+$isPageActionView = ($currentView === 'page_action');
+$isAdminSection   = ($isAdminHome || $isPageActionView);
 
 // Data Fetching
 $userQuery = "SELECT name FROM " . $userTable . " WHERE id = ? LIMIT 1";
@@ -56,8 +55,8 @@ call_user_func_array(array($dashStmt, 'bind_result'), $params);
 if ($dashStmt->fetch()) { foreach($row as $key => $val) { $dashRow[$key] = $val; } }
 $dashStmt->close();
 
-// [FIX] Only log "User viewed dashboard" if we are on dashboard home (not any sub-view)
-if (!$isTagSection && !$isCatSection && !$isMetaView && !$isProfileView && !$isWebSettingView && function_exists('logAudit')) {
+// Audit Logging
+if (!$isTagSection && !$isCatSection && !$isMetaView && !$isProfileView && !$isWebSettingView && !$isAdminSection && function_exists('logAudit')) {
     logAudit([
         'page'           => $auditPage,
         'action'         => 'V',
@@ -83,18 +82,18 @@ $profileComponents = [
     ['type' => 'info', 'url' => URL_USER_DASHBOARD . '?view=profile', 'name' => $rawName, 'level' => $rawLevel, 'stats' => $statsArray]
 ];
 
+// --- SIDEBAR ITEMS ---
 $sidebarItems = [
-    ['label' => '首页',     'url' => URL_USER_DASHBOARD, 'icon' => 'fa-solid fa-house-user', 'active' => (!$isTagSection && !$isCatSection && !$isProfileView && !$isMetaView && !$isWebSettingView)],
+    ['label' => '首页',     'url' => URL_USER_DASHBOARD, 'icon' => 'fa-solid fa-house-user', 'active' => (!$isTagSection && !$isCatSection && !$isProfileView && !$isMetaView && !$isWebSettingView && !$isAdminSection)],
     ['label' => '账号中心', 'url' => URL_HOME,           'icon' => 'fa-solid fa-id-card',   'active' => false],
     ['label' => '写小说',   'url' => URL_AUTHOR_DASHBOARD, 'icon' => 'fa-solid fa-pen-nib',  'active' => false],
-    // Category Item
     ['label' => '小说分类', 'url' => URL_NOVEL_CATS,     'icon' => 'fa-solid fa-layer-group','active' => $isCatSection],
-    // Tag Item
     ['label' => '小说标签', 'url' => URL_NOVEL_TAGS,     'icon' => 'fa-solid fa-tags',      'active' => $isTagSection],
-    // Meta Settings Item
     ['label' => 'META 设置',  'url' => URL_USER_DASHBOARD . '?view=meta_settings', 'icon' => 'fa-solid fa-sliders', 'active' => $isMetaView],
-
-    ['label' => '网站设置',   'url' => URL_USER_DASHBOARD . '?view=web_settings', 'icon' => 'fa-solid fa-paintbrush', 'active' => $isWebSettingView]
+    ['label' => '网站设置',   'url' => URL_USER_DASHBOARD . '?view=web_settings', 'icon' => 'fa-solid fa-paintbrush', 'active' => $isWebSettingView],
+    
+    // [UPDATED] Admin Dashboard Link
+    ['label' => '管理员',     'url' => URL_ADMIN_DASHBOARD, 'icon' => 'fa-solid fa-user-shield', 'active' => $isAdminSection]
 ];
 
 $quickActions = [
@@ -106,42 +105,19 @@ $quickActions = [
 if ($isTagListView || $isCatListView) $customCSS[] = 'dataTables.bootstrap.min.css';
 if ($isMetaView) $customCSS[] = 'meta.css';
 $customCSS[] = 'dashboard.css';
+
+// Page Meta Key Setting
 switch ($currentView) {
-    // --- Category Views ---
-    case 'categories': // The list view
-        $pageMetaKey = 'categories';
-        break;
-    case 'cat_form':   // The add/edit form
-        $pageMetaKey = 'category_form';
-        break;
-
-    // --- Tag Views ---
-    case 'tags':       // The list view
-        $pageMetaKey = 'tags';
-        break;
-    case 'tag_form':   // The add/edit form
-        $pageMetaKey = 'tag_form';
-        break;
-
-    // --- Profile ---
-    case 'profile':
-        $pageMetaKey = 'profile';
-        break;
-
-    // --- Meta Settings ---
-    case 'meta_settings':
-        $pageMetaKey = 'meta_settings';
-        break;
-
-    // --- Web Settings ---
-    case 'web_settings':
-        $pageMetaKey = 'web_settings';
-        break;
-
-    // --- Default Dashboard ---
-    default:
-        $pageMetaKey = 'dashboard';
-        break;
+    case 'categories': $pageMetaKey = 'categories'; break;
+    case 'cat_form':   $pageMetaKey = 'category_form'; break;
+    case 'tags':       $pageMetaKey = 'tags'; break;
+    case 'tag_form':   $pageMetaKey = 'tag_form'; break;
+    case 'profile':    $pageMetaKey = 'profile'; break;
+    case 'meta_settings': $pageMetaKey = 'meta_settings'; break;
+    case 'web_settings':  $pageMetaKey = 'web_settings'; break;
+    case 'admin':         $pageMetaKey = 'admin_dashboard'; break;
+    case 'page_action':   $pageMetaKey = 'page_action'; break; // [NEW]
+    default:              $pageMetaKey = 'dashboard'; break;
 }
 ?>
 
@@ -165,17 +141,15 @@ switch ($currentView) {
                 </li>
             <?php endforeach; ?>
             <li style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 10px;">
-            <a href="<?php echo URL_LOGOUT; ?>" 
-            class="logout-btn" 
-            style="color: #d9534f;"
-            data-api-url="<?php echo URL_LOGOUT; ?>"> <i class="fa-solid fa-right-from-bracket"></i> 登出
+            <a href="<?php echo URL_LOGOUT; ?>" class="logout-btn" style="color: #d9534f;" data-api-url="<?php echo URL_LOGOUT; ?>"> 
+                <i class="fa-solid fa-right-from-bracket"></i> 登出
              </a>
             </li>
         </ul>
     </aside>
 
     <main class="dashboard-main">
-        <?php if (!$isTagSection && !$isCatSection && !$isProfileView && !$isMetaView && !$isWebSettingView): ?>
+        <?php if (!$isTagSection && !$isCatSection && !$isProfileView && !$isMetaView && !$isWebSettingView && !$isAdminSection): ?>
         <div class="profile-card">
             <?php foreach ($profileComponents as $component): ?>
                 <?php if ($component['type'] === 'avatar'): ?>
@@ -208,9 +182,7 @@ switch ($currentView) {
 
         <?php 
         if ($isProfileView):
-            if (!defined('PROFILE_EMBEDDED')) {
-                define('PROFILE_EMBEDDED', true);
-            }
+            if (!defined('PROFILE_EMBEDDED')) define('PROFILE_EMBEDDED', true);
             require BASE_PATH . PATH_PROFILE;
 
         elseif ($isTagListView):
@@ -236,6 +208,16 @@ switch ($currentView) {
         elseif ($isWebSettingView):
             $EMBED_WEB_SETTING_PAGE = true;
             require BASE_PATH . PATH_WEB_SETTINGS;
+
+        // [NEW] Embedded Admin View
+        elseif ($isAdminHome):
+            $EMBED_ADMIN_PAGE = true;
+            require BASE_PATH . PATH_ADMIN_INDEX;
+
+        // [NEW] Embedded Page Action Feature
+        elseif ($isPageActionView):
+            $EMBED_PAGE_ACTION = true;
+            require BASE_PATH . PATH_PAGE_ACTION;
         
         else: ?>
             <div class="quick-actions-grid">

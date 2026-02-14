@@ -50,4 +50,12 @@ defined('PATH_META_SETTINGS') || define('PATH_META_SETTINGS', 'src/pages/meta/in
 // -- 10. Web Settings Page ---
 defined('URL_WEB_SETTINGS')  || define('URL_WEB_SETTINGS', URL_USER_DASHBOARD . '?view=web_settings');
 defined('PATH_WEB_SETTINGS') || define('PATH_WEB_SETTINGS', 'src/pages/webSetting/index.php');
+
+// -- 11. Admin Pages [NEW] ---
+defined('URL_ADMIN_DASHBOARD') || define('URL_ADMIN_DASHBOARD', URL_USER_DASHBOARD . '?view=admin');
+defined('URL_PAGE_ACTION')     || define('URL_PAGE_ACTION', URL_USER_DASHBOARD . '?view=page_action');
+defined('URL_PAGE_ACTION_API') || define('URL_PAGE_ACTION_API', SITEURL . '/src/pages/admin/page-action/index.php');
+
+defined('PATH_ADMIN_INDEX')    || define('PATH_ADMIN_INDEX', 'src/pages/admin/index.php');
+defined('PATH_PAGE_ACTION')    || define('PATH_PAGE_ACTION', 'src/pages/admin/page-action/index.php');
 ?>

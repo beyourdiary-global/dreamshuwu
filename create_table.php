@@ -173,6 +173,20 @@ CREATE TABLE IF NOT EXISTS web_settings (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ";
 
+$tables['page_action'] = "
+CREATE TABLE IF NOT EXISTS page_action (
+  id BIGINT NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
+  name VARCHAR(255) NOT NULL COMMENT 'Action name',
+  status CHAR(1) NOT NULL DEFAULT 'A' COMMENT 'Active / Deleted (A/D)',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT 'Record creation timestamp',
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Record last updated timestamp',
+  created_by BIGINT DEFAULT NULL COMMENT 'User ID who created',
+  updated_by BIGINT DEFAULT NULL COMMENT 'User ID who updated',
+  PRIMARY KEY (id),
+  UNIQUE KEY unique_name_active (name, status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+";
+
 // 4. Run Queries
 
 foreach ($tables as $name => $sql) {
