@@ -31,7 +31,8 @@ $isWebSettingView = ($currentView === 'web_settings');
 // [NEW] Admin States
 $isAdminHome      = ($currentView === 'admin');
 $isPageActionView = ($currentView === 'page_action');
-$isAdminSection   = ($isAdminHome || $isPageActionView);
+$isPageInfoView   = ($currentView === 'page_info'); // [NEW]
+$isAdminSection   = ($isAdminHome || $isPageActionView || $isPageInfoView);
 
 // Data Fetching
 $userQuery = "SELECT name FROM " . $userTable . " WHERE id = ? LIMIT 1";
@@ -115,8 +116,9 @@ switch ($currentView) {
     case 'profile':    $pageMetaKey = 'profile'; break;
     case 'meta_settings': $pageMetaKey = 'meta_settings'; break;
     case 'web_settings':  $pageMetaKey = 'web_settings'; break;
-    case 'admin':         $pageMetaKey = 'admin_dashboard'; break;
+    case 'admin':         $pageMetaKey = 'admin'; break;
     case 'page_action':   $pageMetaKey = 'page_action'; break; // [NEW]
+    case 'page_info':     $pageMetaKey = 'page_information_list'; break; // [NEW]
     default:              $pageMetaKey = 'dashboard'; break;
 }
 ?>
@@ -218,6 +220,11 @@ switch ($currentView) {
         elseif ($isPageActionView):
             $EMBED_PAGE_ACTION = true;
             require BASE_PATH . PATH_PAGE_ACTION;
+
+        // [NEW] Page Information List Feature
+        elseif ($isPageInfoView):
+            $EMBED_PAGE_INFO = true;
+            require BASE_PATH . PATH_PAGE_INFO_INDEX;
         
         else: ?>
             <div class="quick-actions-grid">

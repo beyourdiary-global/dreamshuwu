@@ -752,6 +752,140 @@ function fetchPageActionRowById($conn, $table, $id) {
         'updated_by' => $rowUpdatedBy,
     ];
 }
-?>
 
+/**
+ * Fetch a single page_information_list row by id.
+ */
+function fetchPageInfoRowById($conn, $table, $id) {
+    $stmt = $conn->prepare("SELECT id, name_en, name_cn, description, public_url, file_path, status, created_at, updated_at, created_by, updated_by FROM {$table} WHERE id = ? LIMIT 1");
+    if (!$stmt) return null;
+
+    $stmt->bind_param('i', $id);
+    $stmt->execute();
+    $stmt->store_result();
+
+    if ($stmt->num_rows === 0) {
+        $stmt->close();
+        return null;
+    }
+
+    $rowId = null;
+    $rowNameEn = null;
+    $rowNameCn = null;
+    $rowDesc = null;
+    $rowUrl = null;
+    $rowPath = null;
+    $rowStatus = null;
+    $rowCreatedAt = null;
+    $rowUpdatedAt = null;
+    $rowCreatedBy = null;
+    $rowUpdatedBy = null;
+
+    $stmt->bind_result(
+        $rowId, 
+        $rowNameEn, 
+        $rowNameCn, 
+        $rowDesc, 
+        $rowUrl, 
+        $rowPath, 
+        $rowStatus, 
+        $rowCreatedAt, 
+        $rowUpdatedAt, 
+        $rowCreatedBy, 
+        $rowUpdatedBy
+    );
+    
+    $stmt->fetch();
+    $stmt->close();
+
+    return [
+        'id' => $rowId,
+        'name_en' => $rowNameEn,
+        'name_cn' => $rowNameCn,
+        'description' => $rowDesc,
+        'public_url' => $rowUrl,
+        'file_path' => $rowPath,
+        'status' => $rowStatus,
+        'created_at' => $rowCreatedAt,
+        'updated_at' => $rowUpdatedAt,
+        'created_by' => $rowCreatedBy,
+        'updated_by' => $rowUpdatedBy,
+    ];
+}
+
+/**
+ * [NEW] Requirement 8.6: Runtime Permission Enforcement
+ * Checks permissions for the current page URL against the database configuration.
+ * Optimized: Uses 2 separate queries instead of JOIN to reduce table locking potential.
+ * * @param string $publicUrl The URL of the page (e.g. '/admin/product')
+ * @return array List of allowed action names (e.g. ['View', 'Add', 'Edit'])
+ */
+if (!function_exists('getPageRuntimePermissions')) {
+    function getPageRuntimePermissions($publicUrl) {
+        global $conn;
+        
+        // 1. Sanitize and normalize URL (remove query params)
+        $cleanUrl = strtok($publicUrl, '?');
+        
+        // QUERY 1: Resolve Page ID
+        $stmt = $conn->prepare("SELECT id FROM " . PAGE_INFO_LIST . " WHERE public_url = ? AND status = 'A' LIMIT 1");
+        $stmt->bind_param("s", $cleanUrl);
+        $stmt->execute();
+        $stmt->store_result();
+        
+        if ($stmt->num_rows === 0) {
+            $stmt->close();
+            return []; // Page not defined or is Deleted -> Deny all
+        }
+        
+        $pageId = 0;
+        $stmt->bind_result($pageId);
+        $stmt->fetch();
+        $stmt->close();
+
+        // QUERY 2: Fetch Action IDs (from Bridge Table)
+        $actionIds = [];
+        $stmt = $conn->prepare("SELECT action_id FROM " . ACTION_MASTER . " WHERE page_id = ?");
+        $stmt->bind_param("i", $pageId);
+        $stmt->execute();
+        $stmt->bind_result($aId);
+        
+        while($stmt->fetch()) {
+            $actionIds[] = $aId;
+        }
+        $stmt->close();
+
+        // Optimization: If no actions bound, return early to save DB call
+        if (empty($actionIds)) {
+            return [];
+        }
+
+        // QUERY 3: Fetch Action Names (from Definition Table)
+        $allowedActions = [];
+        
+        // Security: Ensure all IDs are integers to prevent SQL Injection in the IN clause
+        $safeIds = implode(',', array_map('intval', $actionIds));
+        
+        $sql = "SELECT name FROM " . PAGE_ACTION . " WHERE id IN ($safeIds) AND status = 'A'";
+        $result = $conn->query($sql);
+        
+        if ($result) {
+            while ($row = $result->fetch_assoc()) {
+                $allowedActions[] = $row['name'];
+            }
+            $result->free();
+        }
+
+        // LOGIC 4: Check User Group Permissions
+        $userGroup = isset($_SESSION['user_group']) ? strtolower(trim($_SESSION['user_group'])) : '';
+        $allowedUserGroups = ['admin', 'super_admin', 'administrator', 'system_admin'];
+        
+        if (!in_array($userGroup, $allowedUserGroups)) {
+            return []; // User group NOT allowed -> deny all
+        }
+
+        return $allowedActions; 
+    }
+}
+?>
 
