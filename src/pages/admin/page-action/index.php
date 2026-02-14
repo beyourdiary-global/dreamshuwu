@@ -451,7 +451,7 @@ if ($isEmbeddedPageAction):
     <input type="hidden" name="id" id="pageActionDeleteId" value="0">
 </form>
 
-<script src="<?php echo URL_ASSETS; ?>/js/page-action.js"></script>
+<script src="<?php echo URL_ASSETS; ?>/js/admin.js"></script>
 <?php endif; ?>
 
 <?php else: ?>
