@@ -704,6 +704,54 @@ function getWebSettings($conn) {
     ];
 }
 
+/**
+ * Normalize user-group keys for permission checks.
+ * Example: "Super Admin" => "super_admin"
+ */
+function normalizeGroupKey($groupValue) {
+    $text = strtolower(trim((string)$groupValue));
+    if ($text === '') return '';
+    return str_replace([' ', '-', '.'], '_', $text);
+}
+
+/**
+ * Fetch a single page_action row by id.
+ */
+function fetchPageActionRowById($conn, $table, $id) {
+    $stmt = $conn->prepare("SELECT id, name, status, created_at, updated_at, created_by, updated_by FROM {$table} WHERE id = ? LIMIT 1");
+    if (!$stmt) return null;
+
+    $stmt->bind_param('i', $id);
+    $stmt->execute();
+    $stmt->store_result();
+
+    if ($stmt->num_rows === 0) {
+        $stmt->close();
+        return null;
+    }
+
+    $rowId = null; 
+    $rowName = null; 
+    $rowStatus = null; 
+    $rowCreatedAt = null; 
+    $rowUpdatedAt = null; 
+    $rowCreatedBy = null; 
+    $rowUpdatedBy = null;
+
+    $stmt->bind_result($rowId, $rowName, $rowStatus, $rowCreatedAt, $rowUpdatedAt, $rowCreatedBy, $rowUpdatedBy);
+    $stmt->fetch();
+    $stmt->close();
+
+    return [
+        'id' => $rowId,
+        'name' => $rowName,
+        'status' => $rowStatus,
+        'created_at' => $rowCreatedAt,
+        'updated_at' => $rowUpdatedAt,
+        'created_by' => $rowCreatedBy,
+        'updated_by' => $rowUpdatedBy,
+    ];
+}
 ?>
 
 

@@ -211,6 +211,13 @@ if ($pageActionMode === 'list') {
 
     $countSql = "SELECT COUNT(*) FROM {$table}{$whereSql}";
     $countStmt = $conn->prepare($countSql);
+    if (!$countStmt) {
+        $rows = [];
+        $totalRecords = 0;
+        $totalPages = 1;
+        $flashMsg = '页面操作数据表不可用，请先初始化数据库。';
+        $flashType = 'danger';
+    } else {
     if (!empty($params)) {
         $bindCount = [$types];
         foreach ($params as $index => $value) {
@@ -229,6 +236,7 @@ if ($pageActionMode === 'list') {
 
     $listSql = "SELECT id, name, status FROM {$table}{$whereSql} ORDER BY id DESC LIMIT ?, ?";
     $listStmt = $conn->prepare($listSql);
+    if ($listStmt) {
     $listTypes = $types . 'ii';
     $listParams = $params;
     $listParams[] = $offset;
@@ -244,6 +252,12 @@ if ($pageActionMode === 'list') {
         $rows[] = $row;
     }
     $listStmt->close();
+    } else {
+        $rows = [];
+        $flashMsg = '页面操作数据读取失败，请检查数据表结构。';
+        $flashType = 'danger';
+    }
+    }
 }
 
 $queryForPager = [
