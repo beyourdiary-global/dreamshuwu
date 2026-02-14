@@ -17,6 +17,9 @@ RewriteCond %{REQUEST_URI} !^/src/pages/meta/index\.php$
 # 4. Allow Web Setting API
 RewriteCond %{REQUEST_URI} !^/src/pages/webSetting/index\.php$
 
+# 5. Allow Page Action API
+RewriteCond %{REQUEST_URI} !^/src/pages/page-action/index\.php$
+
 # Block everything else in src/
 
 RewriteRule ^src/ - [F,L]
