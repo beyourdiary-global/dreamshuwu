@@ -186,16 +186,35 @@ if (isset($_POST['mode']) && $_POST['mode'] === 'delete_api') {
 
 if (function_exists('logAudit') && !defined('PAGE_ACTION_VIEW_LOGGED')) {
     define('PAGE_ACTION_VIEW_LOGGED', true);
-    logAudit([
-        'page' => $auditPage,
-        'action' => 'V',
-        'action_message' => $pageActionMode === 'form' ? 'Viewing Page Action Form' : 'Viewing Page Action List',
-        'query' => $pageActionMode === 'form'
-            ? "SELECT id, name, status, created_at, updated_at, created_by, updated_by FROM {$table} WHERE id = ? LIMIT 1"
-            : "SELECT id, name, status FROM {$table} WHERE status = 'A'",
-        'query_table' => $table,
-        'user_id' => $currentUserId
-    ]);
+    
+    if ($pageActionMode === 'form') {
+        // 1. FORM VIEW LOGGING (matching second image)
+        $recordId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+        $viewQuery = "SELECT id, name, status, created_at, updated_at, created_by, updated_by FROM {$table} WHERE id = ? LIMIT 1";
+        
+        logAudit([
+            'page'           => $auditPage,
+            'action'         => 'V',
+            // Display specific ID in the message
+            'action_message' => $recordId > 0 ? "Viewing Page Action Form (Edit ID: $recordId)" : "Viewing Page Action Form (Add)",
+            // Pass SQL string with placeholder or actual ID
+            'query'          => $viewQuery, 
+            'query_table'    => $table,
+            'user_id'        => $currentUserId,
+            'record_id'      => $recordId > 0 ? $recordId : null
+        ]);
+    } else {
+        // 2. LIST VIEW LOGGING
+        $listQuery = "SELECT id, name, status FROM {$table} WHERE status = 'A'";
+        logAudit([
+            'page'           => $auditPage,
+            'action'         => 'V',
+            'action_message' => 'Viewing Page Action List',
+            'query'          => $listQuery,
+            'query_table'    => $table,
+            'user_id'        => $currentUserId
+        ]);
+    }
 }
 
 $searchName = trim($_GET['search_name'] ?? '');
@@ -432,7 +451,7 @@ if ($isEmbeddedPageAction):
     <input type="hidden" name="id" id="pageActionDeleteId" value="0">
 </form>
 
-<script src="<?php echo URL_ASSETS; ?>/js/page-action.js"></script>
+<script src="<?php echo URL_ASSETS; ?>/js/admin.js"></script>
 <?php endif; ?>
 
 <?php else: ?>

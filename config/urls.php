@@ -52,10 +52,16 @@ defined('URL_WEB_SETTINGS')  || define('URL_WEB_SETTINGS', URL_USER_DASHBOARD . 
 defined('PATH_WEB_SETTINGS') || define('PATH_WEB_SETTINGS', 'src/pages/webSetting/index.php');
 
 // -- 11. Admin Pages [NEW] ---
-defined('URL_ADMIN_DASHBOARD') || define('URL_ADMIN_DASHBOARD', URL_USER_DASHBOARD . '?view=admin');
 defined('URL_PAGE_ACTION')     || define('URL_PAGE_ACTION', URL_USER_DASHBOARD . '?view=page_action');
 defined('URL_PAGE_ACTION_API') || define('URL_PAGE_ACTION_API', SITEURL . '/src/pages/admin/page-action/index.php');
 
+defined('URL_ADMIN_DASHBOARD') || define('URL_ADMIN_DASHBOARD', URL_USER_DASHBOARD . '?view=admin');
 defined('PATH_ADMIN_INDEX')    || define('PATH_ADMIN_INDEX', 'src/pages/admin/index.php');
 defined('PATH_PAGE_ACTION')    || define('PATH_PAGE_ACTION', 'src/pages/admin/page-action/index.php');
+
+// -- 12. Page Information List [NEW] ---
+defined('URL_PAGE_INFO')       || define('URL_PAGE_INFO', URL_USER_DASHBOARD . '?view=page_info');
+defined('URL_PAGE_INFO_API')   || define('URL_PAGE_INFO_API', SITEURL . '/src/pages/admin/page-information-list/index.php');
+
+defined('PATH_PAGE_INFO_INDEX') || define('PATH_PAGE_INFO_INDEX', 'src/pages/admin/page-information-list/index.php');
 ?>

@@ -60,7 +60,7 @@ $tables['audit_log'] = "
 CREATE TABLE IF NOT EXISTS audit_log (
     id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY COMMENT 'Primary key',
     page VARCHAR(255) NOT NULL COMMENT 'The module or page where the action occurred',
-    action CHAR(1) NOT NULL COMMENT 'Action type: V=View, E=Edit, D=Delete, A=Add',
+    action VARCHAR(50) NOT NULL COMMENT 'Action type string',
     action_message VARCHAR(255) DEFAULT NULL COMMENT 'Description of the action',
     query TEXT DEFAULT NULL COMMENT 'Executed SQL or ORM query',
     query_table VARCHAR(255) DEFAULT NULL COMMENT 'Table affected by the action',
@@ -187,6 +187,36 @@ CREATE TABLE IF NOT EXISTS page_action (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ";
 
+$tables['page_information_list'] = "
+CREATE TABLE IF NOT EXISTS page_information_list (
+  id BIGINT NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
+  name_en VARCHAR(255) NOT NULL COMMENT 'English Name',
+  name_cn VARCHAR(255) NOT NULL COMMENT 'Chinese Name',
+  description TEXT DEFAULT NULL COMMENT 'Description',
+  public_url VARCHAR(255) NOT NULL COMMENT 'Public URL',
+  file_path VARCHAR(255) NOT NULL COMMENT 'File System Path',
+  status CHAR(1) NOT NULL DEFAULT 'A' COMMENT 'Active / Deleted',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  created_by BIGINT DEFAULT NULL,
+  updated_by BIGINT DEFAULT NULL,
+  PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+";
+
+$tables['action_master'] = "
+CREATE TABLE IF NOT EXISTS action_master (
+  id BIGINT NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
+  page_id BIGINT NOT NULL COMMENT 'FK to page_information_list',
+  action_id BIGINT NOT NULL COMMENT 'FK to page_action',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  created_by BIGINT DEFAULT NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY unique_page_action_bind (page_id, action_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+";
+
+
 // 4. Run Queries
 
 foreach ($tables as $name => $sql) {
@@ -195,6 +225,14 @@ foreach ($tables as $name => $sql) {
     } else {
         echo "Error table '<strong>$name</strong>': " . $conn->error . "<br>";
     }
+}
+
+// 5. Apply Schema Updates (ALTER Statements)
+$alterAuditLog = "ALTER TABLE audit_log MODIFY COLUMN action VARCHAR(50) NOT NULL COMMENT 'Action type string'";
+if ($conn->query($alterAuditLog) === TRUE) {
+    echo "Audit Log table updated successfully.<br>";
+} else {
+    echo "Error updating Audit Log table: " . $conn->error . "<br>";
 }
 
 $conn->close();
