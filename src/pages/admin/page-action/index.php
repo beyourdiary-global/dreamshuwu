@@ -107,10 +107,18 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
     }
     call_user_func_array([$dataStmt, 'bind_param'], $bindDataParams);
     $dataStmt->execute();
-    $result = $dataStmt->get_result();
+    $dataStmt->store_result();
+    
+    $dId = $dName = $dStatus = null;
+    $dataStmt->bind_result($dId, $dName, $dStatus);
+    
     $rows = [];
-    while ($row = $result->fetch_assoc()) {
-        $rows[] = $row;
+    while ($dataStmt->fetch()) {
+        $rows[] = [
+            'id' => $dId,
+            'name' => $dName,
+            'status' => $dStatus
+        ];
     }
     $dataStmt->close();
 
@@ -218,45 +226,54 @@ if ($pageActionMode === 'list') {
         $flashMsg = '页面操作数据表不可用，请先初始化数据库。';
         $flashType = 'danger';
     } else {
-    if (!empty($params)) {
-        $bindCount = [$types];
-        foreach ($params as $index => $value) {
-            $bindCount[] = &$params[$index];
+        if (!empty($params)) {
+            $bindCount = [$types];
+            foreach ($params as $index => $value) {
+                $bindCount[] = &$params[$index];
+            }
+            call_user_func_array([$countStmt, 'bind_param'], $bindCount);
         }
-        call_user_func_array([$countStmt, 'bind_param'], $bindCount);
-    }
-    $countStmt->execute();
-    $countStmt->bind_result($totalRecords);
-    $countStmt->fetch();
-    $countStmt->close();
+        $countStmt->execute();
+        $countStmt->bind_result($totalRecords);
+        $countStmt->fetch();
+        $countStmt->close();
 
-    $totalPages = max(1, (int)ceil($totalRecords / $perPage));
-    if ($currentPage > $totalPages) $currentPage = $totalPages;
-    $offset = ($currentPage - 1) * $perPage;
+        $totalPages = max(1, (int)ceil($totalRecords / $perPage));
+        if ($currentPage > $totalPages) $currentPage = $totalPages;
+        $offset = ($currentPage - 1) * $perPage;
 
-    $listSql = "SELECT id, name, status FROM {$table}{$whereSql} ORDER BY id DESC LIMIT ?, ?";
-    $listStmt = $conn->prepare($listSql);
-    if ($listStmt) {
-    $listTypes = $types . 'ii';
-    $listParams = $params;
-    $listParams[] = $offset;
-    $listParams[] = $perPage;
-    $bindList = [$listTypes];
-    foreach ($listParams as $index => $value) {
-        $bindList[] = &$listParams[$index];
-    }
-    call_user_func_array([$listStmt, 'bind_param'], $bindList);
-    $listStmt->execute();
-    $result = $listStmt->get_result();
-    while ($row = $result->fetch_assoc()) {
-        $rows[] = $row;
-    }
-    $listStmt->close();
-    } else {
-        $rows = [];
-        $flashMsg = '页面操作数据读取失败，请检查数据表结构。';
-        $flashType = 'danger';
-    }
+        $listSql = "SELECT id, name, status FROM {$table}{$whereSql} ORDER BY id DESC LIMIT ?, ?";
+        $listStmt = $conn->prepare($listSql);
+        if ($listStmt) {
+            $listTypes = $types . 'ii';
+            $listParams = $params;
+            $listParams[] = $offset;
+            $listParams[] = $perPage;
+            $bindList = [$listTypes];
+            foreach ($listParams as $index => $value) {
+                $bindList[] = &$listParams[$index];
+            }
+            call_user_func_array([$listStmt, 'bind_param'], $bindList);
+            
+            $listStmt->execute();
+            $listStmt->store_result();
+            
+            $rId = $rName = $rStatus = null;
+            $listStmt->bind_result($rId, $rName, $rStatus);
+            
+            while ($listStmt->fetch()) {
+                $rows[] = [
+                    'id' => $rId,
+                    'name' => $rName,
+                    'status' => $rStatus
+                ];
+            }
+            $listStmt->close();
+        } else {
+            $rows = [];
+            $flashMsg = '页面操作数据读取失败，请检查数据表结构。';
+            $flashType = 'danger';
+        }
     }
 }
 
@@ -268,16 +285,6 @@ $queryForPager = [
 
 if ($isEmbeddedPageAction):
 ?>
-<style>
-  .page-action-card { border: none; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-  .page-action-breadcrumb { font-size: 13px; }
-  .page-action-mobile-item { border: 1px solid #eceff5; border-radius: 10px; margin-bottom: 10px; background: #fff; }
-  .page-action-mobile-head { display:flex; justify-content:space-between; align-items:center; padding: 12px 14px; cursor: pointer; }
-  .page-action-mobile-body { display:none; border-top:1px solid #edf0f5; padding: 10px 14px; }
-  .page-action-mobile-item.open .page-action-mobile-body { display:block; }
-  @media (min-width: 768px) { .page-action-mobile-list { display:none !important; } }
-  @media (max-width: 767px) { .page-action-desktop-table { display:none !important; } }
-</style>
 
 <?php if (!$hasPermission): ?>
 <div class="container-fluid px-0">
@@ -390,17 +397,41 @@ if ($isEmbeddedPageAction):
                 $prevQuery = http_build_query(array_merge($queryForPager, ['page' => $prevPage]));
                 $nextQuery = http_build_query(array_merge($queryForPager, ['page' => $nextPage]));
             ?>
-            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-3">
-                <div class="text-muted small">显示 <?php echo $startItem; ?> 至 <?php echo $endItem; ?> 项，共 <?php echo (int)$totalRecords; ?> 项</div>
-                <div class="btn-group">
-                    <a class="btn btn-outline-primary btn-sm <?php echo $currentPage <= 1 ? 'disabled' : ''; ?>" href="<?php echo $currentPage <= 1 ? '#' : ($baseListUrl . '&' . $prevQuery); ?>">上页</a>
-                    <button class="btn btn-outline-secondary btn-sm" type="button" disabled><?php echo $currentPage; ?> / <?php echo $totalPages; ?></button>
-                    <a class="btn btn-outline-primary btn-sm <?php echo $currentPage >= $totalPages ? 'disabled' : ''; ?>" href="<?php echo $currentPage >= $totalPages ? '#' : ($baseListUrl . '&' . $nextQuery); ?>">下页</a>
+            
+            <div class="dataTables_wrapper">
+                <div class="row mt-3 align-items-center">
+                    <div class="col-sm-12 col-md-5">
+                        <div class="dataTables_info" role="status" aria-live="polite">
+                            显示 <?php echo $startItem; ?> 至 <?php echo $endItem; ?> 项，共 <?php echo (int)$totalRecords; ?> 项
+                        </div>
+                    </div>
+                    <div class="col-sm-12 col-md-7">
+                        <div class="dataTables_paginate paging_simple_numbers">
+                            <a href="<?php echo $currentPage <= 1 ? 'javascript:void(0);' : ($baseListUrl . '&' . $prevQuery); ?>" 
+                               class="paginate_button previous <?php echo $currentPage <= 1 ? 'disabled' : ''; ?>">
+                               上页
+                            </a>
+                            
+                            <span class="paginate_button current"><?php echo $currentPage; ?></span>
+                            
+                            <a href="<?php echo $currentPage >= $totalPages ? 'javascript:void(0);' : ($baseListUrl . '&' . $nextQuery); ?>" 
+                               class="paginate_button next <?php echo $currentPage >= $totalPages ? 'disabled' : ''; ?>">
+                               下页
+                            </a>
+                        </div>
+                    </div>
                 </div>
             </div>
+
         </div>
     </div>
 </div>
+
+<form id="pageActionDeleteForm" method="POST" action="<?php echo htmlspecialchars($baseListUrl); ?>" style="display:none;">
+    <input type="hidden" name="form_action" value="delete">
+    <input type="hidden" name="id" id="pageActionDeleteId" value="0">
+</form>
+
 <script src="<?php echo URL_ASSETS; ?>/js/page-action.js"></script>
 <?php endif; ?>
 

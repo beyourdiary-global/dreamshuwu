@@ -727,3 +727,44 @@ input[type="password"]::-ms-clear {
     max-width: 100%; /* Use full width on very small screens */
   }
 }
+
+/* --- Page Action Specific Styles --- */
+.page-action-card {
+  border: none;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+.page-action-breadcrumb {
+  font-size: 13px;
+}
+.page-action-mobile-item {
+  border: 1px solid #eceff5;
+  border-radius: 10px;
+  margin-bottom: 10px;
+  background: #fff;
+}
+.page-action-mobile-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 14px;
+  cursor: pointer;
+}
+.page-action-mobile-body {
+  display: none;
+  border-top: 1px solid #edf0f5;
+  padding: 10px 14px;
+}
+.page-action-mobile-item.open .page-action-mobile-body {
+  display: block;
+}
+@media (min-width: 768px) {
+  .page-action-mobile-list {
+    display: none !important;
+  }
+}
+@media (max-width: 767px) {
+  .page-action-desktop-table {
+    display: none !important;
+  }
+}
