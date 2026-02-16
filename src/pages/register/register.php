@@ -9,6 +9,7 @@ $insertQuery = "INSERT INTO " . $dbTable . " (name, email, password_hash, gender
 $checkQuery  = "SELECT id FROM " . $dbTable . " WHERE email = ?";
 
 $message = "";
+$fieldErrors = [];
 $name = "";
 $email = "";
 $gender = "";
@@ -23,28 +24,36 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $birthday = $_POST['birthday'] ?? "";
 
     // Validation Logic
-    if (empty($name) || empty($email) || empty($password)) {
-        $message = "请填写所有必填字段";
-    } 
-    elseif (!isValidEmail($email)) {
-        $message = "邮箱格式不正确";
-    } 
-    elseif (!isStrongPassword($password)) {
-        $message = "密码不符合要求 (最低" . MIN_PWD_LENGTH . "个字符，需包含大小写字母、数字和特殊字符)";
-    } 
+    if (empty($name)) {
+        $fieldErrors['name'] = "此字段不能为空";
+    }
+    if (empty($email)) {
+        $fieldErrors['email'] = "此字段不能为空";
+    }
+    if (empty($password)) {
+        $fieldErrors['password'] = "此字段不能为空";
+    }
+    
+    if (!empty($email) && !isValidEmail($email)) {
+        $fieldErrors['email'] = "邮箱格式不正确";
+    }
+    
+    if (!empty($password) && !isStrongPassword($password)) {
+        $fieldErrors['password'] = "密码不符合要求 (最低" . MIN_PWD_LENGTH . "个字符，需包含大小写字母、数字和特殊字符)";
+    }
+    
     // Simplified Age Validation
-    elseif (!empty($birthday)) {
+    if (!empty($birthday)) {
         $ageCheck = checkAgeRequirement($birthday, MIN_AGE_REQUIREMENT);
-
         if ($ageCheck === "future_date") {
-            $message = "生日不能晚于今天";
+            $fieldErrors['birthday'] = "生日不能晚于今天";
         } elseif ($ageCheck === false) {
-            $message = "您必须年满" . MIN_AGE_REQUIREMENT . "岁才能注册";
+            $fieldErrors['birthday'] = "您必须年满" . MIN_AGE_REQUIREMENT . "岁才能注册";
         }
     }
 
     // Database Operations ---
-    if (empty($message)) {
+    if (empty($fieldErrors)) {
         // Check if email already exists in the system
         $check = mysqli_prepare($conn, $checkQuery);
         mysqli_stmt_bind_param($check, "s", $email);
@@ -52,7 +61,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         mysqli_stmt_store_result($check);
 
         if (mysqli_stmt_num_rows($check) > 0) {
-            $message = "该邮箱已被注册";
+            $fieldErrors['email'] = "该邮箱已被注册";
         } else {
             // Securely hash the password using Bcrypt
             $hash = password_hash($password, PASSWORD_BCRYPT);
@@ -100,7 +109,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 header("Location: " . URL_HOME);
                 exit();
             } else {
-                $message = "系统错误，请稍后再试";
+                $fieldErrors['form'] = "系统错误，请稍后再试";
             }
         }
     }
@@ -117,19 +126,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <main class="dashboard-main">
     <div class="auth-layout">
         <div class="reg-card">
-            <div class="logo text-center mb-3">
-                <span class="fw-bold" style="font-size: 26px; color: var(--btn-color);">
-                <?php echo htmlspecialchars($siteName); ?>
-                </span>
-            </div>
-            <h3>新用户？</h3>
+            <h3>新用户</h3>
             <p style="color: #666;">简单几步即可完成注册</p>
-            
-            <?php if($message): ?>
-                <div class="error-msg"><?php echo htmlspecialchars($message); ?></div>
-            <?php endif; ?>
 
-            <form id="regForm" method="POST" autocomplete="off">
+            <form id="regForm" method="POST" autocomplete="off" data-field-errors="<?php echo htmlspecialchars(json_encode($fieldErrors ?? [])); ?>">
                 <div class="auth-field">
                     <label class="form-label" for="name">姓名</label>
                     <input
@@ -158,14 +158,25 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
                 <div class="auth-field">
                     <label class="form-label" for="password">密码</label>
-                    <input
-                        type="password"
-                        class="form-control"
-                        name="password"
-                        id="password"
-                        placeholder="请输入密码"
-                        required
-                    >
+                    <div style="position: relative;">
+                        <input
+                            type="password"
+                            class="form-control"
+                            name="password"
+                            id="password"
+                            placeholder="请输入密码"
+                            required
+                            style="padding-right: 45px;"
+                        >
+                        <button
+                            type="button"
+                            id="togglePassword"
+                            style="position: absolute; right: 20px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; padding: 0; color: #666; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;"
+                            title="显示/隐藏密码"
+                        >
+                            <i class="fa fa-eye" style="font-size: 16px;"></i>
+                        </button>
+                    </div>
                     <div id="strength-meter">密码强度提示: <span id="strength-text">未填写</span></div>
                 </div>
 
@@ -201,7 +212,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     </div>
                 </div>
 
-                <button type="submit" class="btn-reg" id="submitBtn" disabled>注册</button>
+                <button type="submit" class="btn-reg" id="submitBtn">注册</button>
             </form>
 
            <div class="footer-links">
