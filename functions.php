@@ -817,12 +817,20 @@ function fetchPageInfoRowById($conn, $table, $id) {
  * [NEW] Requirement 8.6: Runtime Permission Enforcement
  * Checks permissions for the current page URL against the database configuration.
  * Optimized: Uses 2 separate queries instead of JOIN to reduce table locking potential.
- * * @param string $publicUrl The URL of the page (e.g. '/admin/product')
+ * @param string $publicUrl The URL of the page (e.g. '/admin/product')
  * @return array List of allowed action names (e.g. ['View', 'Add', 'Edit'])
  */
 if (!function_exists('getPageRuntimePermissions')) {
     function getPageRuntimePermissions($publicUrl) {
         global $conn;
+
+        // LOGIC 0: Check User Group Permissions first (deny early)
+        $rawGroup = $_SESSION['user_group'] ?? '';
+        $userGroup = normalizeGroupKey($rawGroup);
+        $allowedUserGroups = ['admin', 'super_admin', 'administrator', 'system_admin'];
+        if (!in_array($userGroup, $allowedUserGroups, true)) {
+            return [];
+        }
         
         // 1. Sanitize and normalize URL (remove query params)
         $cleanUrl = strtok($publicUrl, '?');
@@ -874,14 +882,6 @@ if (!function_exists('getPageRuntimePermissions')) {
                 $allowedActions[] = $row['name'];
             }
             $result->free();
-        }
-
-        // LOGIC 4: Check User Group Permissions
-        $userGroup = isset($_SESSION['user_group']) ? strtolower(trim($_SESSION['user_group'])) : '';
-        $allowedUserGroups = ['admin', 'super_admin', 'administrator', 'system_admin'];
-        
-        if (!in_array($userGroup, $allowedUserGroups)) {
-            return []; // User group NOT allowed -> deny all
         }
 
         return $allowedActions; 
