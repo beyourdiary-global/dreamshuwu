@@ -23,6 +23,9 @@ RewriteCond %{REQUEST_URI} !^/src/pages/admin/page-action/index\.php$
 # 6. Allow Page Information List API
 RewriteCond %{REQUEST_URI} !^/src/pages/admin/page-information-list/index\.php$
 
+# 7. Allow User Role API
+RewriteCond %{REQUEST_URI} !^/src/pages/admin/user-role/index\.php$
+
 # Block everything else in src/
 
 RewriteRule ^src/ - [F,L]
