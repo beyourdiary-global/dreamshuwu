@@ -1,19 +1,22 @@
 <?php
-// Path: src/pages/admin/page-information-list/index.php
+// Path: src/pages/admin/user-role/index.php
 require_once dirname(__DIR__, 4) . '/common.php';
 
-$tableInfo = PAGE_INFO_LIST;
-$tableMaster = ACTION_MASTER;
-$auditPage = 'Page Information Management';
-$isEmbedded = isset($EMBED_PAGE_INFO) && $EMBED_PAGE_INFO === true;
+// Configuration & Constants
+$tableRole = USER_ROLE;
+$tableRolePermission = USER_ROLE_PERMISSION;
+$auditPage = 'User Role Management';
+$isEmbedded = isset($EMBED_USER_ROLE) && $EMBED_USER_ROLE === true;
 $currentUserId = isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : 0;
 
-$baseListUrl = URL_USER_DASHBOARD . '?view=page_info';
-$formBaseUrl = URL_USER_DASHBOARD . '?view=page_info&mode=form';
-$apiEndpoint = defined('URL_PAGE_INFO_API') ? URL_PAGE_INFO_API : (SITEURL . '/src/pages/admin/page-information-list/index.php');
+// URL Paths
+$baseListUrl = URL_USER_ROLE;
+$formBaseUrl = URL_USER_ROLE . '&mode=form';
+$apiEndpoint = defined('URL_USER_ROLE_API') ? URL_USER_ROLE_API : (SITEURL . '/src/pages/admin/user-role/index.php');
 
-if (!function_exists('pageInfoRedirect')) {
-    function pageInfoRedirect($url) {
+// Redirect Helper
+if (!function_exists('userRoleRedirect')) {
+    function userRoleRedirect($url) {
         if (!headers_sent()) {
             header('Location: ' . $url);
         } else {
@@ -23,19 +26,21 @@ if (!function_exists('pageInfoRedirect')) {
     }
 }
 
+// 1. Auth Check
 if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
     if (isset($_GET['api_mode'])) {
         header('Content-Type: application/json');
         echo safeJsonEncode(['success' => false, 'message' => 'Unauthorized']);
         exit();
     }
-    pageInfoRedirect(URL_LOGIN);
+    userRoleRedirect(URL_LOGIN);
 }
 
+// 2. Permission Check
 $rawGroup = $_SESSION['user_group'] ?? '';
 $normalizedGroup = normalizeGroupKey($rawGroup);
 $allowedGroups = ['admin', 'super_admin', 'administrator', 'system_admin'];
-$hasPermission = true; //$hasPermission = in_array($normalizedGroup, $allowedGroups, true); removed comment to enable permission check
+$hasPermission = true;  // Permission check enabled via logic below
 
 if (!$hasPermission) {
     $_SESSION['flash_msg'] = "权限不足：您属于 '{$rawGroup}' 组，无权访问此页面。";
@@ -46,33 +51,38 @@ if (!$hasPermission) {
         return;
     }
 
-    pageInfoRedirect(URL_USER_DASHBOARD);
+    userRoleRedirect(URL_USER_DASHBOARD);
 }
 
+// 3. POST Handling (Delete Action)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $actionType = $_POST['action_type'] ?? '';
 
     if ($actionType === 'delete') {
         $delId = isset($_POST['id']) ? (int)$_POST['id'] : 0;
         if ($delId > 0) {
-            $oldValue = fetchPageInfoRowById($conn, $tableInfo, $delId);
+            // Fetch old data for audit
+            $oldValue = fetchUserRoleById($conn, $delId);
 
-            $sql = "UPDATE {$tableInfo} SET status = 'D', updated_by = ?, updated_at = NOW() WHERE id = ? AND status = 'A'";
+            // Perform Soft Delete
+            $sql = "UPDATE {$tableRole} SET status = 'D', updated_by = ?, updated_at = NOW() WHERE id = ? AND status = 'A'";
             $stmt = $conn->prepare($sql);
             if ($stmt) {
-                $stmt->bind_param('ii', $currentUserId, $delId);
+                $updatedBy = (string)$currentUserId;
+                $stmt->bind_param('si', $updatedBy, $delId);
                 if ($stmt->execute()) {
-                    $newValue = fetchPageInfoRowById($conn, $tableInfo, $delId);
+                    $newValue = fetchUserRoleById($conn, $delId);
                     $_SESSION['flash_msg'] = '删除成功';
                     $_SESSION['flash_type'] = 'success';
 
+                    // Audit Log
                     if (function_exists('logAudit')) {
                         logAudit([
                             'page' => $auditPage,
                             'action' => 'D',
-                            'action_message' => "Soft deleted Page ID: {$delId}",
+                            'action_message' => "Soft deleted User Role ID: {$delId}",
                             'query' => $sql,
-                            'query_table' => $tableInfo,
+                            'query_table' => $tableRole,
                             'user_id' => $currentUserId,
                             'record_id' => $delId,
                             'old_value' => $oldValue,
@@ -90,53 +100,60 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        pageInfoRedirect($baseListUrl);
+        userRoleRedirect($baseListUrl);
     }
 }
 
+// 4. View Logging (Updated to include Form View)
 $viewMode = $_GET['mode'] ?? 'list';
-if (function_exists('logAudit') && !defined('PAGE_INFO_LIST_VIEW_LOGGED')) {
-    define('PAGE_INFO_LIST_VIEW_LOGGED', true);
+if (function_exists('logAudit') && !defined('USER_ROLE_VIEW_LOGGED')) {
+    define('USER_ROLE_VIEW_LOGGED', true);
 
     if ($viewMode === 'form') {
-        $idInUrl = isset($_GET['id']) ? (int)$_GET['id'] : 0;
-        $viewQuery = "SELECT * FROM {$tableInfo} WHERE id = ?";
-        
+        // [New] Log Form Viewing (Add or Edit)
+        $recordId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+        $viewQuery = "SELECT * FROM {$tableRole} WHERE id = ? LIMIT 1";
+
         logAudit([
             'page'           => $auditPage,
             'action'         => 'V',
-            'action_message' => $idInUrl > 0 ? "Viewing Page Information Form (Edit ID: $idInUrl)" : "Viewing Page Information Form (Add)",
-            'query'          => $idInUrl > 0 ? $viewQuery : null,
-            'query_table'    => $tableInfo,
+            'action_message' => $recordId > 0 ? "Viewing User Role Form (Edit ID: {$recordId})" : "Viewing User Role Form (Add)",
+            'query'          => $recordId > 0 ? $viewQuery : null,
+            'query_table'    => $tableRole,
             'user_id'        => $currentUserId,
-            'record_id'      => $idInUrl > 0 ? $idInUrl : null
+            'record_id'      => $recordId > 0 ? $recordId : null
         ]);
-    } else if (!isset($_GET['search']) && !isset($_GET['page'])) {
-        $viewSql = "SELECT id, name_en, name_cn, public_url, status FROM {$tableInfo} WHERE status = 'A'";
+    } elseif (!isset($_GET['search']) && !isset($_GET['page'])) {
+        // Log List View
+        $viewSql = "SELECT id, name_en, name_cn, status FROM {$tableRole} WHERE status = 'A'";
         logAudit([
-            'page' => $auditPage,
-            'action' => 'V',
-            'action_message' => 'Viewing Page Information List',
-            'query' => $viewSql,
-            'query_table' => $tableInfo,
-            'user_id' => $currentUserId
+            'page'           => $auditPage,
+            'action'         => 'V',
+            'action_message' => 'Viewing User Role List',
+            'query'          => $viewSql,
+            'query_table'    => $tableRole,
+            'user_id'        => $currentUserId,
         ]);
     }
 }
 
+// 5. Data Fetching (List Mode)
 $search = trim($_GET['search'] ?? '');
 $page = max(1, (int)($_GET['page'] ?? 1));
 $perPage = 10;
 
 if ($isEmbedded):
+    // Flash Messages
     if (isset($_SESSION['flash_msg'])) {
         echo '<div class="alert alert-' . htmlspecialchars($_SESSION['flash_type'] ?? 'info') . ' alert-dismissible fade show"><button type="button" class="btn-close" data-bs-dismiss="alert"></button>' . htmlspecialchars($_SESSION['flash_msg']) . '</div>';
         unset($_SESSION['flash_msg'], $_SESSION['flash_type']);
     }
 
+    // Router: Show Form or List
     if ($viewMode === 'form') {
         require __DIR__ . '/form.php';
     } else {
+        // List Logic
         $where = "WHERE status = 'A'";
         $params = [];
         $types = '';
@@ -148,8 +165,9 @@ if ($isEmbedded):
             $types .= 'ss';
         }
 
+        // Count Total Records
         $totalRecords = 0;
-        $countSql = "SELECT COUNT(*) FROM {$tableInfo} {$where}";
+        $countSql = "SELECT COUNT(*) FROM {$tableRole} {$where}";
         $stmtCount = $conn->prepare($countSql);
         if ($stmtCount) {
             if (!empty($params)) {
@@ -161,58 +179,61 @@ if ($isEmbedded):
             $stmtCount->close();
         }
 
+        // Pagination Logic
         $totalPages = max(1, (int)ceil($totalRecords / $perPage));
         $currentPage = min($page, $totalPages);
         $offset = ($currentPage - 1) * $perPage;
 
+        // Fetch Data Rows
         $rows = [];
-        $sql = "SELECT id, name_en, name_cn, public_url, status FROM {$tableInfo} {$where} ORDER BY id DESC LIMIT ?, ?";
-                $rows = [];
+        $sql = "SELECT id, name_en, name_cn, description, status FROM {$tableRole} {$where} ORDER BY id DESC LIMIT ?, ?";
         $stmtList = $conn->prepare($sql);
         if ($stmtList) {
             $listParams = $params;
-            $listParams[] = $offset; 
+            $listParams[] = $offset;
             $listParams[] = $perPage;
-            $listTypes = $types . "ii";
-            $bindRef = [];
+            $listTypes = $types . 'ii';
+
+            $bindRef = [$listTypes];
             foreach ($listParams as $k => $v) {
                 $bindRef[] = &$listParams[$k];
             }
-            array_unshift($bindRef, $listTypes);
             call_user_func_array([$stmtList, 'bind_param'], $bindRef);
+
             $stmtList->execute();
             $stmtList->store_result();
-            $stmtList->bind_result($rId, $rNameEn, $rNameCn, $rUrl, $rStatus);
+            $stmtList->bind_result($rId, $rNameEn, $rNameCn, $rDesc, $rStatus);
+
             while ($stmtList->fetch()) {
                 $rows[] = [
-                    'id'       => $rId,
-                    'name_en'  => $rNameEn,
-                    'name_cn'  => $rNameCn,
-                    'url'      => $rUrl,
-                    'status'   => $rStatus
+                    'id' => $rId,
+                    'name_en' => $rNameEn,
+                    'name_cn' => $rNameCn,
+                    'description' => $rDesc,
+                    'status' => $rStatus,
                 ];
             }
             $stmtList->close();
         } else {
-            error_log('Failed to prepare page info list statement: ' . $conn->error);
+            error_log('Failed to prepare user role list statement: ' . $conn->error);
         }
 ?>
 <div class="container-fluid px-0">
     <div class="card page-action-card">
         <div class="card-header bg-white d-flex justify-content-between align-items-center py-3 flex-wrap gap-2">
             <div>
-                <div class="page-action-breadcrumb text-muted mb-1">Admin / Page Info</div>
-                <h4 class="m-0 text-primary"><i class="fa-solid fa-file-signature me-2"></i>页面信息列表</h4>
+                <div class="page-action-breadcrumb text-muted mb-1">Admin / User Role</div>
+                <h4 class="m-0 text-primary"><i class="fa-solid fa-shield me-2"></i>用户角色管理</h4>
             </div>
-            <a href="<?php echo $formBaseUrl; ?>" class="btn btn-primary desktop-add-btn"><i class="fa-solid fa-plus"></i> 新增页面</a>
+            <a href="<?php echo $formBaseUrl; ?>" class="btn btn-primary desktop-add-btn"><i class="fa-solid fa-plus"></i> 新增角色</a>
         </div>
 
         <div class="card-body">
             <form method="GET" class="row g-2 align-items-end mb-3">
-                <input type="hidden" name="view" value="page_info">
+                <input type="hidden" name="view" value="user_role">
                 <div class="col-md-4 ms-auto">
                     <div class="input-group">
-                        <input type="text" name="search" class="form-control" value="<?php echo htmlspecialchars($search); ?>" placeholder="搜索页面名称...">
+                        <input type="text" name="search" class="form-control" value="<?php echo htmlspecialchars($search); ?>" placeholder="搜索角色名称...">
                         <button type="submit" class="btn btn-primary"><i class="fa-solid fa-search"></i></button>
                     </div>
                 </div>
@@ -223,24 +244,23 @@ if ($isEmbedded):
                     <thead class="table-light">
                         <tr>
                             <th>ID</th>
-                            <th>Name (EN/CN)</th>
-                            <th>Public URL</th>
+                            <th>Role Name (CN)</th>
+                            <th>Role Name (EN)</th>
+                            <th>Description</th>
                             <th>Status</th>
                             <th class="text-center">Action</th>
                         </tr>
                     </thead>
                     <tbody>
                     <?php if (empty($rows)): ?>
-                        <tr><td colspan="5" class="text-center text-muted">暂无数据</td></tr>
+                        <tr><td colspan="6" class="text-center text-muted">暂无数据</td></tr>
                     <?php else: ?>
                         <?php foreach ($rows as $row): ?>
                             <tr>
                                 <td><?php echo (int)$row['id']; ?></td>
-                                <td>
-                                    <div class="fw-bold"><?php echo htmlspecialchars($row['name_en']); ?></div>
-                                    <div class="small text-muted"><?php echo htmlspecialchars($row['name_cn']); ?></div>
-                                </td>
-                                <td><code><?php echo htmlspecialchars($row['url']); ?></code></td>
+                                <td><?php echo htmlspecialchars($row['name_cn']); ?></td>
+                                <td><?php echo htmlspecialchars($row['name_en']); ?></td>
+                                <td><?php echo htmlspecialchars($row['description'] ?? ''); ?></td>
                                 <td><span class="badge bg-success">Active</span></td>
                                 <td class="text-center">
                                     <a href="<?php echo $formBaseUrl . '&id=' . (int)$row['id']; ?>" class="btn btn-sm btn-outline-primary me-1"><i class="fa-solid fa-pen"></i></a>
@@ -262,7 +282,6 @@ if ($isEmbedded):
                                     <div><strong>#<?php echo (int)$row['id']; ?></strong></div>
                                     <div><?php echo htmlspecialchars($row['name_en']); ?></div>
                                     <div class="small text-muted"><?php echo htmlspecialchars($row['name_cn']); ?></div>
-                                    <div class="small text-muted"><code><?php echo htmlspecialchars($row['url']); ?></code></div>
                                 </div>
                                 <span class="badge bg-success">Active</span>
                             </div>
@@ -283,7 +302,7 @@ if ($isEmbedded):
                 $endItem = $totalRecords > 0 ? min($currentPage * $perPage, $totalRecords) : 0;
 
                 $pagerQuery = [
-                    'view' => 'page_info',
+                    'view' => 'user_role',
                     'search' => $search,
                 ];
                 $prevQuery = http_build_query(array_merge($pagerQuery, ['page' => max(1, $currentPage - 1)]));
@@ -315,20 +334,12 @@ if ($isEmbedded):
     <input type="hidden" name="id" id="deleteId" value="0">
 </form>
 
-<script>
-function confirmDelete(id) {
-    if (confirm('确认删除该页面信息吗？')) {
-        document.getElementById('deleteId').value = id;
-        document.getElementById('deleteForm').submit();
-    }
-}
-</script>
 <script src="<?php echo URL_ASSETS; ?>/js/admin.js"></script>
 <?php
     }
 else:
 ?>
-<?php $pageMetaKey = 'page_info'; ?>
+<?php $pageMetaKey = 'user_role'; ?>
 <!DOCTYPE html>
 <html lang="<?php echo defined('SITE_LANG') ? SITE_LANG : 'zh-CN'; ?>">
 <head>
@@ -337,7 +348,7 @@ else:
 <body>
 <?php require_once BASE_PATH . 'common/menu/header.php'; ?>
 <div class="container mt-4">
-    <div class="alert alert-info">请通过用户面板访问该页面：<a href="<?php echo $baseListUrl; ?>">页面信息列表</a></div>
+    <div class="alert alert-info">请通过用户面板访问该页面：<a href="<?php echo $baseListUrl; ?>">用户角色管理</a></div>
 </div>
 </body>
 </html>

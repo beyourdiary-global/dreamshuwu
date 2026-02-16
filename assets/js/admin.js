@@ -131,3 +131,27 @@
     });
   });
 })();
+
+// Additional Utility Functions for User Role Management Page
+function togglePageCard(headerEl) {
+  const body = headerEl.nextElementSibling;
+  const icon = headerEl.querySelector("i");
+  body.style.display = body.style.display === "none" ? "block" : "none";
+  icon.classList.toggle("fa-chevron-down");
+  icon.classList.toggle("fa-chevron-up");
+}
+
+function toggleAllPermissions() {
+  const allCheckboxes = document.querySelectorAll(".perm-checkbox");
+  const allChecked = Array.from(allCheckboxes).every((cb) => cb.checked);
+  allCheckboxes.forEach((cb) => (cb.checked = !allChecked));
+}
+
+function filterPageCards() {
+  const searchTerm = document.getElementById("searchPages").value.toLowerCase();
+  const cards = document.querySelectorAll(".page-card");
+  cards.forEach((card) => {
+    const name = card.getAttribute("data-page-name");
+    card.style.display = name.includes(searchTerm) ? "block" : "none";
+  });
+}

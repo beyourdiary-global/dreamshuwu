@@ -4,11 +4,10 @@
  * Reusable logic for validation and security.
  */
 
-if (!function_exists('safeJsonEncode')) {
-    /**
-     * Encode data as JSON even when the json extension is disabled.
-     */
-    function safeJsonEncode($data) {
+/**
+ * Encode data as JSON even when the json extension is disabled.
+ */
+function safeJsonEncode($data) {
         if (function_exists('json_encode')) {
             $flags = defined('JSON_UNESCAPED_UNICODE') ? JSON_UNESCAPED_UNICODE : 0;
             if (defined('JSON_PARTIAL_OUTPUT_ON_ERROR')) {
@@ -56,16 +55,15 @@ if (!function_exists('safeJsonEncode')) {
         }
 
         return (string)$data;
-    }
 }
 
-if (!function_exists('safeJsonDecode')) {
+/**
     /**
-     * Decode a JSON string even when the json extension is disabled.
-     * Returns the decoded value, or null on failure.
-     * Sets $success by reference so the caller knows if decoding worked.
-     */
-    function safeJsonDecode($json, $assoc = true, &$success = null) {
+ * Decode a JSON string even when the json extension is disabled.
+ * Returns the decoded value, or null on failure.
+ * Sets $success by reference so the caller knows if decoding worked.
+ */
+function safeJsonDecode($json, $assoc = true, &$success = null) {
         $success = false;
         if (!is_string($json)) {
             $success = true;
@@ -100,11 +98,11 @@ if (!function_exists('safeJsonDecode')) {
         //    The caller will fall back to using the raw string.
         $success = false;
         return null;
-    }
 }
 
-if (!function_exists('sanitizeUtf8')) {
-    function sanitizeUtf8($value) {
+/**
+     */
+function sanitizeUtf8($value) {
         if (is_array($value)) {
             $sanitized = [];
             foreach ($value as $key => $item) {
@@ -140,7 +138,6 @@ if (!function_exists('sanitizeUtf8')) {
         }
 
         return preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', '', $value);
-    }
 }
 
 /**
@@ -314,64 +311,11 @@ function checkNoChangesAndRedirect($newData, $oldData, $fileInputName = null, $r
     exit();
 }
 
-/**
- * Normalize user-group keys for permission checks.
- * Example: "Super Admin" => "super_admin"
- */
-if (!function_exists('normalizeGroupKey')) {
-    function normalizeGroupKey($groupValue) {
-        $text = strtolower(trim((string)$groupValue));
-        if ($text === '') return '';
-        return str_replace([' ', '-', '.'], '_', $text);
-    }
-}
 
 /**
- * Fetch a single page_action row by id.
+ * Encode audit value for JSON storage.
  */
-if (!function_exists('fetchPageActionRowById')) {
-    function fetchPageActionRowById($conn, $table, $id) {
-        $stmt = $conn->prepare("SELECT id, name, status, created_at, updated_at, created_by, updated_by FROM {$table} WHERE id = ? LIMIT 1");
-        if (!$stmt) return null;
-
-        $stmt->bind_param('i', $id);
-        $stmt->execute();
-        $stmt->store_result();
-
-        if ($stmt->num_rows === 0) {
-            $stmt->close();
-            return null;
-        }
-
-        $rowId = null;
-        $rowName = null;
-        $rowStatus = null;
-        $rowCreatedAt = null;
-        $rowUpdatedAt = null;
-        $rowCreatedBy = null;
-        $rowUpdatedBy = null;
-
-        $stmt->bind_result($rowId, $rowName, $rowStatus, $rowCreatedAt, $rowUpdatedAt, $rowCreatedBy, $rowUpdatedBy);
-        $stmt->fetch();
-        $stmt->close();
-
-        return [
-            'id' => $rowId,
-            'name' => $rowName,
-            'status' => $rowStatus,
-            'created_at' => $rowCreatedAt,
-            'updated_at' => $rowUpdatedAt,
-            'created_by' => $rowCreatedBy,
-            'updated_by' => $rowUpdatedBy,
-        ];
-    }
-}
-
-/**
- * Logs a database operation to the audit_log table.
- */
-if (!function_exists('encodeAuditValue')) {
-    function encodeAuditValue($value) {
+function encodeAuditValue($value) {
         if ($value === null) return null;
         
         // If it's a string, trim it. If empty/null string, return null.
@@ -382,14 +326,14 @@ if (!function_exists('encodeAuditValue')) {
         
         // Use the global safeJsonEncode for arrays/objects
         return safeJsonEncode(sanitizeUtf8($value));
-    }
 }
 
-// [UNIVERSAL FIX] Fetch using Query + Explicit Free
-// This prevents "Commands out of sync" errors that block the INSERT
-if (!function_exists('fetchAuditRow')) {
-    function fetchAuditRow($conn, $table, $recordId) {
-        if (empty($table) || empty($recordId)) return null;
+/**
+ * Fetch audit row from database using direct query.
+ * This prevents "Commands out of sync" errors that block the INSERT
+ */
+function fetchAuditRow($conn, $table, $recordId) {
+    if (empty($table) || empty($recordId)) return null;
         
         // Safety: Force ID to be an integer
         $safeId = (int) $recordId;
@@ -407,7 +351,6 @@ if (!function_exists('fetchAuditRow')) {
             $result->free(); // [CRITICAL] Unlock even if empty
         }
         return null;
-    }
 }
 
 // [CRITICAL FIX] The Logger Logic
@@ -820,8 +763,7 @@ function fetchPageInfoRowById($conn, $table, $id) {
  * @param string $publicUrl The URL of the page (e.g. '/admin/product')
  * @return array List of allowed action names (e.g. ['View', 'Add', 'Edit'])
  */
-if (!function_exists('getPageRuntimePermissions')) {
-    function getPageRuntimePermissions($publicUrl) {
+function getPageRuntimePermissions($publicUrl) {
         global $conn;
 
         // LOGIC 0: Check User Group Permissions first (deny early)
@@ -885,7 +827,114 @@ if (!function_exists('getPageRuntimePermissions')) {
         }
 
         return $allowedActions; 
+}
+
+/**
+ * [NEW] Fetch a single user_role row by id.
+ */
+function fetchUserRoleById($conn, $id) {
+        $stmt = $conn->prepare("SELECT id, name_en, name_cn, description, status, created_at, updated_at, created_by, updated_by FROM " . USER_ROLE . " WHERE id = ? LIMIT 1");
+        if (!$stmt) return null;
+
+        $stmt->bind_param('i', $id);
+        $stmt->execute();
+        $stmt->store_result();
+
+        if ($stmt->num_rows === 0) {
+            $stmt->close();
+            return null;
+        }
+
+        $rowId = null;
+        $rowNameEn = null;
+        $rowNameCn = null;
+        $rowDesc = null;
+        $rowStatus = null;
+        $rowCreatedAt = null;
+        $rowUpdatedAt = null;
+        $rowCreatedBy = null;
+        $rowUpdatedBy = null;
+
+        $stmt->bind_result($rowId, $rowNameEn, $rowNameCn, $rowDesc, $rowStatus, $rowCreatedAt, $rowUpdatedAt, $rowCreatedBy, $rowUpdatedBy);
+        $stmt->fetch();
+        $stmt->close();
+
+        return [
+            'id' => $rowId,
+            'name_en' => $rowNameEn,
+            'name_cn' => $rowNameCn,
+            'description' => $rowDesc,
+            'status' => $rowStatus,
+            'created_at' => $rowCreatedAt,
+            'updated_at' => $rowUpdatedAt,
+            'created_by' => $rowCreatedBy,
+            'updated_by' => $rowUpdatedBy,
+        ];
+}
+
+/**
+ * [NEW] Fetch all (page_id, action_id) pairs assigned to a specific user role.
+ * @param int $roleId The user_role.id
+ * @return array Array of ['page_id' => int, 'action_id' => int]
+ */
+function fetchRolePermissions($conn, $roleId) {
+    $perms = [];
+    $stmt = $conn->prepare("SELECT page_id, action_id FROM " . USER_ROLE_PERMISSION . " WHERE user_role_id = ? ORDER BY page_id, action_id");
+    if (!$stmt) return $perms;
+
+    $stmt->bind_param('i', $roleId);
+    $stmt->execute();
+    
+    $pageId = null;
+    $actionId = null;
+    $stmt->bind_result($pageId, $actionId);
+
+    while ($stmt->fetch()) {
+        $perms[] = [
+            'page_id' => (int)$pageId,
+            'action_id' => (int)$actionId,
+        ];
     }
+    $stmt->close();
+
+    return $perms;
+}
+
+/**
+ * [NEW] Check if user_role name (EN or CN) already exists (excluding a specific ID).
+ * @param string $nameCn Chinese name
+ * @param string $nameEn English name
+ * @param int $excludeId Optional. If > 0, exclude this role from the check.
+ * @return bool True if duplicate found, false otherwise.
+ */
+function checkRoleNameDuplicate($conn, $nameCn, $nameEn, $excludeId = 0) {
+        $sql = "SELECT id FROM " . USER_ROLE . " WHERE (name_en = ? OR name_cn = ?) AND status = 'A'";
+        $params = [$nameEn, $nameCn];
+        $types = 'ss';
+
+        if ($excludeId > 0) {
+            $sql .= " AND id != ?";
+            $params[] = $excludeId;
+            $types .= 'i';
+        }
+
+    $sql .= " LIMIT 1";
+
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) return false;
+
+    if ($excludeId > 0) {
+        $stmt->bind_param($types, $nameEn, $nameCn, $excludeId);
+    } else {
+        $stmt->bind_param($types, $nameEn, $nameCn);
+    }
+
+    $stmt->execute();
+    $stmt->store_result();
+    $exists = $stmt->num_rows > 0;
+    $stmt->close();
+
+    return $exists;
 }
 ?>
 

@@ -737,34 +737,82 @@ input[type="password"]::-ms-clear {
 .page-action-breadcrumb {
   font-size: 13px;
 }
-.page-action-mobile-item {
-  border: 1px solid #eceff5;
-  border-radius: 10px;
-  margin-bottom: 10px;
-  background: #fff;
-}
-.page-action-mobile-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 14px;
-  cursor: pointer;
-}
-.page-action-mobile-body {
-  display: none;
-  border-top: 1px solid #edf0f5;
-  padding: 10px 14px;
-}
-.page-action-mobile-item.open .page-action-mobile-body {
-  display: block;
-}
-@media (min-width: 768px) {
+
+/* --- Responsive Table & Sticky Actions Fix --- */
+
+/* 1. View Logic: Force Table View on almost all screens */
+@media (min-width: 280px) {
   .page-action-mobile-list {
     display: none !important;
   }
 }
-@media (max-width: 767px) {
+@media (max-width: 280px) {
   .page-action-desktop-table {
     display: none !important;
+  }
+}
+
+/* 2. Content Truncation */
+/* Prevents long names/descriptions from expanding the table too much */
+.page-action-desktop-table td {
+  max-width: 150px; /* Limits column width */
+  white-space: nowrap; /* Forces single line */
+  overflow: hidden; /* Hides overflow */
+  text-overflow: ellipsis; /* Adds '...' for long text */
+  vertical-align: middle;
+}
+
+/* 3. Action Column Settings */
+/* Ensure buttons are never truncated */
+.page-action-desktop-table th:last-child,
+.page-action-desktop-table td:last-child {
+  width: 1%; /* Shrink to fit buttons */
+  white-space: nowrap;
+  overflow: visible; /* Allow dropdowns/tooltips */
+  max-width: none; /* Override generic truncation */
+  text-align: center;
+}
+
+/* Button spacing adjustment */
+.page-action-desktop-table .btn-action {
+  margin-right: 4px !important;
+  margin-bottom: 0 !important;
+}
+.page-action-desktop-table .btn-action:last-child {
+  margin-right: 0 !important;
+}
+
+/* 4. Sticky Right Column (The "Always Visible" Fix) */
+/* On Mobile/Tablet: Action column sticks to the right edge while scrolling */
+@media screen and (max-width: 991px) {
+  /* Ensure bootstrap table collapses correctly for sticky */
+  .page-action-desktop-table table {
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+
+  /* Make the last column (Actions) sticky */
+  .page-action-desktop-table th:last-child,
+  .page-action-desktop-table td:last-child {
+    position: sticky;
+    right: 0;
+    z-index: 5;
+    background-color: #fff; /* Opaque background covers scrolling text */
+    box-shadow: -4px 0 8px -4px rgba(0, 0, 0, 0.15); /* Shadow separator */
+    border-left: 1px solid #f0f0f0;
+  }
+
+  /* Ensure row background color persists on hover for the sticky cell */
+  .table-hover tbody tr:hover td:last-child {
+    background-color: #e9ecef; /* Match Bootstrap hover color */
+  }
+}
+
+/* 5. Hide Non-Essential Columns on Small Screens */
+/* Hides 'ID' column (1st column) on mobile to save space */
+@media screen and (max-width: 576px) {
+  .page-action-desktop-table th:first-child,
+  .page-action-desktop-table td:first-child {
+    display: none;
   }
 }

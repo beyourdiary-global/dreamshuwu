@@ -32,7 +32,8 @@ $isWebSettingView = ($currentView === 'web_settings');
 $isAdminHome      = ($currentView === 'admin');
 $isPageActionView = ($currentView === 'page_action');
 $isPageInfoView   = ($currentView === 'page_info'); // [NEW]
-$isAdminSection   = ($isAdminHome || $isPageActionView || $isPageInfoView);
+$isUserRoleView   = ($currentView === 'user_role'); // [NEW]
+$isAdminSection   = ($isAdminHome || $isPageActionView || $isPageInfoView || $isUserRoleView);
 
 // Data Fetching
 $userQuery = "SELECT name FROM " . $userTable . " WHERE id = ? LIMIT 1";
@@ -57,7 +58,7 @@ if ($dashStmt->fetch()) { foreach($row as $key => $val) { $dashRow[$key] = $val;
 $dashStmt->close();
 
 // Audit Logging
-if (!$isTagSection && !$isCatSection && !$isMetaView && !$isProfileView && !$isWebSettingView && !$isAdminSection && function_exists('logAudit')) {
+if (!$isTagSection && !$isCatSection && !$isMetaView && !$isProfileView && !$isWebSettingView && !$isAdminSection && !$isUserRoleView && function_exists('logAudit')) {
     logAudit([
         'page'           => $auditPage,
         'action'         => 'V',
@@ -119,6 +120,7 @@ switch ($currentView) {
     case 'admin':         $pageMetaKey = 'admin'; break;
     case 'page_action':   $pageMetaKey = 'page_action'; break; // [NEW]
     case 'page_info':     $pageMetaKey = 'page_information_list'; break; // [NEW]
+    case 'user_role':     $pageMetaKey = 'user_role'; break; // [NEW]
     default:              $pageMetaKey = 'dashboard'; break;
 }
 ?>
@@ -225,6 +227,11 @@ switch ($currentView) {
         elseif ($isPageInfoView):
             $EMBED_PAGE_INFO = true;
             require BASE_PATH . PATH_PAGE_INFO_INDEX;
+
+        // [NEW] User Role Management Feature
+        elseif ($isUserRoleView):
+            $EMBED_USER_ROLE = true;
+            require BASE_PATH . PATH_USER_ROLE_INDEX;
         
         else: ?>
             <div class="quick-actions-grid">
@@ -259,8 +266,9 @@ switch ($currentView) {
     <script src="<?php echo URL_ASSETS; ?>/js/category.js"></script>
 <?php elseif ($isMetaView): ?>
     <script src="<?php echo URL_ASSETS; ?>/js/meta.js"></script>
+<?php elseif ($isAdminHome || $isPageActionView || $isPageInfoView || $isUserRoleView): ?>
+    <script src="<?php echo URL_ASSETS; ?>/js/admin.js"></script>
 <?php endif; ?>
-
 <script src="<?php echo URL_ASSETS; ?>/js/login-script.js"></script>
 <script src="<?php echo URL_ASSETS; ?>/js/logout-handler.js"></script>
 </body>
