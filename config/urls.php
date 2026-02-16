@@ -64,4 +64,10 @@ defined('URL_PAGE_INFO')       || define('URL_PAGE_INFO', URL_USER_DASHBOARD . '
 defined('URL_PAGE_INFO_API')   || define('URL_PAGE_INFO_API', SITEURL . '/src/pages/admin/page-information-list/index.php');
 
 defined('PATH_PAGE_INFO_INDEX') || define('PATH_PAGE_INFO_INDEX', 'src/pages/admin/page-information-list/index.php');
+
+// -- 13. User Role Management [NEW] ---
+defined('URL_USER_ROLE')       || define('URL_USER_ROLE', URL_USER_DASHBOARD . '?view=user_role');
+defined('URL_USER_ROLE_API')   || define('URL_USER_ROLE_API', SITEURL . '/src/pages/admin/user-role/index.php');
+
+defined('PATH_USER_ROLE_INDEX') || define('PATH_USER_ROLE_INDEX', 'src/pages/admin/user-role/index.php');
 ?>

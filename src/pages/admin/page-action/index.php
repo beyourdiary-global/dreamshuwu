@@ -397,7 +397,14 @@ if ($isEmbeddedPageAction):
                                 <span class="badge bg-success">A</span>
                             </div>
                             <div class="page-action-mobile-body">
-                                <button type="button" class="btn btn-sm btn-outline-danger page-action-delete-btn" data-id="<?php echo (int)$item['id']; ?>" data-name="<?php echo htmlspecialchars($item['name']); ?>">软删除</button>
+                                <div class="d-flex justify-content-end gap-2">
+                                    <a href="<?php echo $formBaseUrl . '&id=' . (int)$item['id']; ?>" class="btn btn-sm btn-outline-primary">
+                                        <i class="fa-solid fa-pen"></i> 编辑
+                                    </a>
+                                    <button type="button" class="btn btn-sm btn-outline-danger page-action-delete-btn" data-id="<?php echo (int)$item['id']; ?>" data-name="<?php echo htmlspecialchars($item['name']); ?>">
+                                        <i class="fa-solid fa-trash"></i> 软删除
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     <?php endforeach; ?>

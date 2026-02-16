@@ -205,6 +205,7 @@ CREATE TABLE IF NOT EXISTS page_information_list (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ";
 
+
 $tables['action_master'] = "
 CREATE TABLE IF NOT EXISTS action_master (
   id BIGINT NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
@@ -225,6 +226,48 @@ CREATE TABLE IF NOT EXISTS action_master (
 ";
 
 
+$tables['user_role'] = "
+CREATE TABLE IF NOT EXISTS user_role (
+  id BIGINT NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
+  name_cn VARCHAR(255) NOT NULL COMMENT 'Chinese Name',
+  name_en VARCHAR(255) NOT NULL COMMENT 'English Name',
+  description VARCHAR(500) DEFAULT NULL COMMENT 'Role Description',
+  status CHAR(1) NOT NULL DEFAULT 'A' COMMENT 'Active / Deleted (A/D)',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT 'Record creation timestamp',
+  created_by VARCHAR(100) DEFAULT NULL COMMENT 'User who created',
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Record last updated timestamp',
+  updated_by VARCHAR(100) DEFAULT NULL COMMENT 'User who updated',
+  PRIMARY KEY (id),
+  UNIQUE KEY unique_role_name (name_en, name_cn),
+  INDEX idx_role_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+";
+
+$tables['user_role_permission'] = "
+CREATE TABLE IF NOT EXISTS user_role_permission (
+  id BIGINT NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
+  user_role_id BIGINT NOT NULL COMMENT 'FK to user_role',
+  page_id BIGINT NOT NULL COMMENT 'FK to page_information_list',
+  action_id BIGINT NOT NULL COMMENT 'FK to page_action',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT 'Record creation timestamp',
+  created_by VARCHAR(100) DEFAULT NULL COMMENT 'User who created',
+  PRIMARY KEY (id),
+  UNIQUE KEY unique_role_page_action (user_role_id, page_id, action_id),
+  KEY idx_role_id (user_role_id),
+  KEY idx_page_id (page_id),
+  KEY idx_action_id (action_id),
+  CONSTRAINT fk_urp_role
+    FOREIGN KEY (user_role_id) REFERENCES user_role (id)
+    ON DELETE CASCADE,
+  CONSTRAINT fk_urp_page
+    FOREIGN KEY (page_id) REFERENCES page_information_list (id)
+    ON DELETE RESTRICT,
+  CONSTRAINT fk_urp_action
+    FOREIGN KEY (action_id) REFERENCES page_action (id)
+    ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+";
+
 // 4. Run Queries
 
 foreach ($tables as $name => $sql) {
@@ -232,108 +275,6 @@ foreach ($tables as $name => $sql) {
         echo "Table '<strong>$name</strong>' checked/created.<br>";
     } else {
         echo "Error table '<strong>$name</strong>': " . $conn->error . "<br>";
-    }
-}
-
-// 5. Schema Upgrades (ALTER TABLE) - Add new indexes, constraints, or columns without dropping tables
-echo "<hr>";
-echo "Applying schema upgrades (ALTER TABLE)...<br>";
-
-// Only alter the audit_log.action column if it still uses a narrow type (e.g., CHAR(1))
-$columnCheckSql = sprintf(
-    "SELECT DATA_TYPE, CHARACTER_MAXIMUM_LENGTH
-     FROM INFORMATION_SCHEMA.COLUMNS
-     WHERE TABLE_SCHEMA = '%s'
-       AND TABLE_NAME = 'audit_log'
-       AND COLUMN_NAME = 'action'",
-    $conn->real_escape_string($dbname)
-);
-$shouldAlterAuditLog = false;
-if ($result = $conn->query($columnCheckSql)) {
-    if ($row = $result->fetch_assoc()) {
-        $dataType  = strtolower($row['DATA_TYPE']);
-        $maxLength = isset($row['CHARACTER_MAXIMUM_LENGTH']) ? (int)$row['CHARACTER_MAXIMUM_LENGTH'] : null;
-        // Update only if the column is a CHAR(1) (or similarly narrow fixed-length type).
-        if ($dataType === 'char' && $maxLength !== null && $maxLength <= 1) {
-            $shouldAlterAuditLog = true;
-        }
-    }
-    $result->free();
-}
-if ($shouldAlterAuditLog) {
-    $alterAuditLog = "ALTER TABLE audit_log MODIFY COLUMN action VARCHAR(50) NOT NULL COMMENT 'Action type string'";
-    if ($conn->query($alterAuditLog) === TRUE) {
-        echo "Audit Log table updated successfully.<br>";
-    } else {
-        echo "Error updating Audit Log table: " . $conn->error . "<br>";
-    }
-} else {
-    echo "Audit Log table already has a compatible 'action' column definition or column not found; no schema change applied.<br>";
-}
-
-$schemaEscaped = $conn->real_escape_string($dbname);
-
-$indexExists = function($table, $indexName) use ($conn, $schemaEscaped) {
-    $tableEscaped = $conn->real_escape_string($table);
-    $indexEscaped = $conn->real_escape_string($indexName);
-    $sql = "SELECT 1 FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = '{$schemaEscaped}' AND TABLE_NAME = '{$tableEscaped}' AND INDEX_NAME = '{$indexEscaped}' LIMIT 1";
-    $res = $conn->query($sql);
-    if (!$res) return false;
-    $exists = $res->num_rows > 0;
-    $res->free();
-    return $exists;
-};
-
-$constraintExists = function($table, $constraintName) use ($conn, $schemaEscaped) {
-    $tableEscaped = $conn->real_escape_string($table);
-    $constraintEscaped = $conn->real_escape_string($constraintName);
-    $sql = "SELECT 1 FROM information_schema.TABLE_CONSTRAINTS WHERE TABLE_SCHEMA = '{$schemaEscaped}' AND TABLE_NAME = '{$tableEscaped}' AND CONSTRAINT_NAME = '{$constraintEscaped}' LIMIT 1";
-    $res = $conn->query($sql);
-    if (!$res) return false;
-    $exists = $res->num_rows > 0;
-    $res->free();
-    return $exists;
-};
-
-$alterStatements = [];
-
-if (!$constraintExists('page_information_list', 'unique_public_url')) {
-    $alterStatements[] = [
-        'label' => 'page_information_list.unique_public_url',
-        'sql' => 'ALTER TABLE page_information_list ADD CONSTRAINT unique_public_url UNIQUE (public_url)'
-    ];
-}
-
-if (!$indexExists('action_master', 'idx_action_master_action_id')) {
-    $alterStatements[] = [
-        'label' => 'action_master.idx_action_master_action_id',
-        'sql' => 'ALTER TABLE action_master ADD INDEX idx_action_master_action_id (action_id)'
-    ];
-}
-
-if (!$constraintExists('action_master', 'fk_action_master_page')) {
-    $alterStatements[] = [
-        'label' => 'action_master.fk_action_master_page',
-        'sql' => 'ALTER TABLE action_master ADD CONSTRAINT fk_action_master_page FOREIGN KEY (page_id) REFERENCES page_information_list(id) ON DELETE RESTRICT'
-    ];
-}
-
-if (!$constraintExists('action_master', 'fk_action_master_action')) {
-    $alterStatements[] = [
-        'label' => 'action_master.fk_action_master_action',
-        'sql' => 'ALTER TABLE action_master ADD CONSTRAINT fk_action_master_action FOREIGN KEY (action_id) REFERENCES page_action(id) ON DELETE RESTRICT'
-    ];
-}
-
-if (empty($alterStatements)) {
-    echo "No schema upgrades required.<br>";
-} else {
-    foreach ($alterStatements as $alter) {
-        if ($conn->query($alter['sql']) === TRUE) {
-            echo "Schema updated: <strong>{$alter['label']}</strong><br>";
-        } else {
-            echo "Schema update failed: <strong>{$alter['label']}</strong> - " . $conn->error . "<br>";
-        }
     }
 }
 

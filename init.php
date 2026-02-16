@@ -233,6 +233,11 @@ defined('PAGE_ACTION') || define('PAGE_ACTION', 'page_action');
 // -- Page Information List Table ---
 defined('PAGE_INFO_LIST') || define('PAGE_INFO_LIST', 'page_information_list');
 defined('ACTION_MASTER') || define('ACTION_MASTER', 'action_master');
+
+// --- User Role Tables ---
+defined('USER_ROLE') || define('USER_ROLE', 'user_role');
+defined('USER_ROLE_PERMISSION') || define('USER_ROLE_PERMISSION', 'user_role_permission');
+
 // --- Page Meta Registry (Dropdown Options) ---
 $PAGE_META_REGISTRY = [
     'home'            => '首页 (Home)',
@@ -251,7 +256,8 @@ $PAGE_META_REGISTRY = [
     'web_settings'   => '网站设置 (Web Settings)',
     'admin'          => '管理员 (Admin)',
     'page_action'   => '页面操作 (Page Action)',
-    'page_information_list' => '页面信息列表 (Page Information List)'
+    'page_information_list' => '页面信息列表 (Page Information List)',
+    'user_role'     => '用户角色 (User Role)'
 ];
 
 // --- Application Constants ---
