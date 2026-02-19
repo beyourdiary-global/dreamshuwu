@@ -1,11 +1,9 @@
 <?php
 require_once dirname(__DIR__, 3) . '/common.php';
 
-
-$pageTitle = "忘记密码 - " . WEBSITE_NAME;
-
 $message = "";
 $msgType = ""; // 'success', 'danger', or 'warning'
+$isAjax = isset($_POST['ajax']) && $_POST['ajax'] === '1';
 
 // [FIX] Convert Constant String to Array safely
 $local_whitelist = defined('LOCAL_WHITELIST') ? explode(',', LOCAL_WHITELIST) : ['127.0.0.1', '::1', 'localhost'];
@@ -55,14 +53,26 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 $mailSent = sendPasswordResetEmail($email, $resetLink);
 
                 // [LOGIC IMPROVED]
-                // If Localhost OR Email Failed, show the link directly for debugging
                 if ($mailSent && !$isLocal) {
                     $message = "重置链接已发送，请检查您的邮箱 (含垃圾箱)";
                     $msgType = "success";
+                    
+                    if ($isAjax) {
+                        header('Content-Type: application/json');
+                        echo json_encode(['success' => true, 'message' => $message, 'redirect' => URL_RESET_PWD]);
+                        exit();
+                    }
+                    header("Location: " . URL_RESET_PWD);
+                    exit();
                 } else {
-                    // Fallback for Localhost or Failed Email
-                    $message = "<strong>调试模式 (Email发送失败或本地环境):</strong><br>请点击此链接重置密码:<br><a href='" . $resetLink . "'>[点击这里重置密码]</a>";
-                    $msgType = "warning";
+                    // Fallback for Localhost or Failed Email - redirect with token
+                    if ($isAjax) {
+                        header('Content-Type: application/json');
+                        echo json_encode(['success' => true, 'message' => '重置链接已生成', 'redirect' => $resetLink]);
+                        exit();
+                    }
+                    header("Location: " . $resetLink);
+                    exit();
                 }
             } else {
                 $message = "系统错误，请稍后再试";
@@ -70,6 +80,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             }
         }
         $stmt->close();
+    }
+
+    // Return error response for AJAX
+    if ($isAjax) {
+        header('Content-Type: application/json');
+        echo json_encode(['success' => false, 'message' => $message]);
+        exit();
     }
 }
 ?>
@@ -79,38 +96,34 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 <html lang="<?php echo defined('SITE_LANG') ? SITE_LANG : 'zh-CN'; ?>">
 <?php require_once BASE_PATH . 'include/header.php'; ?>
 <body class="auth-page">
+<?php require_once BASE_PATH . 'common/menu/header.php'; ?>
 
-<div class="container">
-    <div class="row justify-content-center mt-5">
-        <div class="col-12 col-md-6 col-lg-5">
-            <div class="login-card shadow-lg p-4 bg-white rounded">
-                <div class="logo text-center mb-4">Star<span class="text-primary fw-bold">Admin</span></div>
-                <h3 class="text-center">忘记密码？</h3>
-                <p class="subtext text-center text-muted">输入您的注册邮箱，我们将向您发送重置链接</p>
+<main class="dashboard-main">
+    <div class="auth-layout">
+        <div class="forgot-card">
+            <h3>忘记密码？</h3>
+            <p class="subtext">输入您的注册邮箱，我们将向您发送重置链接</p>
 
-                <div id="clientError" class="alert alert-danger" style="display:none;"></div>
-
-                <?php if (!empty($message)): ?>
-                    <div class="alert alert-<?php echo $msgType; ?> alert-dismissible fade show text-break" role="alert">
-                        <?php echo $message; ?>
-                        <button type="button" class="btn-close" data-bs-dismiss=\"alert\" aria-label="Close"></button>
-                    </div>
-                <?php endif; ?>
-
-                <form id="forgotForm" method="POST" autocomplete="off" novalidate>
-                    <div class="form-floating mb-3">
-                        <input type="email" class="form-control" id="email" name="email" placeholder="name@example.com" required value="<?php echo isset($_POST['email']) ? htmlspecialchars($_POST['email']) : ''; ?>">
-                        <label for="email">邮箱</label>
-                    </div>
-                    <button id="forgotBtn" type="submit" class="btn btn-primary w-100 py-2 fw-bold">发送重置链接</button>
-                    <div class="text-center mt-4 border-top pt-3">
-                        <a href="<?php echo URL_LOGIN; ?>" class="text-decoration-none small text-muted"><i class="bi bi-arrow-left"></i> 返回登录</a>
-                    </div>
-                </form>
+            <div id="forgotAlert" class="alert alert-success" style="display: none; justify-content: space-between;">
+                <span id="forgotAlertText"></span>
+                <button type="button" style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 0; color: inherit; line-height: 1;" onclick="this.parentElement.style.display='none';">&times;</button>
             </div>
+            
+            <form id="forgotForm" method="POST">
+                <div class="auth-field mb-4">
+                    <label class="form-label">邮箱地址</label>
+                    <input type="email" class="form-control" id="email" name="email" placeholder="name@example.com" required>
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100">发送重置链接</button>
+
+                <div class="footer-links">
+                    <a href="<?php echo URL_LOGIN; ?>" class="text-decoration-none text-muted">返回登录</a>
+                </div>
+            </form>
         </div>
     </div>
-</div>
-<script src="<?php echo URL_ASSETS; ?>/js/forgot-password-script.js"></script>
+</main>
+<script src="<?php echo URL_ASSETS; ?>/js/auth.js"></script>
 </body>
 </html>

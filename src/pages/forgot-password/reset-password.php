@@ -1,8 +1,6 @@
 <?php
 require_once dirname(__DIR__, 3) . '/common.php';
 
-$pageTitle = "重置密码 - " . WEBSITE_NAME;
-
 $message = "";
 $msgType = "";
 $validToken = false;
@@ -76,64 +74,44 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $validToken) {
 <html lang="<?php echo defined('SITE_LANG') ? SITE_LANG : 'zh-CN'; ?>">
 <?php require_once BASE_PATH . 'include/header.php'; ?>
 <body class="auth-page">
+<?php require_once BASE_PATH . 'common/menu/header.php'; ?>
 
-<div class="container">
-    <div class="row justify-content-center mt-5">
-        <div class="col-12 col-md-6 col-lg-5">
-            <div class="login-card shadow-lg p-4 bg-white rounded">
-                <div class="logo text-center mb-4">Star<span class="text-primary fw-bold">Admin</span></div>
-                <h3 class="text-center">重置密码</h3>
+<main class="dashboard-main">
+    <div class="auth-layout">
+        <div class="reset-card">
+            <h3>重置密码</h3>
+            <p class="subtext">请为您的账号设置新密码</p>
 
-                <div id="clientError" class="alert alert-danger" style="display:none;"></div>
+            <form id="resetForm" method="POST">
+                <div class="auth-field mb-3 password-field position-relative">
+                    <label class="form-label">新密码</label>
+                    <input type="password" class="form-control" id="password" name="new_password" required>
+                    <button type="button" class="toggle-password" data-target="password">
+                        <i class="fa fa-eye"></i>
+                    </button>
+                </div>
 
-                <?php if (!empty($message)): ?>
-                    <div class="alert alert-<?php echo $msgType; ?> mt-3"><?php echo htmlspecialchars($message); ?></div>
-                <?php endif; ?>
+                <div class="auth-field mb-3 password-field position-relative">
+                    <label class="form-label">确认新密码</label>
+                    <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
+                    <button type="button" class="toggle-password" data-target="confirm_password">
+                        <i class="fa fa-eye"></i>
+                    </button>
+                </div>
 
-                <?php if ($validToken): ?>
-                <p class="subtext text-center text-muted">请为您的账号设置一个新的安全密码</p>
-                <form id="resetForm" method="POST" autocomplete="off" novalidate>
-                    <input type="hidden" name="token" value="<?php echo htmlspecialchars($token); ?>">
-                    
-                    <div class="form-floating mb-3 position-relative">
-                        <input type="password" class="form-control" id="new_password" name="new_password" placeholder="New Password" required style="padding-right: 60px;">
-                        <label for="new_password">新密码</label>
-                        <button type="button" class="password-toggle" onclick="togglePassword('new_password', this)">显示</button>
-                    </div>
+                <div class="password-hints mb-4">
+                    <div id="strength-meter">密码强度提示: <span id="strength-text">未填写</span></div>
+                    <div class="hint-line">* 密码长度至少8位</div>
+                    <div class="hint-line">* 包含大写、小写字母、数字和特殊字符</div>
+                </div>
 
-                    <div class="form-floating mb-3 position-relative">
-                        <input type="password" class="form-control" id="confirm_password" name="confirm_password" placeholder="Confirm Password" required style="padding-right: 60px;">
-                        <label for="confirm_password">确认新密码</label>
-                        <button type="button" class="password-toggle" onclick="togglePassword('confirm_password', this)">显示</button>
-                    </div>
-                    
-                    <div id="strength-meter" class="strength-meter mb-2">
-                        密码强度提示: <span id="strength-text">未填写</span>
-                    </div>
-                    
-                    <div class="password-requirements mb-3">
-                        * 密码长度至少8位<br>
-                        * 包含大写、小写字母、数字和特殊字符
-                    </div>
-                    <button id="resetBtn" type="submit" class="btn btn-primary w-100 py-2 fw-bold">重置密码</button>
-                </form>
-
-                <?php elseif ($msgType === 'success'): ?>
-                     <div class="text-center mt-4"><a href="<?php echo URL_LOGIN; ?>" class="btn btn-primary w-100">立即登录</a></div>
-                <?php else: ?>
-                    <div class="text-center mt-4 border-top pt-3">
-                        <a href="<?php echo URL_FORGOT_PWD; ?>" class="text-decoration-none">重新申请重置链接</a>
-                        <br><br>
-                        <a href="<?php echo URL_LOGIN; ?>" class="text-decoration-none small text-muted">返回登录</a>
-                    </div>
-                <?php endif; ?>
-            </div>
+                <button type="submit" class="btn btn-primary w-100">保存并登录</button>
+            </form>
+            
         </div>
     </div>
-</div>
-
-<script src="<?php echo URL_ASSETS; ?>/js/login-script.js"></script>
-
-<script src="<?php echo URL_ASSETS; ?>/js/reset-password-script.js?v=<?php echo time(); ?>"></script>
+</main>
+<script src="<?php echo URL_ASSETS; ?>/js/jquery-3.7.1.min.js"></script>
+<script src="<?php echo URL_ASSETS; ?>/js/auth.js"></script>
 </body>
 </html>

@@ -222,11 +222,41 @@ function formatDate($date, $format = 'Y-m-d') {
 }
 
 /**
+ * Get website name from database settings
+ * Falls back to WEBSITE_NAME constant if not found
+ */
+function getWebsiteName() {
+    global $conn;
+    
+    if (!$conn) {
+        return defined('WEBSITE_NAME') ? WEBSITE_NAME : 'StarAdmin';
+    }
+    
+    // Query the correct column name from web_settings table
+    $stmt = $conn->prepare("SELECT website_name FROM " . WEB_SETTINGS . " WHERE id = 1 LIMIT 1");
+    if (!$stmt) {
+        return defined('WEBSITE_NAME') ? WEBSITE_NAME : 'StarAdmin';
+    }
+    
+    $stmt->execute();
+    $stmt->bind_result($siteNameValue);
+    
+    if ($stmt->fetch()) {
+        $stmt->close();
+        return $siteNameValue ?: (defined('WEBSITE_NAME') ? WEBSITE_NAME : 'StarAdmin');
+    }
+    $stmt->close();
+    
+    return defined('WEBSITE_NAME') ? WEBSITE_NAME : 'StarAdmin';
+}
+
+/**
  * Send password reset email
  * Returns true if sent, false otherwise
  */
 function sendPasswordResetEmail($email, $resetLink) {
-    $subject = "重置您的密码";
+    $websiteName = getWebsiteName();
+    $subject = "重置您的密码 - " . $websiteName;
     $headers = "MIME-Version: 1.0" . "\r\n";
     $headers .= "Content-type: text/html; charset=UTF-8" . "\r\n";
     $headers .= "From: " . MAIL_FROM_NAME . " <" . MAIL_FROM . ">" . "\r\n";
@@ -234,7 +264,7 @@ function sendPasswordResetEmail($email, $resetLink) {
     $emailContent = "
     <html>
     <head>
-        <title>重置密码</title>
+        <title>重置密码 - " . htmlspecialchars($websiteName) . "</title>
         <meta charset='UTF-8'>
         <style>
             body { font-family: Arial, sans-serif; }
@@ -249,7 +279,8 @@ function sendPasswordResetEmail($email, $resetLink) {
     <body>
         <div class='container'>
             <div class='header'>
-                <h2>重置您的密码</h2>
+                <h2>" . htmlspecialchars($websiteName) . "</h2>
+                <p>重置您的密码</p>
             </div>
             <div class='content'>
                 <h3>您好，</h3>
@@ -259,7 +290,7 @@ function sendPasswordResetEmail($email, $resetLink) {
                 <p style='color: #999; font-size: 14px;'><strong>重要：</strong>此链接有效期为 30 分钟。如果您没有提出此请求，请忽略此邮件。</p>
             </div>
             <div class='footer'>
-                <p>© " . date('Y') . " " . WEBSITE_NAME . ". 版权所有。</p>
+                <p>© " . date('Y') . " " . htmlspecialchars($websiteName) . ". 版权所有。</p>
             </div>
         </div>
     </body>

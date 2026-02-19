@@ -14,12 +14,12 @@ body.auth-page {
 }
 
 /* Keep input backgrounds white (including browser autofill) */
-.auth-page .form-control,
-.auth-page input[type="text"],
-.auth-page input[type="email"],
-.auth-page input[type="password"],
-.auth-page input[type="date"],
-.auth-page select {
+.auth-layout .form-control,
+.auth-layout input[type="text"],
+.auth-layout input[type="email"],
+.auth-layout input[type="password"],
+.auth-layout input[type="date"],
+.auth-layout select {
   background-color: #fff !important;
 }
 
@@ -56,29 +56,18 @@ body.auth-page {
 
 .auth-page .login-card,
 .auth-page .reg-card,
-.auth-page .welcome-card {
+.auth-page .welcome-card,
+.auth-page .forgot-card,
+.auth-page .reset-card {
   background: #fff;
-  padding: 36px;
+  padding: 36px !important;
   border-radius: 12px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
-  width: 100%;
-  max-width: 420px;
-  margin: auto;
+  width: 100% !important;
+  max-width: 420px !important;
+  margin: auto !important;
 }
 
-.auth-page .login-card .logo,
-.auth-page .reg-card .logo,
-.auth-page .welcome-card .logo {
-  font-size: 24px;
-  font-weight: 700;
-  margin-bottom: 20px;
-  text-align: center;
-}
-.auth-page .login-card .logo span,
-.auth-page .reg-card .logo span,
-.auth-page .welcome-card .logo span {
-  color: #233dd2;
-}
 .auth-page .subtext {
   color: #666;
   margin-bottom: 20px;
@@ -104,16 +93,74 @@ body.auth-page {
   color: #555;
 }
 
-.auth-page #strength-meter {
+.auth-page #strength-meter,
+.auth-page #strength-text {
   margin-top: 6px;
   font-size: 12px;
   color: #555;
+  font-weight: 500;
+}
+
+/* Clean Password Hints Styling (Matches Reset & Register Pages) */
+.auth-page .password-hints {
+  font-size: 13px; /* Slightly larger, matching your image */
+  color: #555;
+  margin-top: 8px;
+}
+
+.auth-page .password-hints #strength-meter {
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #333;
+}
+
+.auth-page .password-hints .hint-line {
+  margin-bottom: 6px;
+  line-height: 1.4;
+  color: #666;
+}
+
+/* 2. Auth Pages - Footer and Checkbox Fixes */
+.auth-page .footer-links {
+  margin-top: 24px;
+  padding: 0; /* Removed the 16px padding */
+  background: transparent; /* Removed the #f8f9fa grey background */
+  font-size: 14px;
+  display: flex;
+  justify-content: space-between; /* Puts one link on the far left, one on the far right */
+  align-items: center;
+}
+
+.auth-page .footer-links a {
+  color: #233dd2;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.auth-page .footer-links a:hover {
+  color: #1a2eb0;
+  text-decoration: underline;
 }
 
 .auth-page .terms-container {
   display: flex;
-  align-items: flex-start;
-  gap: 10px;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.auth-page .terms-checkbox {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  margin: 0 !important;
+  flex-shrink: 0;
+  accent-color: #233dd2;
+}
+
+.password-field .form-control {
+  padding-right: 45px !important;
 }
 
 .auth-page .terms-container label {
@@ -122,16 +169,20 @@ body.auth-page {
   color: #555;
 }
 
-/* Ensure password icon alignment within relative containers */
-.password-field #togglePassword {
+/* Password Toggle Positioning */
+.password-field .toggle-password {
   position: absolute;
   right: 15px;
-  top: 50%;
-  transform: translateY(-50%);
+  top: 36px;
   background: none;
   border: none;
   z-index: 10;
   cursor: pointer;
+  color: #666;
+  padding: 0;
+  height: 24px;
+  display: flex;
+  align-items: center;
 }
 
 /* Space for the icon so text doesn't overlap */
@@ -164,7 +215,7 @@ select:focus {
   outline: none;
 }
 
-.auth-page input:not(.form-control) {
+.auth-layout input:not(.form-control):not(.terms-checkbox) {
   margin-bottom: 15px;
 }
 input[type="password"]::-ms-reveal,
@@ -228,11 +279,15 @@ input[type="password"]::-ms-clear {
 
 /* 5. Dashboard UI */
 .tag-container,
-.category-container {
-  padding: 20px;
-  max-width: 1200px;
-  margin: 0 auto;
+.category-container,
+.meta-container {
+  padding: 0 !important; /* Removes the 20px padding causing the top/left gap */
+  max-width: 1200px !important; /* Matches dashboard width */
+  margin: 0 !important; /* Removes 'auto' centering to keep it flush left */
+  width: 100%;
+  box-sizing: border-box;
 }
+
 .tag-card,
 .category-card {
   background: #fff;
@@ -244,11 +299,42 @@ input[type="password"]::-ms-clear {
   padding: 24px;
 }
 
+/* --- Dashboard Layout Alignment Fix --- */
+.dashboard-main .profile-card {
+  padding: 32px !important; /* Forces left and right padding to be exactly the same */
+  display: flex !important;
+  align-items: center !important;
+  box-sizing: border-box !important;
+}
+
+.dashboard-main .profile-card .settings-btn {
+  position: static !important; /* Removes absolute positioning */
+  margin-left: auto !important; /* Flexbox trick: automatically pushes the gear to the far right */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* --- Dashboard Mobile Layout Overflow Fix --- */
+.dashboard-main .profile-info {
+  min-width: 0; /* Allows the text inside to shrink rather than stretch the card */
+  flex: 1; /* Allows it to take up available space gracefully */
+}
+
+/* Hide the settings arrow icon on ultra-small screens (under 360px) to prevent layout run-off */
+@media screen and (max-width: 360px) {
+  .dashboard-main .profile-card .settings-btn {
+    display: none !important;
+  }
+}
+
 /* 5.1 Profile Page */
 .profile-container {
-  max-width: 800px;
-  margin: 40px auto;
-  padding: 0 20px;
+  max-width: 1200px !important; /* Expanded from 800px to match the other pages */
+  margin: 0 !important; /* Removes the 40px auto margin causing the huge gaps */
+  padding: 0 !important; /* Removes horizontal padding */
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .section-header {

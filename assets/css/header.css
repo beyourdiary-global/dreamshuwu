@@ -213,6 +213,34 @@
   font-size: 12px;
 }
 
+/* --- Logged In User Name Link --- */
+.user-name-link {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+  color: var(--text-dark) !important;
+}
+
+.user-name-link i {
+  font-size: 18px;
+  color: var(--theme-blue);
+}
+
+.user-name-link:hover {
+  color: var(--theme-blue) !important;
+}
+
+/* Prevent super long names from breaking the header layout */
+.user-name-text {
+  max-width: 120px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: inline-block;
+  vertical-align: middle;
+}
+
 /* --- Mobile Elements --- */
 .mobile-top-bar {
   display: none;
