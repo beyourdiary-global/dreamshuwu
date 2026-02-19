@@ -163,5 +163,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     </div>
 </main>
 <script src="<?php echo URL_ASSETS; ?>/js/jquery-3.7.1.min.js"></script>
+<script src="<?php echo URL_ASSETS; ?>/js/auth.js"></script>
 </body>
 </html>

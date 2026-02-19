@@ -224,5 +224,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         </div>
     </div>
 </main>
+<script src="<?php echo URL_ASSETS; ?>/js/auth.js"></script>
 </body>
 </html>

@@ -100,5 +100,4 @@ $finalOgUrl     = !empty($specificSeo['og_url']) ? $specificSeo['og_url'] : ($gl
         ?>")
     };
     </script>
-    <script src="<?php echo URL_ASSETS; ?>/js/global.js"></script>
 </head>
