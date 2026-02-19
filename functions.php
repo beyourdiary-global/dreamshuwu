@@ -794,72 +794,78 @@ function fetchPageInfoRowById($conn, $table, $id) {
  * @param string $publicUrl The URL of the page (e.g. '/admin/product')
  * @return array List of allowed action names (e.g. ['View', 'Add', 'Edit'])
  */
+
+
+/**
+ * [UPDATED] Runtime Permission Enforcement (RBAC)
+ * Checks permissions for the current page URL against the user's assigned role.
+ * Optimized: Uses separate queries to reduce table locking potential.
+ * @param string $publicUrl The URL of the page (e.g. '/dashboard.php?view=tags')
+ * @return array List of allowed action names (e.g. ['View', 'Add', 'Edit'])
+ */
 function getPageRuntimePermissions($publicUrl) {
-        global $conn;
+    global $conn;
 
-        // LOGIC 0: Check User Group Permissions first (deny early)
-        $rawGroup = $_SESSION['user_group'] ?? '';
-        $userGroup = normalizeGroupKey($rawGroup);
-        $allowedUserGroups = ['admin', 'super_admin', 'administrator', 'system_admin'];
-        if (!in_array($userGroup, $allowedUserGroups, true)) {
-            return [];
-        }
-        
-        // 1. Sanitize and normalize URL (remove query params)
-        $cleanUrl = strtok($publicUrl, '?');
-        
-        // QUERY 1: Resolve Page ID
-        $stmt = $conn->prepare("SELECT id FROM " . PAGE_INFO_LIST . " WHERE public_url = ? AND status = 'A' LIMIT 1");
-        $stmt->bind_param("s", $cleanUrl);
-        $stmt->execute();
-        $stmt->store_result();
-        
-        if ($stmt->num_rows === 0) {
-            $stmt->close();
-            return []; // Page not defined or is Deleted -> Deny all
-        }
-        
-        $pageId = 0;
-        $stmt->bind_result($pageId);
-        $stmt->fetch();
+    // 1. Get user's role ID from session
+    // Make sure your login script sets $_SESSION['role_id']!
+    $roleId = $_SESSION['role_id'] ?? 0;
+    
+    // If the user doesn't have a role, deny everything immediately.
+    if ($roleId <= 0) {
+        return []; 
+    }
+    
+    // 2. Resolve Page ID from the exact URL
+    $stmt = $conn->prepare("SELECT id FROM " . PAGE_INFO_LIST . " WHERE public_url = ? AND status = 'A' LIMIT 1");
+    $stmt->bind_param("s", $publicUrl);
+    $stmt->execute();
+    $stmt->store_result();
+    
+    if ($stmt->num_rows === 0) {
         $stmt->close();
+        return []; // Page not registered or is inactive -> Deny all
+    }
+    
+    $pageId = 0;
+    $stmt->bind_result($pageId);
+    $stmt->fetch();
+    $stmt->close();
 
-        // QUERY 2: Fetch Action IDs (from Bridge Table)
-        $actionIds = [];
-        $stmt = $conn->prepare("SELECT action_id FROM " . ACTION_MASTER . " WHERE page_id = ?");
-        $stmt->bind_param("i", $pageId);
-        $stmt->execute();
-        $stmt->bind_result($aId);
-        
-        while($stmt->fetch()) {
-            $actionIds[] = $aId;
+    // 3. Fetch Action IDs from the User Role Permission bridge table
+    $actionIds = [];
+    $stmt = $conn->prepare("SELECT action_id FROM " . USER_ROLE_PERMISSION . " WHERE page_id = ? AND user_role_id = ?");
+    $stmt->bind_param("ii", $pageId, $roleId);
+    $stmt->execute();
+    $stmt->bind_result($aId);
+    
+    while($stmt->fetch()) {
+        $actionIds[] = $aId;
+    }
+    $stmt->close();
+
+    // Optimization: If no actions bound for this role on this page, return early
+    if (empty($actionIds)) {
+        return [];
+    }
+
+    // 4. Fetch the actual Action Names using the IDs
+    $allowedActions = [];
+    
+    // Security: Ensure all IDs are integers to prevent SQL Injection
+    $safeIds = implode(',', array_map('intval', $actionIds));
+    
+    $sql = "SELECT name FROM " . PAGE_ACTION . " WHERE id IN ($safeIds) AND status = 'A'";
+    $result = $conn->query($sql);
+    
+    if ($result) {
+        while ($row = $result->fetch_assoc()) {
+            $allowedActions[] = $row['name'];
         }
-        $stmt->close();
+        $result->free();
+    }
 
-        // Optimization: If no actions bound, return early to save DB call
-        if (empty($actionIds)) {
-            return [];
-        }
-
-        // QUERY 3: Fetch Action Names (from Definition Table)
-        $allowedActions = [];
-        
-        // Security: Ensure all IDs are integers to prevent SQL Injection in the IN clause
-        $safeIds = implode(',', array_map('intval', $actionIds));
-        
-        $sql = "SELECT name FROM " . PAGE_ACTION . " WHERE id IN ($safeIds) AND status = 'A'";
-        $result = $conn->query($sql);
-        
-        if ($result) {
-            while ($row = $result->fetch_assoc()) {
-                $allowedActions[] = $row['name'];
-            }
-            $result->free();
-        }
-
-        return $allowedActions; 
+    return $allowedActions; 
 }
-
 /**
  * [NEW] Fetch a single user_role row by id.
  */
@@ -967,5 +973,4 @@ function checkRoleNameDuplicate($conn, $nameCn, $nameEn, $excludeId = 0) {
 
     return $exists;
 }
-?>
 

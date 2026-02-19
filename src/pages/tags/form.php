@@ -23,6 +23,47 @@ $tagId = $_GET['id'] ?? null;
 $tagId = $tagId !== null ? (int) $tagId : null;
 $isEditMode = !empty($tagId);
 
+// 3. RBAC Permission Check
+$currentUrl = '/dashboard.php?view=tag_form'; 
+$allowedActions = getPageRuntimePermissions($currentUrl);
+
+$canView = in_array('View', $allowedActions);
+$canAdd  = in_array('Add', $allowedActions);
+$canEdit = in_array('Edit', $allowedActions);
+
+if (!$canView) {
+    $_SESSION['flash_msg'] = 'Access Denied: You cannot view this form.';
+    $_SESSION['flash_type'] = 'danger';
+    if ($isEmbeddedTagForm || headers_sent()) {
+        echo "<script>window.location.href='" . URL_USER_DASHBOARD . "?view=tags';</script>";
+    } else {
+        header("Location: " . URL_USER_DASHBOARD . "?view=tags");
+    }
+    exit();
+}
+
+if ($isEditMode && !$canEdit) {
+    $_SESSION['flash_msg'] = 'Access Denied: You do not have permission to edit tags.';
+    $_SESSION['flash_type'] = 'danger';
+    if ($isEmbeddedTagForm || headers_sent()) {
+        echo "<script>window.location.href='" . URL_USER_DASHBOARD . "?view=tags';</script>";
+    } else {
+        header("Location: " . URL_USER_DASHBOARD . "?view=tags");
+    }
+    exit();
+}
+
+if (!$isEditMode && !$canAdd) {
+    $_SESSION['flash_msg'] = 'Access Denied: You do not have permission to add new tags.';
+    $_SESSION['flash_type'] = 'danger';
+    if ($isEmbeddedTagForm || headers_sent()) {
+        echo "<script>window.location.href='" . URL_USER_DASHBOARD . "?view=tags';</script>";
+    } else {
+        header("Location: " . URL_USER_DASHBOARD . "?view=tags");
+    }
+    exit();
+}
+
 if ($isEmbeddedTagForm) {
     $listPageUrl = URL_USER_DASHBOARD . '?view=tags';
     $formActionUrl = URL_USER_DASHBOARD . '?view=tag_form' . ($isEditMode ? '&id=' . intval($tagId) : ''); 
@@ -41,14 +82,14 @@ $message = "";
 $msgType = "";
 $existingTagRow = null;
 
-// [NEW] Flash Message Check (Reads message after redirect)
+// Flash Message Check (Reads message after redirect)
 if (isset($_SESSION['flash_msg'])) {
     $message = $_SESSION['flash_msg'];
     $msgType = $_SESSION['flash_type'];
     unset($_SESSION['flash_msg'], $_SESSION['flash_type']);
 }
 
-// [NEW] Log "View" Action (Run only on GET request)
+// Log "View" Action (Run only on GET request)
 if ($_SERVER["REQUEST_METHOD"] !== "POST") {
     if (!defined('TAG_FORM_VIEW_LOGGED')) {
         define('TAG_FORM_VIEW_LOGGED', true);
@@ -66,7 +107,7 @@ if ($_SERVER["REQUEST_METHOD"] !== "POST") {
 }
 
 try {
-    // 3. Load Existing Data (Initial Page Load)
+    // 4. Load Existing Data (Initial Page Load)
     if ($isEditMode) {
         $stmt = $conn->prepare("SELECT id, name, created_at, updated_at, created_by, updated_by FROM " . $tagTable . " WHERE id = ?");
         $stmt->bind_param("i", $tagId);
@@ -90,7 +131,7 @@ try {
         $stmt->close();
     }
 
-    // 4. Handle Form Submission (POST)
+    // 5. Handle Form Submission (POST)
     if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $tagName = trim($_POST['tag_name'] ?? '');
         $postedTagId = isset($_POST['tag_id']) ? (int) $_POST['tag_id'] : null;
@@ -106,7 +147,7 @@ try {
         if (empty($tagName)) {
             $message = "标签名称不能为空"; $msgType = "danger";
         } else {
-            // [NEW] Use global helper to check changes and redirect
+            // Use global helper to check changes and redirect
             if ($isEditMode && !empty($existingTagRow)) {
                 checkNoChangesAndRedirect(['name' => $tagName], $existingTagRow);
             }
@@ -127,7 +168,7 @@ try {
             } else {
                 $chk->close(); // Close duplicate check statement immediately
 
-                // [CRITICAL] If Edit Mode, ensure we have Old Data for Audit Log BEFORE updating
+                // If Edit Mode, ensure we have Old Data for Audit Log BEFORE updating
                 if ($isEditMode && empty($existingTagRow)) {
                     $fetchOld = $conn->prepare("SELECT id, name, created_at, updated_at, created_by, updated_by FROM " . $tagTable . " WHERE id = ?");
                     $fetchOld->bind_param("i", $tagId);
@@ -151,11 +192,11 @@ try {
                 }
 
                 if ($stmt->execute()) {
-                    // [CRITICAL FIX] Capture ID and Close Statement immediately
+                    // Capture ID and Close Statement immediately
                     $targetId = $isEditMode ? $tagId : $conn->insert_id;
                     $stmt->close(); 
 
-                    // 1. [NEW] Prepare Data for Audit Log (Fetch fresh data)
+                    // Prepare Data for Audit Log (Fetch fresh data)
                     $newData = null;
                     $reload = $conn->prepare("SELECT id, name, created_at, updated_at, created_by, updated_by FROM " . $tagTable . " WHERE id = ?");
                     if ($reload) {
@@ -186,7 +227,7 @@ try {
                         $existingTagRow = ['id' => $targetId, 'name' => $tagName];
                     }
 
-                    // 2. [AUDIT] Log the Action (ONLY ONCE)
+                    // Log the Action (ONLY ONCE)
                     if (function_exists('logAudit')) {
                         logAudit([
                             'page'           => $auditPage,

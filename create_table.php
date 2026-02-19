@@ -28,7 +28,25 @@ echo "<hr>";
 
 $tables = [];
 
-// 1. Users
+// 0. User Role (Moved up for Foreign Key dependency)
+$tables['user_role'] = "
+CREATE TABLE IF NOT EXISTS user_role (
+  id BIGINT NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
+  name_cn VARCHAR(255) NOT NULL COMMENT 'Chinese Name',
+  name_en VARCHAR(255) NOT NULL COMMENT 'English Name',
+  description VARCHAR(500) DEFAULT NULL COMMENT 'Role Description',
+  status CHAR(1) NOT NULL DEFAULT 'A' COMMENT 'Active / Deleted (A/D)',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT 'Record creation timestamp',
+  created_by VARCHAR(100) DEFAULT NULL COMMENT 'User who created',
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Record last updated timestamp',
+  updated_by VARCHAR(100) DEFAULT NULL COMMENT 'User who updated',
+  PRIMARY KEY (id),
+  UNIQUE KEY unique_role_name (name_en, name_cn),
+  INDEX idx_role_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+";
+
+// 1. Users (Updated with user_role_id)
 $tables['users'] = "
 CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -37,8 +55,10 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash VARCHAR(255) NOT NULL COMMENT 'Hashed password',
     gender ENUM('M','F','O') DEFAULT NULL COMMENT 'Gender: M=Male, F=Female, O=Other',
     birthday DATE DEFAULT NULL COMMENT 'User birthday',
+    user_role_id BIGINT DEFAULT NULL COMMENT 'Foreign Key to user_role',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT 'Registration timestamp',
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Last update timestamp'
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Last update timestamp',
+    CONSTRAINT fk_users_role FOREIGN KEY (user_role_id) REFERENCES user_role(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ";
 
@@ -226,23 +246,6 @@ CREATE TABLE IF NOT EXISTS action_master (
 ";
 
 
-$tables['user_role'] = "
-CREATE TABLE IF NOT EXISTS user_role (
-  id BIGINT NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
-  name_cn VARCHAR(255) NOT NULL COMMENT 'Chinese Name',
-  name_en VARCHAR(255) NOT NULL COMMENT 'English Name',
-  description VARCHAR(500) DEFAULT NULL COMMENT 'Role Description',
-  status CHAR(1) NOT NULL DEFAULT 'A' COMMENT 'Active / Deleted (A/D)',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT 'Record creation timestamp',
-  created_by VARCHAR(100) DEFAULT NULL COMMENT 'User who created',
-  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Record last updated timestamp',
-  updated_by VARCHAR(100) DEFAULT NULL COMMENT 'User who updated',
-  PRIMARY KEY (id),
-  UNIQUE KEY unique_role_name (name_en, name_cn),
-  INDEX idx_role_status (status)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-";
-
 $tables['user_role_permission'] = "
 CREATE TABLE IF NOT EXISTS user_role_permission (
   id BIGINT NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
@@ -275,6 +278,18 @@ foreach ($tables as $name => $sql) {
         echo "Table '<strong>$name</strong>' checked/created.<br>";
     } else {
         echo "Error table '<strong>$name</strong>': " . $conn->error . "<br>";
+    }
+}
+
+// 5. Apply Schema Updates (ALTER TABLE)
+// Check if user_role_id exists in users table
+$checkCol = $conn->query("SHOW COLUMNS FROM users LIKE 'user_role_id'");
+if ($checkCol && $checkCol->num_rows === 0) {
+    $alterSql = "ALTER TABLE users ADD COLUMN user_role_id BIGINT DEFAULT NULL COMMENT 'Foreign Key to user_role', ADD CONSTRAINT fk_users_role FOREIGN KEY (user_role_id) REFERENCES user_role(id) ON DELETE SET NULL";
+    if ($conn->query($alterSql) === TRUE) {
+        echo "Table '<strong>users</strong>' altered successfully (added user_role_id).<br>";
+    } else {
+        echo "Error altering table '<strong>users</strong>': " . $conn->error . "<br>";
     }
 }
 

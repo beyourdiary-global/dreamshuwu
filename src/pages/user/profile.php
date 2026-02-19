@@ -7,6 +7,35 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
     exit();
 }
 
+// 2. RBAC Permission Check
+$currentUrl = '/dashboard.php?view=profile';
+$allowedActions = getPageRuntimePermissions($currentUrl);
+
+$canView = in_array('View', $allowedActions);
+$canEdit = in_array('Edit', $allowedActions);
+
+if (!$canView) {
+    if (defined('PROFILE_EMBEDDED') || headers_sent()) {
+        echo '
+        <div class="container-fluid d-flex align-items-center justify-content-center" style="min-height: 400px;">
+            <div class="text-center">
+                <div class="mb-4">
+                    <i class="fa-solid fa-lock text-danger" style="font-size: 5rem; opacity: 0.2;"></i>
+                </div>
+                <h3 class="text-dark fw-bold">无权访问此页面</h3>
+                <p class="text-muted">抱歉，您的角色没有权限查看"个人资料"。请联系系统管理员进行授权。</p>
+                <a href="' . URL_USER_DASHBOARD . '" class="btn btn-outline-primary mt-3">
+                    <i class="fa-solid fa-house me-2"></i>返回仪表盘
+                </a>
+            </div>
+        </div>';
+        return;
+    } else {
+        header("Location: " . URL_USER_DASHBOARD);
+    }
+    exit();
+}
+
 $userId = $_SESSION['user_id'];
 $message = "";
 $msgType = ""; 
@@ -26,6 +55,7 @@ if (isset($_SESSION['flash_msg'])) {
 
 // --- HANDLE FORM A: UPDATE INFO ---
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['action']) && $_POST['action'] === 'update_info') {
+    if (!$canEdit) { $message = "权限不足：您没有编辑个人资料的权限。"; $msgType = "danger"; } else {
     $name = trim($_POST['display_name']);
     $email = trim($_POST['email']);
     $gender = $_POST['gender'] ?? null;
@@ -141,11 +171,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['action']) && $_POST['
             }
         }
     }
+    } // end $canEdit else
 }
 
 // ... (Rest of the file remains unchanged) ...
 // --- HANDLE FORM B: CHANGE PASSWORD ---
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['action']) && $_POST['action'] === 'change_pwd') {
+    if (!$canEdit) { $message = "权限不足：您没有修改密码的权限。"; $msgType = "danger"; } else {
     // ... existing password logic ...
     $currentPwd = $_POST['current_password'];
     $newPwd = $_POST['new_password'];
@@ -198,6 +230,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['action']) && $_POST['
             $passwordRedirectUrl = URL_LOGIN;
         }
     }
+    } // end $canEdit else
 }
 
 // Fetch Data for View
@@ -307,7 +340,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && function_exists('logAudit') && !defi
                 </div>
             </div>
             <div class="mt-3">
-                <button type="submit" class="btn-save">保存资料</button>
+                <button type="submit" class="btn-save" <?php if (!$canEdit) echo 'disabled'; ?>>保存资料</button>
             </div>
         </form>
     </div>
@@ -331,7 +364,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && function_exists('logAudit') && !defi
                 </div>
             </div>
             <div class="mt-3">
-                <button type="submit" class="btn-danger">修改密码</button>
+                <button type="submit" class="btn-danger" <?php if (!$canEdit) echo 'disabled'; ?>>修改密码</button>
             </div>
         </form>
     </div>

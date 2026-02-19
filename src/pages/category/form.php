@@ -25,6 +25,47 @@ $isEmbeddedTagForm = isset($EMBED_CAT_FORM_PAGE) && $EMBED_CAT_FORM_PAGE === tru
 $id = $_GET['id'] ?? null;
 $isEdit = !empty($id);
 
+// 2. RBAC Permission Check
+$currentUrl = '/dashboard.php?view=cat_form'; 
+$allowedActions = getPageRuntimePermissions($currentUrl);
+
+$canView = in_array('View', $allowedActions);
+$canAdd  = in_array('Add', $allowedActions);
+$canEdit = in_array('Edit', $allowedActions);
+
+if (!$canView) {
+    $_SESSION['flash_msg'] = 'Access Denied: You cannot view this form.';
+    $_SESSION['flash_type'] = 'danger';
+    if ($isEmbeddedTagForm || headers_sent()) {
+        echo "<script>window.location.href='" . URL_USER_DASHBOARD . "?view=categories';</script>";
+    } else {
+        header("Location: " . URL_USER_DASHBOARD . "?view=categories");
+    }
+    exit();
+}
+
+if ($isEdit && !$canEdit) {
+    $_SESSION['flash_msg'] = 'Access Denied: You do not have permission to edit categories.';
+    $_SESSION['flash_type'] = 'danger';
+    if ($isEmbeddedTagForm || headers_sent()) {
+        echo "<script>window.location.href='" . URL_USER_DASHBOARD . "?view=categories';</script>";
+    } else {
+        header("Location: " . URL_USER_DASHBOARD . "?view=categories");
+    }
+    exit();
+}
+
+if (!$isEdit && !$canAdd) {
+    $_SESSION['flash_msg'] = 'Access Denied: You do not have permission to add new categories.';
+    $_SESSION['flash_type'] = 'danger';
+    if ($isEmbeddedTagForm || headers_sent()) {
+        echo "<script>window.location.href='" . URL_USER_DASHBOARD . "?view=categories';</script>";
+    } else {
+        header("Location: " . URL_USER_DASHBOARD . "?view=categories");
+    }
+    exit();
+}
+
 if ($isEmbeddedTagForm) {
     $listPageUrl = URL_USER_DASHBOARD . '?view=categories';
     $formActionUrl = URL_USER_DASHBOARD . '?view=cat_form' . ($isEdit ? '&id=' . intval($id) : ''); 

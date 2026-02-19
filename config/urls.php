@@ -70,4 +70,3 @@ defined('URL_USER_ROLE')       || define('URL_USER_ROLE', URL_USER_DASHBOARD . '
 defined('URL_USER_ROLE_API')   || define('URL_USER_ROLE_API', SITEURL . '/src/pages/admin/user-role/index.php');
 
 defined('PATH_USER_ROLE_INDEX') || define('PATH_USER_ROLE_INDEX', 'src/pages/admin/user-role/index.php');
-?>

@@ -2,24 +2,81 @@
 // Path: src/pages/category/index.php
 require_once dirname(__DIR__, 3) . '/common.php';
 
-
-// 1. Auth Check
-if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
-    if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
-        header('Content-Type: application/json');
-        echo safeJsonEncode(["error" => "Unauthorized"]);
-        exit();
-    }
-    header("Location: " . URL_LOGIN);
-    exit();
-}
-
 $catTable  = NOVEL_CATEGORY;
 $linkTable = CATEGORY_TAG;
 $tagTable  = NOVEL_TAGS;
 $auditPage = 'Category Management'; // Define audit page for logging
 $viewQuery = "SELECT id, name FROM " . $catTable;
 $deleteQuery = "DELETE FROM " . $catTable . " WHERE id = ?";
+
+// Request Type Detection
+$isAjaxRequest = isset($_GET['mode']) && $_GET['mode'] === 'data';
+$isDeleteRequest = isset($_POST['mode']) && $_POST['mode'] === 'delete';
+
+// 1. Auth Check
+if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
+    if ($isAjaxRequest || $isDeleteRequest) {
+        header('Content-Type: application/json');
+        echo json_encode([
+            'draw' => intval($_GET['draw'] ?? 0),
+            'recordsTotal' => 0,
+            'recordsFiltered' => 0,
+            'data' => [],
+            'error' => 'Session expired. Please login again.'
+        ]);
+        exit();
+    }
+    header("Location: " . URL_LOGIN); 
+    exit();
+}
+
+// 2. RBAC Permission Check
+$currentUrl = '/dashboard.php?view=categories'; 
+$allowedActions = getPageRuntimePermissions($currentUrl);
+
+$canView   = in_array('View', $allowedActions);
+$canAdd    = in_array('Add', $allowedActions);
+$canEdit   = in_array('Edit', $allowedActions);
+$canDelete = in_array('Delete', $allowedActions);
+
+// Block Page Access / List API
+if (!$canView) {
+    if ($isAjaxRequest) {
+        header('Content-Type: application/json');
+        echo json_encode([
+            'draw' => intval($_GET['draw'] ?? 0),
+            'recordsTotal' => 0,
+            'recordsFiltered' => 0,
+            'data' => [],
+            'error' => 'Access Denied: You lack view permissions.'
+        ]);
+        exit();
+    }
+    
+    echo '
+    <div class="container-fluid d-flex align-items-center justify-content-center" style="min-height: 400px;">
+        <div class="text-center">
+            <div class="mb-4">
+                <i class="fa-solid fa-lock text-danger" style="font-size: 5rem; opacity: 0.2;"></i>
+            </div>
+            <h3 class="text-dark fw-bold">无权访问此页面</h3>
+            <p class="text-muted">抱歉，您的角色没有权限查看“分类管理”。请联系系统管理员进行授权。</p>
+            <a href="' . URL_USER_DASHBOARD . '" class="btn btn-outline-primary mt-3">
+                <i class="fa-solid fa-house me-2"></i>返回仪表盘
+            </a>
+        </div>
+    </div>';
+    
+    return; 
+}
+
+// Block Delete API
+if ($isDeleteRequest && !$canDelete) {
+    header('Content-Type: application/json');
+    echo json_encode(['success' => false, 'message' => 'Access Denied: You do not have permission to delete categories.']);
+    exit();
+}
+
 
 // 2. Embed Detection
 $isEmbeddedInDashboard = isset($EMBED_CATS_PAGE) && $EMBED_CATS_PAGE === true;
@@ -120,10 +177,20 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
         // Edit URL points to Dashboard
         $editUrl = URL_USER_DASHBOARD . "?view=cat_form&id=" . (int) $cat['id'];
         
-        $actions = '
-            <a href="'.$editUrl.'" class="btn btn-sm btn-outline-primary btn-action" title="编辑"><i class="fa-solid fa-pen"></i></a>
-            <button class="btn btn-sm btn-outline-danger btn-action delete-btn" data-id="'.$cat['id'].'" data-name="'.htmlspecialchars($cat['name']).'" title="删除"><i class="fa-solid fa-trash"></i></button>
-        ';
+        $actions = '';
+
+        if ($canEdit) {
+            $actions .= '<a href="'.$editUrl.'" class="btn btn-sm btn-outline-primary btn-action" title="编辑"><i class="fa-solid fa-pen"></i></a> ';
+        }
+
+        if ($canDelete) {
+            $actions .= '<button class="btn btn-sm btn-outline-danger btn-action delete-btn" data-id="'.$cat['id'].'" data-name="'.htmlspecialchars($cat['name']).'" title="删除"><i class="fa-solid fa-trash"></i></button>';
+        }
+
+        if (empty($actions)) {
+            $actions = '<span class="text-muted small">无操作权限</span>';
+        }
+
         $data[] = [htmlspecialchars($cat['name']), $tagHtml, $actions];
     }
 
@@ -199,7 +266,7 @@ if (isset($_POST['mode']) && $_POST['mode'] === 'delete') {
 $fullApiUrl = URL_NOVEL_CATS_API;
 
 // [NEW] Log that user viewed this page
-if (function_exists('logAudit')) {
+if (function_exists('logAudit') && $canView) {
     logAudit([
         'page'           => $auditPage,
         'action'         => 'V',
@@ -224,7 +291,9 @@ if ($isEmbeddedInDashboard): ?>
     <div class="card category-card">
         <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
             <h4 class="m-0 text-primary"><i class="fa-solid fa-layer-group"></i> 分类管理</h4>
+            <?php if ($canAdd): ?>
             <a href="<?php echo URL_USER_DASHBOARD; ?>?view=cat_form" class="btn btn-primary desktop-add-btn"><i class="fa-solid fa-plus"></i> 新增分类</a>
+            <?php endif; ?>
         </div>
         <div class="card-body">
             <?php if ($flashMsg): ?>
@@ -240,7 +309,9 @@ if ($isEmbeddedInDashboard): ?>
         </div>
     </div>
 </div>
+<?php if ($canAdd): ?>
 <a href="<?php echo URL_USER_DASHBOARD; ?>?view=cat_form" class="btn btn-primary btn-add-mobile"><i class="fa-solid fa-plus fa-lg"></i></a>
+<?php endif; ?>
 <?php else: ?>
 <?php endif; ?>
 <?php $pageMetaKey = 'category'; ?>

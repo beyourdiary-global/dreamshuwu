@@ -7,6 +7,17 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
     exit();
 }
 
+// 2. RBAC Permission Checks for all dashboard views
+$permissions = [
+    'tags' => in_array('View', getPageRuntimePermissions('/dashboard.php?view=tags')),
+    'categories' => in_array('View', getPageRuntimePermissions('/dashboard.php?view=categories')),
+    'profile' => in_array('View', getPageRuntimePermissions('/dashboard.php?view=profile')),
+    'meta' => in_array('View', getPageRuntimePermissions('/dashboard.php?view=meta')),
+    'webSetting' => in_array('View', getPageRuntimePermissions('/dashboard.php?view=webSetting')),
+    'admin' => in_array('View', getPageRuntimePermissions('/dashboard.php?view=admin')),
+];
+
+
 $currentUserId = $_SESSION['user_id'];
 $userTable = USR_LOGIN;
 $dashTable = USR_DASHBOARD;
@@ -86,17 +97,16 @@ $profileComponents = [
 
 // --- SIDEBAR ITEMS ---
 $sidebarItems = [
-    ['label' => '首页',     'url' => URL_USER_DASHBOARD, 'icon' => 'fa-solid fa-house-user', 'active' => (!$isTagSection && !$isCatSection && !$isProfileView && !$isMetaView && !$isWebSettingView && !$isAdminSection)],
-    ['label' => '账号中心', 'url' => URL_HOME,           'icon' => 'fa-solid fa-id-card',   'active' => false],
-    ['label' => '写小说',   'url' => URL_AUTHOR_DASHBOARD, 'icon' => 'fa-solid fa-pen-nib',  'active' => false],
-    ['label' => '小说分类', 'url' => URL_NOVEL_CATS,     'icon' => 'fa-solid fa-layer-group','active' => $isCatSection],
-    ['label' => '小说标签', 'url' => URL_NOVEL_TAGS,     'icon' => 'fa-solid fa-tags',      'active' => $isTagSection],
-    ['label' => 'META 设置',  'url' => URL_USER_DASHBOARD . '?view=meta_settings', 'icon' => 'fa-solid fa-sliders', 'active' => $isMetaView],
-    ['label' => '网站设置',   'url' => URL_USER_DASHBOARD . '?view=web_settings', 'icon' => 'fa-solid fa-paintbrush', 'active' => $isWebSettingView],
-    
-    // [UPDATED] Admin Dashboard Link
-    ['label' => '管理员',     'url' => URL_ADMIN_DASHBOARD, 'icon' => 'fa-solid fa-user-shield', 'active' => $isAdminSection]
+    ['label' => '首页',     'url' => URL_USER_DASHBOARD, 'icon' => 'fa-solid fa-house-user', 'active' => (!$isTagSection && !$isCatSection && !$isProfileView && !$isMetaView && !$isWebSettingView && !$isAdminSection), 'permission' => true],
+    ['label' => '账号中心', 'url' => URL_USER_DASHBOARD . '?view=profile', 'icon' => 'fa-solid fa-id-card', 'active' => $isProfileView, 'permission' => $permissions['profile']],
+    ['label' => '写小说',   'url' => URL_AUTHOR_DASHBOARD, 'icon' => 'fa-solid fa-pen-nib',  'active' => false, 'permission' => true], // Assuming all users can be authors
+    ['label' => '小说分类', 'url' => URL_USER_DASHBOARD . '?view=categories', 'icon' => 'fa-solid fa-layer-group','active' => $isCatSection, 'permission' => $permissions['categories']],
+    ['label' => '小说标签', 'url' => URL_USER_DASHBOARD . '?view=tags', 'icon' => 'fa-solid fa-tags', 'active' => $isTagSection, 'permission' => $permissions['tags']],
+    ['label' => 'META 设置',  'url' => URL_USER_DASHBOARD . '?view=meta_settings', 'icon' => 'fa-solid fa-sliders', 'active' => $isMetaView, 'permission' => $permissions['meta']],
+    ['label' => '网站设置',   'url' => URL_USER_DASHBOARD . '?view=web_settings', 'icon' => 'fa-solid fa-paintbrush', 'active' => $isWebSettingView, 'permission' => $permissions['webSetting']],
+    ['label' => '管理员', 'url' => URL_USER_DASHBOARD . '?view=admin', 'icon' => 'fa-solid fa-user-shield', 'active' => $isAdminSection, 'permission' => $permissions['admin']]
 ];
+
 
 $quickActions = [
     ['label' => '浏览历史', 'url' => URL_USER_HISTORY,     'icon' => 'fa-solid fa-clock-rotate-left',    'style' => ''],
@@ -138,11 +148,13 @@ switch ($currentView) {
     <aside class="dashboard-sidebar">
         <ul class="sidebar-menu">
             <?php foreach ($sidebarItems as $item): ?>
+                <?php if ($item['permission']): ?>
                 <li>
                     <a href="<?php echo $item['url']; ?>" class="<?php echo $item['active'] ? 'active' : ''; ?>">
                         <i class="<?php echo $item['icon']; ?>"></i> <?php echo $item['label']; ?>
                     </a>
                 </li>
+                <?php endif; ?>
             <?php endforeach; ?>
             <li style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 10px;">
             <a href="<?php echo URL_LOGOUT; ?>" class="logout-btn" style="color: #d9534f;" data-api-url="<?php echo URL_LOGOUT; ?>"> 
@@ -187,51 +199,47 @@ switch ($currentView) {
         <?php 
         if ($isProfileView):
             if (!defined('PROFILE_EMBEDDED')) define('PROFILE_EMBEDDED', true);
-            require BASE_PATH . PATH_PROFILE;
+            require_once __DIR__ . '/../profile.php';
 
         elseif ($isTagListView):
             $EMBED_TAGS_PAGE = true;
-            require BASE_PATH . PATH_NOVEL_TAGS_INDEX;
+            require_once dirname(__DIR__) . '/tags/index.php';
         
         elseif ($isTagFormView):
             $EMBED_TAG_FORM_PAGE = true;
-            require BASE_PATH . PATH_NOVEL_TAGS_FORM;
+            require_once dirname(__DIR__) . '/tags/form.php';
 
         elseif ($isCatListView):
             $EMBED_CATS_PAGE = true;
-            require BASE_PATH . PATH_NOVEL_CATS_INDEX;
+            require_once dirname(__DIR__) . '/category/index.php';
         
         elseif ($isCatFormView):
             $EMBED_CAT_FORM_PAGE = true;
-            require BASE_PATH . PATH_NOVEL_CATS_FORM;
+            require_once dirname(__DIR__) . '/category/form.php';
         
         elseif ($isMetaView):
             $EMBED_META_PAGE = true;
-            require BASE_PATH . PATH_META_SETTINGS;
+            require_once dirname(__DIR__) . '/meta/index.php';
         
         elseif ($isWebSettingView):
             $EMBED_WEB_SETTING_PAGE = true;
-            require BASE_PATH . PATH_WEB_SETTINGS;
+            require_once dirname(__DIR__) . '/webSetting/index.php';
 
-        // [NEW] Embedded Admin View
         elseif ($isAdminHome):
             $EMBED_ADMIN_PAGE = true;
-            require BASE_PATH . PATH_ADMIN_INDEX;
+            require_once dirname(__DIR__) . '/admin/index.php';
 
-        // [NEW] Embedded Page Action Feature
         elseif ($isPageActionView):
             $EMBED_PAGE_ACTION = true;
-            require BASE_PATH . PATH_PAGE_ACTION;
+            require_once dirname(__DIR__, 2) . '/admin/page-action.php';
 
-        // [NEW] Page Information List Feature
         elseif ($isPageInfoView):
             $EMBED_PAGE_INFO = true;
-            require BASE_PATH . PATH_PAGE_INFO_INDEX;
+            require_once dirname(__DIR__, 2) . '/admin/page-information-list.php';
 
-        // [NEW] User Role Management Feature
         elseif ($isUserRoleView):
             $EMBED_USER_ROLE = true;
-            require BASE_PATH . PATH_USER_ROLE_INDEX;
+            require_once dirname(__DIR__, 2) . '/admin/user-role.php';
         
         else: ?>
             <div class="quick-actions-grid">
@@ -269,7 +277,7 @@ switch ($currentView) {
 <?php elseif ($isAdminHome || $isPageActionView || $isPageInfoView || $isUserRoleView): ?>
     <script src="<?php echo URL_ASSETS; ?>/js/admin.js"></script>
 <?php endif; ?>
-<script src="<?php echo URL_ASSETS; ?>/js/login-script.js"></script>
+<script src="<?php echo URL_ASSETS; ?>/js/auth.js"></script>
 <script src="<?php echo URL_ASSETS; ?>/js/logout-handler.js"></script>
 </body>
 </html>

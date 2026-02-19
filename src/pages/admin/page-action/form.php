@@ -3,12 +3,26 @@ $recordId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 $isEditMode = $recordId > 0;
 $formRow = ['id' => 0, 'name' => '', 'status' => 'A'];
 
+// RBAC Permission Check for Form
+if (!$canView) {
+    $_SESSION['flash_msg'] = 'Access Denied: You cannot view this form.';
+    $_SESSION['flash_type'] = 'danger';
+    pageActionRedirect($baseListUrl);
+}
+
+if ($isEditMode && !$canEdit) {
+    $_SESSION['flash_msg'] = 'Access Denied: You do not have permission to edit page actions.';
+    $_SESSION['flash_type'] = 'danger';
+    pageActionRedirect($baseListUrl);
+}
+
+if (!$isEditMode && !$canAdd) {
+    $_SESSION['flash_msg'] = 'Access Denied: You do not have permission to add page actions.';
+    $_SESSION['flash_type'] = 'danger';
+    pageActionRedirect($baseListUrl);
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['mode'])) {
-    if (!$hasPermission) {
-        $_SESSION['flash_msg'] = '权限不足：仅允许管理员组访问';
-        $_SESSION['flash_type'] = 'danger';
-        pageActionRedirect($baseListUrl);
-    }
 
     $formAction = $_POST['form_action'] ?? '';
     if ($formAction === 'save') {

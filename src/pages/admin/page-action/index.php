@@ -28,10 +28,15 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
     pageActionRedirect(URL_LOGIN);
 }
 
-$rawGroup = $_SESSION['user_group'] ?? (defined('USER_GROUP') ? USER_GROUP : '');
-$normalizedGroup = normalizeGroupKey($rawGroup);
-$allowedGroups = ['admin', 'administrator', 'super_admin', 'system_admin'];
-$hasPermission = true;
+// 2. RBAC Permission Check
+$currentUrl = '/dashboard.php?view=page_action';
+$allowedActions = getPageRuntimePermissions($currentUrl);
+
+$canView   = in_array('View', $allowedActions);
+$canAdd    = in_array('Add', $allowedActions);
+$canEdit   = in_array('Edit', $allowedActions);
+$canDelete = in_array('Delete', $allowedActions);
+$hasPermission = $canView; // Backward compatibility
 
 $baseListUrl = defined('URL_PAGE_ACTION') ? URL_PAGE_ACTION : (URL_USER_DASHBOARD . '?view=page_action');
 $formBaseUrl = $baseListUrl . '&pa_mode=form';
@@ -137,9 +142,9 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
 
 if (isset($_POST['mode']) && $_POST['mode'] === 'delete_api') {
     header('Content-Type: application/json');
-    if (!$hasPermission) {
+    if (!$canDelete) {
         http_response_code(403);
-        echo safeJsonEncode(['success' => false, 'message' => 'Forbidden']);
+        echo safeJsonEncode(['success' => false, 'message' => 'Access Denied: You do not have permission to delete page actions.']);
         exit();
     }
 
@@ -305,9 +310,18 @@ $queryForPager = [
 if ($isEmbeddedPageAction):
 ?>
 
-<?php if (!$hasPermission): ?>
-<div class="container-fluid px-0">
-    <div class="alert alert-danger mb-0">权限不足：仅允许管理员组访问页面操作管理。</div>
+<?php if (!$canView): ?>
+<div class="container-fluid d-flex align-items-center justify-content-center" style="min-height: 400px;">
+    <div class="text-center">
+        <div class="mb-4">
+            <i class="fa-solid fa-lock text-danger" style="font-size: 5rem; opacity: 0.2;"></i>
+        </div>
+        <h3 class="text-dark fw-bold">无权访问此页面</h3>
+        <p class="text-muted">抱歉，您的角色没有权限查看"页面操作管理"。请联系系统管理员进行授权。</p>
+        <a href="<?php echo URL_USER_DASHBOARD; ?>" class="btn btn-outline-primary mt-3">
+            <i class="fa-solid fa-house me-2"></i>返回仪表盘
+        </a>
+    </div>
 </div>
 <?php elseif ($pageActionMode === 'form'): ?>
     <?php require __DIR__ . '/form.php'; ?>
@@ -319,9 +333,11 @@ if ($isEmbeddedPageAction):
                 <div class="page-action-breadcrumb text-muted mb-1">Admin / Page Action</div>
                 <h4 class="m-0 text-primary"><i class="fa-solid fa-gears me-2"></i>页面操作管理</h4>
             </div>
+            <?php if ($canAdd): ?>
             <a href="<?php echo $formBaseUrl; ?>" class="btn btn-primary desktop-add-btn">
                 <i class="fa-solid fa-plus"></i> 新增操作
             </a>
+            <?php endif; ?>
         </div>
 
         <div class="card-body">
@@ -369,12 +385,19 @@ if ($isEmbeddedPageAction):
                                 <td><?php echo htmlspecialchars($item['name']); ?></td>
                                 <td><span class="badge bg-success">A</span></td>
                                 <td class="text-center">
+                                    <?php if ($canEdit): ?>
                                     <a href="<?php echo $formBaseUrl . '&id=' . (int)$item['id']; ?>" class="btn btn-sm btn-outline-primary btn-action" title="编辑">
                                         <i class="fa-solid fa-pen"></i>
                                     </a>
+                                    <?php endif; ?>
+                                    <?php if ($canDelete): ?>
                                     <button type="button" class="btn btn-sm btn-outline-danger btn-action page-action-delete-btn" data-id="<?php echo (int)$item['id']; ?>" data-name="<?php echo htmlspecialchars($item['name']); ?>" title="软删除">
                                         <i class="fa-solid fa-trash"></i>
                                     </button>
+                                    <?php endif; ?>
+                                    <?php if (!$canEdit && !$canDelete): ?>
+                                    <span class="text-muted small">无操作权限</span>
+                                    <?php endif; ?>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
@@ -398,12 +421,19 @@ if ($isEmbeddedPageAction):
                             </div>
                             <div class="page-action-mobile-body">
                                 <div class="d-flex justify-content-end gap-2">
+                                    <?php if ($canEdit): ?>
                                     <a href="<?php echo $formBaseUrl . '&id=' . (int)$item['id']; ?>" class="btn btn-sm btn-outline-primary">
                                         <i class="fa-solid fa-pen"></i> 编辑
                                     </a>
+                                    <?php endif; ?>
+                                    <?php if ($canDelete): ?>
                                     <button type="button" class="btn btn-sm btn-outline-danger page-action-delete-btn" data-id="<?php echo (int)$item['id']; ?>" data-name="<?php echo htmlspecialchars($item['name']); ?>">
                                         <i class="fa-solid fa-trash"></i> 软删除
                                     </button>
+                                    <?php endif; ?>
+                                    <?php if (!$canEdit && !$canDelete): ?>
+                                    <span class="text-muted small">无操作权限</span>
+                                    <?php endif; ?>
                                 </div>
                             </div>
                         </div>

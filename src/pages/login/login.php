@@ -67,6 +67,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 $_SESSION['user_id'] = (int)$user['id'];
                 $_SESSION['user_name'] = $user['name'] ?? $email;
                 $_SESSION['logged_in'] = true;
+                $_SESSION['role_id'] = isset($user['user_role_id']) ? (int)$user['user_role_id'] : 0;
                 
                 // Audit Log (Safely)
                 if (function_exists('logAudit')) {

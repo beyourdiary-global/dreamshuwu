@@ -13,12 +13,26 @@ $formRow = [
 ];
 $boundActions = [];
 
+// RBAC Permission Check for Form
+if (!$canView) {
+    $_SESSION['flash_msg'] = 'Access Denied: You cannot view this form.';
+    $_SESSION['flash_type'] = 'danger';
+    pageInfoRedirect($baseListUrl);
+}
+
+if ($isEditMode && !$canEdit) {
+    $_SESSION['flash_msg'] = 'Access Denied: You do not have permission to edit page information.';
+    $_SESSION['flash_type'] = 'danger';
+    pageInfoRedirect($baseListUrl);
+}
+
+if (!$isEditMode && !$canAdd) {
+    $_SESSION['flash_msg'] = 'Access Denied: You do not have permission to add page information.';
+    $_SESSION['flash_type'] = 'danger';
+    pageInfoRedirect($baseListUrl);
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['mode'])) {
-    if (isset($hasPermission) && !$hasPermission) {
-        $_SESSION['flash_msg'] = '权限不足：仅允许管理员组访问';
-        $_SESSION['flash_type'] = 'danger';
-        pageInfoRedirect($baseListUrl);
-    }
 
     $formAction = $_POST['action_type'] ?? '';
     if ($formAction === 'save') {
@@ -42,8 +56,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['mode'])) {
             pageInfoRedirect($redirectTo);
         }
 
-        if ($public_url[0] !== '/' || !preg_match('#^/[A-Za-z0-9/_\-.]*$#', $public_url)) {
-            $_SESSION['flash_msg'] = 'Public URL 格式无效，必须以 / 开头且仅包含字母、数字、/、_、-、.';
+        // [UPDATED] Regex now allows ?, =, and & for query parameters
+        if ($public_url[0] !== '/' || !preg_match('#^/[A-Za-z0-9/_\-.?=&]*$#', $public_url)) {
+            $_SESSION['flash_msg'] = 'Public URL 格式无效，必须以 / 开头且仅包含字母、数字、/、_、-、. 以及 ? = &';
             $_SESSION['flash_type'] = 'danger';
             pageInfoRedirect($redirectTo);
         }

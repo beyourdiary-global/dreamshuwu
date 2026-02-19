@@ -5,7 +5,7 @@ require_once dirname(__DIR__, 3) . '/common.php';
 $auditPage = 'Register Page';
 
 $dbTable = USR_LOGIN;
-$insertQuery = "INSERT INTO " . $dbTable . " (name, email, password_hash, gender, birthday) VALUES (?, ?, ?, ?, ?)";
+$insertQuery = "INSERT INTO " . $dbTable . " (name, email, password_hash, gender, birthday, user_role_id) VALUES (?, ?, ?, ?, ?, ?)";
 $checkQuery  = "SELECT id FROM " . $dbTable . " WHERE email = ?";
 
 $message = "";
@@ -69,13 +69,24 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $genderDb = $gender !== "" ? $gender : null;
             $birthdayDb = $birthday !== "" ? $birthday : null;
 
+            // [NEW] Determine Default Role (e.g., 'Member' or 'User')
+            $defaultRoleId = null;
+            // Try to find a role named 'Member' or 'User'
+            $roleStmt = $conn->prepare("SELECT id FROM " . USER_ROLE . " WHERE name_en IN ('Member', 'User') AND status = 'A' LIMIT 1");
+            if ($roleStmt) {
+                $roleStmt->execute();
+                $roleStmt->bind_result($fetchedRoleId);
+                if ($roleStmt->fetch()) { $defaultRoleId = $fetchedRoleId; }
+                $roleStmt->close();
+            }
+
             // Prepare the insertion SQL
             // UPDATE: Used USR_LOGIN constant instead of hardcoded 'users'
             $stmt = mysqli_prepare(
                 $conn,
                 $insertQuery
             );
-            mysqli_stmt_bind_param($stmt, "sssss", $name, $email, $hash, $genderDb, $birthdayDb);
+            mysqli_stmt_bind_param($stmt, "sssssi", $name, $email, $hash, $genderDb, $birthdayDb, $defaultRoleId);
             $success = mysqli_stmt_execute($stmt);
 
             if ($success) {
@@ -92,7 +103,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         'name'     => $name,
                         'email'    => $email,
                         'gender'   => $gender,
-                        'birthday' => $birthday
+                        'birthday' => $birthday,
+                        'role_id'  => $defaultRoleId
                     ],
                     'user_id'        => $newUserId
                 ]);
@@ -105,6 +117,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 $_SESSION['user_id'] = $userId ? (int)$userId : null;
                 $_SESSION['user_name'] = $name;
                 $_SESSION['logged_in'] = true;
+                $_SESSION['role_id'] = $defaultRoleId ? (int)$defaultRoleId : 0;
 
                 header("Location: " . URL_HOME);
                 exit();

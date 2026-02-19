@@ -32,20 +32,33 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
     pageInfoRedirect(URL_LOGIN);
 }
 
-$rawGroup = $_SESSION['user_group'] ?? '';
-$normalizedGroup = normalizeGroupKey($rawGroup);
-$allowedGroups = ['admin', 'super_admin', 'administrator', 'system_admin'];
-$hasPermission = true; //$hasPermission = in_array($normalizedGroup, $allowedGroups, true); removed comment to enable permission check
+// 2. RBAC Permission Check
+$currentUrl = '/dashboard.php?view=page_info';
+$allowedActions = getPageRuntimePermissions($currentUrl);
 
-if (!$hasPermission) {
-    $_SESSION['flash_msg'] = "权限不足：您属于 '{$rawGroup}' 组，无权访问此页面。";
-    $_SESSION['flash_type'] = 'danger';
+$canView   = in_array('View', $allowedActions);
+$canAdd    = in_array('Add', $allowedActions);
+$canEdit   = in_array('Edit', $allowedActions);
+$canDelete = in_array('Delete', $allowedActions);
+$hasPermission = $canView; // Backward compatibility
 
+if (!$canView) {
     if ($isEmbedded) {
-        echo '<div class="alert alert-danger">' . htmlspecialchars($_SESSION['flash_msg']) . '</div>';
+        echo '
+        <div class="container-fluid d-flex align-items-center justify-content-center" style="min-height: 400px;">
+            <div class="text-center">
+                <div class="mb-4">
+                    <i class="fa-solid fa-lock text-danger" style="font-size: 5rem; opacity: 0.2;"></i>
+                </div>
+                <h3 class="text-dark fw-bold">无权访问此页面</h3>
+                <p class="text-muted">抱歉，您的角色没有权限查看"页面信息列表"。请联系系统管理员进行授权。</p>
+                <a href="' . URL_USER_DASHBOARD . '" class="btn btn-outline-primary mt-3">
+                    <i class="fa-solid fa-house me-2"></i>返回仪表盘
+                </a>
+            </div>
+        </div>';
         return;
     }
-
     pageInfoRedirect(URL_USER_DASHBOARD);
 }
 
@@ -53,6 +66,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $actionType = $_POST['action_type'] ?? '';
 
     if ($actionType === 'delete') {
+        if (!$canDelete) {
+            $_SESSION['flash_msg'] = 'Access Denied: You do not have permission to delete.';
+            $_SESSION['flash_type'] = 'danger';
+            pageInfoRedirect($baseListUrl);
+        }
+
         $delId = isset($_POST['id']) ? (int)$_POST['id'] : 0;
         if ($delId > 0) {
             $oldValue = fetchPageInfoRowById($conn, $tableInfo, $delId);
@@ -204,7 +223,9 @@ if ($isEmbedded):
                 <div class="page-action-breadcrumb text-muted mb-1">Admin / Page Info</div>
                 <h4 class="m-0 text-primary"><i class="fa-solid fa-file-signature me-2"></i>页面信息列表</h4>
             </div>
+            <?php if ($canAdd): ?>
             <a href="<?php echo $formBaseUrl; ?>" class="btn btn-primary desktop-add-btn"><i class="fa-solid fa-plus"></i> 新增页面</a>
+            <?php endif; ?>
         </div>
 
         <div class="card-body">
@@ -243,8 +264,15 @@ if ($isEmbedded):
                                 <td><code><?php echo htmlspecialchars($row['url']); ?></code></td>
                                 <td><span class="badge bg-success">Active</span></td>
                                 <td class="text-center">
+                                    <?php if ($canEdit): ?>
                                     <a href="<?php echo $formBaseUrl . '&id=' . (int)$row['id']; ?>" class="btn btn-sm btn-outline-primary me-1"><i class="fa-solid fa-pen"></i></a>
+                                    <?php endif; ?>
+                                    <?php if ($canDelete): ?>
                                     <button type="button" class="btn btn-sm btn-outline-danger" onclick="confirmDelete(<?php echo (int)$row['id']; ?>)"><i class="fa-solid fa-trash"></i></button>
+                                    <?php endif; ?>
+                                    <?php if (!$canEdit && !$canDelete): ?>
+                                    <span class="text-muted small">无操作权限</span>
+                                    <?php endif; ?>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
@@ -267,8 +295,15 @@ if ($isEmbedded):
                                 <span class="badge bg-success">Active</span>
                             </div>
                             <div class="page-action-mobile-body">
+                                <?php if ($canEdit): ?>
                                 <a href="<?php echo $formBaseUrl . '&id=' . (int)$row['id']; ?>" class="btn btn-sm btn-outline-primary me-2"><i class="fa-solid fa-pen"></i> 编辑</a>
+                                <?php endif; ?>
+                                <?php if ($canDelete): ?>
                                 <button type="button" class="btn btn-sm btn-outline-danger" onclick="confirmDelete(<?php echo (int)$row['id']; ?>)"><i class="fa-solid fa-trash"></i> 删除</button>
+                                <?php endif; ?>
+                                <?php if (!$canEdit && !$canDelete): ?>
+                                <span class="text-muted small">无操作权限</span>
+                                <?php endif; ?>
                             </div>
                         </div>
                     <?php endforeach; ?>
