@@ -1,0 +1,184 @@
+/*
+   Authentication Pages Styles
+   (Login, Register, Forgot Password, Reset Password)
+*/
+
+body.auth-page {
+  background: #ffffff;
+}
+
+/* Keep input backgrounds white (including browser autofill) */
+.auth-layout .form-control,
+.auth-layout input[type="text"],
+.auth-layout input[type="email"],
+.auth-layout input[type="password"],
+.auth-layout input[type="date"],
+.auth-layout select {
+  background-color: #fff !important;
+}
+
+.auth-page input:-webkit-autofill,
+.auth-page input:-webkit-autofill:hover,
+.auth-page input:-webkit-autofill:focus,
+.auth-page select:-webkit-autofill,
+.auth-page select:-webkit-autofill:hover,
+.auth-page select:-webkit-autofill:focus,
+.auth-page textarea:-webkit-autofill,
+.auth-page textarea:-webkit-autofill:hover,
+.auth-page textarea:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px #fff inset !important;
+  box-shadow: 0 0 0 1000px #fff inset !important;
+  -webkit-text-fill-color: #111 !important;
+  transition: background-color 9999s ease-in-out 0s;
+}
+
+/* Center auth content while allowing the site header/menu above */
+.auth-page .auth-layout {
+  min-height: calc(100vh - 50px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 12px;
+}
+
+@media (max-width: 767px) {
+  .auth-page .auth-layout {
+    min-height: auto;
+    padding: 16px 12px 72px;
+  }
+}
+
+.auth-page .login-card,
+.auth-page .reg-card,
+.auth-page .welcome-card,
+.auth-page .forgot-card,
+.auth-page .reset-card {
+  background: #fff;
+  padding: 36px !important;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  width: 100% !important;
+  max-width: 420px !important;
+  margin: auto !important;
+}
+
+.auth-page .subtext {
+  color: #666;
+  margin-bottom: 20px;
+  text-align: center;
+  font-size: 14px;
+}
+
+.auth-page h3 {
+  text-align: center;
+  margin-bottom: 10px;
+  color: #333;
+}
+
+/* Auth form spacing + labels */
+.auth-page .auth-field {
+  margin-bottom: 16px;
+}
+
+.auth-page .form-label,
+.auth-page .form-label-sm {
+  display: block;
+  margin: 0 0 6px;
+  font-size: 13px;
+  color: #555;
+}
+
+.auth-page #strength-meter,
+.auth-page #strength-text {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #555;
+  font-weight: 500;
+}
+
+/* Clean Password Hints Styling */
+.auth-page .password-hints {
+  font-size: 13px;
+  color: #555;
+  margin-top: 8px;
+}
+
+.auth-page .password-hints #strength-meter {
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #333;
+}
+
+.auth-page .password-hints .hint-line {
+  margin-bottom: 6px;
+  line-height: 1.4;
+  color: #666;
+}
+
+/* Auth Pages - Footer and Checkbox Fixes */
+.auth-page .footer-links {
+  margin-top: 24px;
+  padding: 0;
+  background: transparent;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.auth-page .footer-links a {
+  color: #233dd2;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.auth-page .footer-links a:hover {
+  color: #1a2eb0;
+  text-decoration: underline;
+}
+
+.auth-page .terms-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.auth-page .terms-checkbox {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  margin: 0 !important;
+  flex-shrink: 0;
+  accent-color: #233dd2;
+}
+
+.auth-page input[type="checkbox"].terms-checkbox {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.auth-page .terms-container label {
+  margin: 0;
+  line-height: 1.3;
+  color: #555;
+}
+
+.auth-layout input:not(.form-control):not(.terms-checkbox) {
+  margin-bottom: 15px;
+}
+
+/* Auth Full Width Buttons */
+.auth-page .btn-primary,
+.auth-page .btn-reg {
+  width: 100%;
+  display: block;
+  padding: 12px;
+}
+
+.auth-page .reg-card .footer-links {
+  justify-content: left; /* Centers the items together */
+  gap: 8px;
+}
