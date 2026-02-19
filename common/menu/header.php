@@ -67,7 +67,7 @@ $navLinks = [
                 <button type="submit"><i class="fa-solid fa-search"></i></button>
             </form>
 
-            <a href="<?php echo $isLoggedIn ? URL_USER_DASHBOARD : URL_LOGIN; ?>" class="author-link">
+            <a href="<?php echo $isLoggedIn ? URL_AUTHOR_DASHBOARD : URL_LOGIN; ?>" class="author-link">
                 作者专区
             </a>
 
@@ -76,6 +76,15 @@ $navLinks = [
                     <a href="<?php echo URL_LOGIN; ?>" class="login-btn">登录</a>
                     <span class="divider">|</span>
                     <a href="<?php echo URL_REGISTER; ?>" class="register-btn">注册</a>
+                </div>
+            <?php else: ?>
+                <div class="auth-buttons">
+                    <a href="<?php echo URL_USER_DASHBOARD; ?>" class="user-name-link" title="进入个人后台">
+                        <i class="fa-solid fa-circle-user"></i>
+                        <span class="user-name-text">
+                            <?php echo htmlspecialchars($_SESSION['user_name'] ?? '用户'); ?>
+                        </span>
+                    </a>
                 </div>
             <?php endif; ?>
         </nav>

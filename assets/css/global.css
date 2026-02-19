@@ -8,138 +8,7 @@ body {
   margin: 0;
 }
 
-/* 2. Auth Pages */
-body.auth-page {
-  background: #ffffff;
-}
-
-/* Keep input backgrounds white (including browser autofill) */
-.auth-page .form-control,
-.auth-page input[type="text"],
-.auth-page input[type="email"],
-.auth-page input[type="password"],
-.auth-page input[type="date"],
-.auth-page select {
-  background-color: #fff !important;
-}
-
-.auth-page input:-webkit-autofill,
-.auth-page input:-webkit-autofill:hover,
-.auth-page input:-webkit-autofill:focus,
-.auth-page select:-webkit-autofill,
-.auth-page select:-webkit-autofill:hover,
-.auth-page select:-webkit-autofill:focus,
-.auth-page textarea:-webkit-autofill,
-.auth-page textarea:-webkit-autofill:hover,
-.auth-page textarea:-webkit-autofill:focus {
-  -webkit-box-shadow: 0 0 0 1000px #fff inset !important;
-  box-shadow: 0 0 0 1000px #fff inset !important;
-  -webkit-text-fill-color: #111 !important;
-  transition: background-color 9999s ease-in-out 0s;
-}
-
-/* Center auth content while allowing the site header/menu above */
-.auth-page .auth-layout {
-  min-height: calc(100vh - 50px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px 12px;
-}
-
-@media (max-width: 767px) {
-  .auth-page .auth-layout {
-    min-height: auto;
-    padding: 16px 12px 72px;
-  }
-}
-
-.auth-page .login-card,
-.auth-page .reg-card,
-.auth-page .welcome-card {
-  background: #fff;
-  padding: 36px;
-  border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
-  width: 100%;
-  max-width: 420px;
-  margin: auto;
-}
-
-.auth-page .login-card .logo,
-.auth-page .reg-card .logo,
-.auth-page .welcome-card .logo {
-  font-size: 24px;
-  font-weight: 700;
-  margin-bottom: 20px;
-  text-align: center;
-}
-.auth-page .login-card .logo span,
-.auth-page .reg-card .logo span,
-.auth-page .welcome-card .logo span {
-  color: #233dd2;
-}
-.auth-page .subtext {
-  color: #666;
-  margin-bottom: 20px;
-  text-align: center;
-  font-size: 14px;
-}
-.auth-page h3 {
-  text-align: center;
-  margin-bottom: 10px;
-  color: #333;
-}
-
-/* Auth form spacing + labels */
-.auth-page .auth-field {
-  margin-bottom: 16px;
-}
-
-.auth-page .form-label,
-.auth-page .form-label-sm {
-  display: block;
-  margin: 0 0 6px;
-  font-size: 13px;
-  color: #555;
-}
-
-.auth-page #strength-meter {
-  margin-top: 6px;
-  font-size: 12px;
-  color: #555;
-}
-
-.auth-page .terms-container {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-}
-
-.auth-page .terms-container label {
-  margin: 0;
-  line-height: 1.3;
-  color: #555;
-}
-
-/* Ensure password icon alignment within relative containers */
-.password-field #togglePassword {
-  position: absolute;
-  right: 15px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: none;
-  border: none;
-  z-index: 10;
-  cursor: pointer;
-}
-
-/* Space for the icon so text doesn't overlap */
-.password-field input {
-  padding-right: 45px !important;
-}
-
-/* 3. Form Elements */
+/* 2. Form Elements (Generic) */
 .form-control,
 input[type="text"],
 input[type="email"],
@@ -164,15 +33,46 @@ select:focus {
   outline: none;
 }
 
-.auth-page input:not(.form-control) {
-  margin-bottom: 15px;
-}
 input[type="password"]::-ms-reveal,
 input[type="password"]::-ms-clear {
   display: none;
 }
 
-/* 4. Buttons */
+/* --- Password Toggle Positioning (Global) --- */
+.password-field .form-control,
+.password-field input {
+  padding-right: 45px !important;
+}
+
+/* 1. Keep the Bootstrap (!) icon on the far right, but make room for both */
+.password-field .form-control.is-invalid {
+  background-position: right 12px center !important; /* Forces ! to the right edge */
+  padding-right: 70px !important;
+}
+
+/* 2. Dynamically push the Eye Icon to the left ONLY when there is an error */
+.password-field .form-control.is-invalid ~ .toggle-password {
+  right: 40px !important;
+}
+
+/* 3. Base Toggle Icon Styling */
+.password-field .toggle-password {
+  position: absolute;
+  right: 15px; /* Default position when no error */
+  top: 36px;
+  background: none;
+  border: none;
+  z-index: 10;
+  cursor: pointer;
+  color: #666;
+  padding: 0;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  transition: right 0.2s ease; /* Adds a smooth sliding effect when it moves */
+}
+
+/* 3. Buttons (Generic) */
 .btn-primary,
 .btn-reg {
   background: #233dd2;
@@ -190,12 +90,6 @@ input[type="password"]::-ms-clear {
   white-space: nowrap;
 }
 
-.auth-page .btn-primary,
-.auth-page .btn-reg {
-  width: 100%;
-  display: block;
-  padding: 12px;
-}
 .btn-primary:hover,
 .btn-reg:hover {
   background: #1a2eb0;
@@ -226,13 +120,17 @@ input[type="password"]::-ms-clear {
   margin-right: 0 !important;
 }
 
-/* 5. Dashboard UI */
+/* 4. Dashboard UI */
 .tag-container,
-.category-container {
-  padding: 20px;
-  max-width: 1200px;
-  margin: 0 auto;
+.category-container,
+.meta-container {
+  padding: 0 !important; /* Removes padding causing top/left gap */
+  max-width: 1200px !important; /* Matches dashboard width */
+  margin: 0 !important; /* Keeps containers flush left */
+  width: 100%;
+  box-sizing: border-box;
 }
+
 .tag-card,
 .category-card {
   background: #fff;
@@ -244,11 +142,42 @@ input[type="password"]::-ms-clear {
   padding: 24px;
 }
 
-/* 5.1 Profile Page */
+/* --- Dashboard Layout Alignment Fix --- */
+.dashboard-main .profile-card {
+  padding: 32px !important; /* Forces left and right padding to be identical */
+  display: flex !important;
+  align-items: center !important;
+  box-sizing: border-box !important;
+}
+
+.dashboard-main .profile-card .settings-btn {
+  position: static !important; /* Removes absolute positioning */
+  margin-left: auto !important; /* Flexbox trick pushes the gear to the right */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* --- Dashboard Mobile Layout Overflow Fix --- */
+.dashboard-main .profile-info {
+  min-width: 0; /* Allows text to shrink rather than stretch the card */
+  flex: 1;
+}
+
+/* Hide the settings arrow icon on ultra-small screens to prevent run-off */
+@media screen and (max-width: 360px) {
+  .dashboard-main .profile-card .settings-btn {
+    display: none !important;
+  }
+}
+
+/* 4.1 Profile Page */
 .profile-container {
-  max-width: 800px;
-  margin: 40px auto;
-  padding: 0 20px;
+  max-width: 1200px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .section-header {
@@ -436,7 +365,7 @@ input[type="password"]::-ms-clear {
   padding: 15px 20px;
   border-bottom: 1px solid #eee;
   display: flex;
-  flex-wrap: wrap; /* Allows dropping to next line */
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
   gap: 10px;
@@ -464,7 +393,7 @@ input[type="password"]::-ms-clear {
   color: white;
 }
 
-/* 6. DataTables Styling */
+/* 5. DataTables Styling */
 .dataTables_wrapper .dataTables_paginate {
   display: flex;
   justify-content: flex-end;
@@ -495,7 +424,7 @@ input[type="password"]::-ms-clear {
   text-decoration: underline !important;
 }
 
-/* Pagination links: no underline unless hover (covers Prev/Next + numeric) */
+/* Pagination links: no underline unless hover */
 .dataTables_wrapper .dataTables_paginate a,
 .dataTables_wrapper .dataTables_paginate .page-link {
   text-decoration: none !important;
@@ -563,7 +492,7 @@ input[type="password"]::-ms-clear {
   justify-content: flex-end;
 }
 
-/* 7. Desktop View (Min Width 768px) */
+/* 6. Desktop View (Min Width 768px) */
 @media screen and (min-width: 768px) {
   /* Search Bar - Right Align */
   .dataTables_wrapper .row:first-child {
@@ -594,7 +523,7 @@ input[type="password"]::-ms-clear {
   }
 }
 
-/* 8. Mobile View (280px - 767px) */
+/* 7. Mobile View (280px - 767px) */
 @media screen and (max-width: 767px) {
   .tag-container,
   .category-container {
@@ -612,13 +541,12 @@ input[type="password"]::-ms-clear {
 
   .desktop-add-btn {
     display: inline-flex !important;
-    width: 100%; /* Full width for easier tapping */
+    width: 100%;
     justify-content: center;
     margin-top: 5px;
   }
 
   /* 2. SEARCH BAR: Vertical Stack */
-  /* Forces the row containing 'Show Entries' and 'Search' to stack vertically */
   .dataTables_wrapper .row:first-child {
     display: flex !important;
     flex-direction: column !important;
@@ -628,7 +556,6 @@ input[type="password"]::-ms-clear {
     margin: 0 !important;
   }
 
-  /* Reset bootstrap columns if they exist inside */
   .dataTables_wrapper .row:first-child > * {
     width: 100% !important;
     max-width: 100% !important;
@@ -697,14 +624,13 @@ input[type="password"]::-ms-clear {
     flex-wrap: wrap;
   }
 
-  /* DataTables “no data” cell must remain a table-cell to span full width */
   .tag-container table.dataTable tbody td.dataTables_empty,
   .category-container table.dataTable tbody td.dataTables_empty {
     display: table-cell !important;
   }
 }
 
-/* 9. Ultra-small Mobile (280px - 420px) */
+/* 8. Ultra-small Mobile (280px - 420px) */
 @media screen and (max-width: 420px) {
   .dataTables_wrapper .dataTables_info {
     display: none !important;
@@ -725,23 +651,21 @@ input[type="password"]::-ms-clear {
 
 /* --- 404 Error Page Responsive Image --- */
 .container .text-center img[alt="404 Error"] {
-  width: 100%; /* Forces image to scale down to container width */
-  height: auto; /* Maintains aspect ratio */
-  max-width: 500px; /* Keeps original desktop max-size */
+  width: 100%;
+  height: auto;
+  max-width: 500px;
 }
 
-/* Mobile & Tablet Adjustments (280px - 1023px) */
 @media screen and (max-width: 1023px) {
   .container .text-center img[alt="404 Error"] {
-    max-width: 80%; /* Slightly smaller on tablets/mobile for better balance */
+    max-width: 80%;
     margin-bottom: 20px;
   }
 }
 
-/* Small Mobile Adjustments (280px - 480px) */
 @media screen and (max-width: 480px) {
   .container .text-center img[alt="404 Error"] {
-    max-width: 100%; /* Use full width on very small screens */
+    max-width: 100%;
   }
 }
 
@@ -770,27 +694,24 @@ input[type="password"]::-ms-clear {
 }
 
 /* 2. Content Truncation */
-/* Prevents long names/descriptions from expanding the table too much */
 .page-action-desktop-table td {
-  max-width: 150px; /* Limits column width */
-  white-space: nowrap; /* Forces single line */
-  overflow: hidden; /* Hides overflow */
-  text-overflow: ellipsis; /* Adds '...' for long text */
+  max-width: 150px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   vertical-align: middle;
 }
 
 /* 3. Action Column Settings */
-/* Ensure buttons are never truncated */
 .page-action-desktop-table th:last-child,
 .page-action-desktop-table td:last-child {
-  width: 1%; /* Shrink to fit buttons */
+  width: 1%;
   white-space: nowrap;
-  overflow: visible; /* Allow dropdowns/tooltips */
-  max-width: none; /* Override generic truncation */
+  overflow: visible;
+  max-width: none;
   text-align: center;
 }
 
-/* Button spacing adjustment */
 .page-action-desktop-table .btn-action {
   margin-right: 4px !important;
   margin-bottom: 0 !important;
@@ -800,33 +721,28 @@ input[type="password"]::-ms-clear {
 }
 
 /* 4. Sticky Right Column (The "Always Visible" Fix) */
-/* On Mobile/Tablet: Action column sticks to the right edge while scrolling */
 @media screen and (max-width: 991px) {
-  /* Ensure bootstrap table collapses correctly for sticky */
   .page-action-desktop-table table {
     border-collapse: separate;
     border-spacing: 0;
   }
 
-  /* Make the last column (Actions) sticky */
   .page-action-desktop-table th:last-child,
   .page-action-desktop-table td:last-child {
     position: sticky;
     right: 0;
     z-index: 5;
-    background-color: #fff; /* Opaque background covers scrolling text */
-    box-shadow: -4px 0 8px -4px rgba(0, 0, 0, 0.15); /* Shadow separator */
+    background-color: #fff;
+    box-shadow: -4px 0 8px -4px rgba(0, 0, 0, 0.15);
     border-left: 1px solid #f0f0f0;
   }
 
-  /* Ensure row background color persists on hover for the sticky cell */
   .table-hover tbody tr:hover td:last-child {
-    background-color: #e9ecef; /* Match Bootstrap hover color */
+    background-color: #e9ecef;
   }
 }
 
 /* 5. Hide Non-Essential Columns on Small Screens */
-/* Hides 'ID' column (1st column) on mobile to save space */
 @media screen and (max-width: 576px) {
   .page-action-desktop-table th:first-child,
   .page-action-desktop-table td:first-child {

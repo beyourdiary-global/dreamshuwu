@@ -121,44 +121,46 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 <?php $pageMetaKey = 'login'; ?>
 <!DOCTYPE html>
 <html lang="<?php echo defined('SITE_LANG') ? SITE_LANG : 'zh-CN'; ?>">
-<?php require_once __DIR__ . '/../../../include/header.php'; ?>
+<head>
+    <?php require_once BASE_PATH . 'include/header.php'; ?>
+    <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/auth.css?v=<?php echo time(); ?>">
+</head>
 <body class="auth-page">
 <?php require_once BASE_PATH . 'common/menu/header.php'; ?>
 
 <main class="dashboard-main">
     <div class="auth-layout">
-        <div class="container">
-            <div class="row justify-content-center">
-                <div class="col-12 col-md-7 col-lg-5">
-                    <div class="login-card shadow-lg p-4 bg-white rounded">
-                        <h3 class="text-center">欢迎回来</h3>
-                        <p class="subtext text-center text-muted">请登录您的管理后台</p>
-                        <div id="loginError" class="alert alert-danger" style="<?php echo $message ? '' : 'display:none;'; ?>">
-                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                            <span class="error-text"><?php echo htmlspecialchars($message); ?></span>
-                        </div>
-                        <form id="loginForm" method="POST" autocomplete="off" novalidate>
-                            <input type="hidden" name="redirect" id="redirect" value="<?php echo htmlspecialchars($redirectTarget); ?>">
-                            <div class="form-floating mb-3">
-                                <input type="email" class="form-control" id="email" name="email" placeholder="name@example.com" required>
-                                <label for="email">邮箱地址</label>
-                            </div>
-                            <div class="form-floating mb-3 password-field position-relative">
-                                <input type="password" class="form-control" id="password" name="password" placeholder="密码" required>
-                                <label for="password">密码</label>
-                                <button type="button" class="toggle-password" id="togglePassword" data-target="password">
-                                <i class="fa fa-eye"></i>
-                                </button>
-                            </div>
-                            <button type="submit" class="btn btn-primary w-100 py-2 fw-bold" id="loginBtn">立即登录</button>
-                            <div class="action-links d-flex justify-content-between mt-4 border-top pt-3">
-                                <a href="<?php echo URL_REGISTER; ?>" class="text-decoration-none small text-primary">注册新账号</a>
-                                <a href="<?php echo URL_FORGOT_PWD; ?>" class="text-decoration-none small text-muted">忘记密码？</a>
-                            </div>
-                        </form>
-                    </div>
-                </div>
+        <div class="login-card">
+            <h3>欢迎回来</h3>
+            <p class="subtext">请登录您的管理后台</p>
+            
+            <div id="loginError" class="alert alert-danger" style="<?php echo $message ? '' : 'display:none;'; ?>">
+                <span class="error-text"><?php echo htmlspecialchars($message); ?></span>
             </div>
+
+            <form id="loginForm" method="POST" autocomplete="off" novalidate>
+                <input type="hidden" name="redirect" id="redirect" value="<?php echo htmlspecialchars($redirectTarget); ?>">
+                
+                <div class="auth-field mb-3">
+                    <label class="form-label">邮箱地址</label>
+                    <input type="email" class="form-control" id="email" name="email" placeholder="请输入邮箱" required>
+                </div>
+
+                <div class="auth-field mb-3 password-field position-relative">
+                    <label class="form-label">密码</label>
+                    <input type="password" class="form-control" id="password" name="password" placeholder="请输入密码" required>
+                    <button type="button" class="toggle-password" data-target="password">
+                        <i class="fa fa-eye"></i>
+                    </button>
+                </div>
+
+                <button type="submit" class="btn btn-primary" id="loginBtn">立即登录</button>
+                
+                <div class="footer-links">
+                    <a href="<?php echo URL_REGISTER; ?>" class="text-decoration-none">注册新账号</a>
+                    <a href="<?php echo URL_FORGOT_PWD; ?>" class="text-decoration-none text-muted">忘记密码？</a>
+                </div>
+            </form>
         </div>
     </div>
 </main>
