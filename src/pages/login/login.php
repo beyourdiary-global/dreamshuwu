@@ -131,11 +131,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             <div class="row justify-content-center">
                 <div class="col-12 col-md-7 col-lg-5">
                     <div class="login-card shadow-lg p-4 bg-white rounded">
-                        <div class="logo text-center mb-4">
-                            <span class="fw-bold" style="font-size: 28px; color: var(--btn-color);">
-                            <?php echo htmlspecialchars($siteName); ?>
-                            </span>
-                    </div>
                         <h3 class="text-center">欢迎回来</h3>
                         <p class="subtext text-center text-muted">请登录您的管理后台</p>
                         <div id="loginError" class="alert alert-danger" style="<?php echo $message ? '' : 'display:none;'; ?>">
@@ -151,7 +146,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                             <div class="form-floating mb-3 password-field position-relative">
                                 <input type="password" class="form-control" id="password" name="password" placeholder="密码" required>
                                 <label for="password">密码</label>
-                                <button type="button" class="btn btn-link position-absolute end-0 top-50 translate-middle-y text-decoration-none me-2" id="togglePassword">显示</button>
+                                <button type="button" class="toggle-password" id="togglePassword" data-target="password">
+                                <i class="fa fa-eye"></i>
+                                </button>
                             </div>
                             <button type="submit" class="btn btn-primary w-100 py-2 fw-bold" id="loginBtn">立即登录</button>
                             <div class="action-links d-flex justify-content-between mt-4 border-top pt-3">
@@ -166,6 +163,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     </div>
 </main>
 <script src="<?php echo URL_ASSETS; ?>/js/jquery-3.7.1.min.js"></script>
-<script src="<?php echo URL_ASSETS; ?>/js/login-script.js"></script>
+<script src="<?php echo URL_ASSETS; ?>/js/auth.js"></script>
 </body>
 </html>
