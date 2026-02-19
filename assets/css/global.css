@@ -122,6 +122,23 @@ body.auth-page {
   color: #555;
 }
 
+/* Ensure password icon alignment within relative containers */
+.password-field #togglePassword {
+  position: absolute;
+  right: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  z-index: 10;
+  cursor: pointer;
+}
+
+/* Space for the icon so text doesn't overlap */
+.password-field input {
+  padding-right: 45px !important;
+}
+
 /* 3. Form Elements */
 .form-control,
 input[type="text"],

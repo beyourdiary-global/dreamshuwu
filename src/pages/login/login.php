@@ -146,7 +146,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                             <div class="form-floating mb-3 password-field position-relative">
                                 <input type="password" class="form-control" id="password" name="password" placeholder="密码" required>
                                 <label for="password">密码</label>
-                                <button type="button" class="btn btn-link position-absolute end-0 top-50 translate-middle-y text-decoration-none me-2" id="togglePassword">显示</button>
+                                <button type="button" class="toggle-password" id="togglePassword" data-target="password">
+                                <i class="fa fa-eye"></i>
+                                </button>
                             </div>
                             <button type="submit" class="btn btn-primary w-100 py-2 fw-bold" id="loginBtn">立即登录</button>
                             <div class="action-links d-flex justify-content-between mt-4 border-top pt-3">
@@ -161,6 +163,5 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     </div>
 </main>
 <script src="<?php echo URL_ASSETS; ?>/js/jquery-3.7.1.min.js"></script>
-<script src="<?php echo URL_ASSETS; ?>/js/login-script.js"></script>
 </body>
 </html>

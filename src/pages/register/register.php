@@ -224,7 +224,5 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         </div>
     </div>
 </main>
-
-<script src="<?php echo URL_ASSETS; ?>/js/register-script.js"></script>
 </body>
 </html>
