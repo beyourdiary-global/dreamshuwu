@@ -1,6 +1,6 @@
 <?php
-// Path: src/pages/meta/metaSetting/pageMetaSetting.php
-// Page Specific Meta Settings Section - included by meta/index.php
+// Path: src/pages/metaSetting/pageMetaSetting.php
+// Page Specific Meta Settings Section - included by metaSetting/index.php
 ?>
 <div class="row justify-content-center">
     <div class="col-12">
@@ -21,7 +21,7 @@
                     <label class="form-label mb-2 d-block text-start">Select Page to Edit / 选择页面</label>
                     <form method="GET" id="pageSelectForm" class="d-flex">
                         <?php if (isset($isEmbeddedMeta) && $isEmbeddedMeta): ?>
-                            <input type="hidden" name="view" value="meta">
+                            <input type="hidden" name="view" value="meta_settings">
                         <?php endif; ?>
                         <input type="hidden" name="section" value="page">
                         <input type="hidden" name="page" id="pageSelectValue" value="<?php echo htmlspecialchars($selectedPageKey); ?>">
@@ -68,7 +68,8 @@
                             <?php endif; ?>
                         </h5>
 
-                        <?php if (in_array($selectedPageKey, $customizedPages) && $canDelete): ?>
+                        <?php if (in_array($selectedPageKey, $customizedPages)): ?>
+                        <?php if ($perm->delete): ?>
                         <form method="POST" class="reset-form">
                             <input type="hidden" name="form_type" value="delete_page">
                             <input type="hidden" name="page_key" value="<?php echo htmlspecialchars($selectedPageKey, ENT_QUOTES, 'UTF-8'); ?>">
@@ -77,15 +78,14 @@
                             </button>
                         </form>
                         <?php endif; ?>
+                        <?php endif; ?>
                     </div>
 
                     <form method="POST">
                         <input type="hidden" name="form_type" value="page">
                         <input type="hidden" name="page_key" value="<?php echo htmlspecialchars($selectedPageKey, ENT_QUOTES, 'UTF-8'); ?>">
 
-                        <?php 
-                        $canModify = (in_array($selectedPageKey, $customizedPages) && $canEdit) || (!in_array($selectedPageKey, $customizedPages) && $canAdd);
-                        foreach ($seoFields as $key => $config): 
+                        <?php foreach ($seoFields as $key => $config): 
                             $fieldName = 'page_' . $key;
                             $fieldValue = $pageCurrent[$key] ?? '';
                             $globalValue = $current[$key] ?? '';
@@ -95,11 +95,11 @@
                                 <div class="col-md-9">
                                     <?php if ($config['type'] === 'textarea'): ?>
                                         <textarea name="<?php echo $fieldName; ?>" class="form-control" rows="3"
-                                            placeholder="Global: <?php echo htmlspecialchars($globalValue); ?>" <?php if (!$canModify) echo 'disabled'; ?>><?php echo htmlspecialchars($fieldValue); ?></textarea>
+                                            placeholder="Global: <?php echo htmlspecialchars($globalValue); ?>"><?php echo htmlspecialchars($fieldValue); ?></textarea>
                                     <?php else: ?>
                                         <input type="text" name="<?php echo $fieldName; ?>" class="form-control" 
                                             value="<?php echo htmlspecialchars($fieldValue); ?>"
-                                            placeholder="Global: <?php echo htmlspecialchars($globalValue); ?>" <?php if (!$canModify) echo 'disabled'; ?>>
+                                            placeholder="Global: <?php echo htmlspecialchars($globalValue); ?>">
                                     <?php endif; ?>
                                 </div>
                             </div>
@@ -107,10 +107,8 @@
 
                         <div class="row mt-4">
                             <div class="col-md-9 offset-md-3">
-                                <?php if ($canModify): ?>
-                                    <button type="submit" class="btn btn-success px-5 fw-bold"><i class="fa-solid fa-save"></i> Save Page Settings</button>
-                                <?php else: ?>
-                                    <button type="submit" class="btn btn-success px-5 fw-bold" disabled><i class="fa-solid fa-save"></i> Save Page Settings</button>
+                                <?php if ($perm->edit): ?>
+                                <button type="submit" class="btn btn-success px-5 fw-bold"><i class="fa-solid fa-save"></i> Save Page Settings</button>
                                 <?php endif; ?>
                             </div>
                         </div>

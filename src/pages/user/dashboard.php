@@ -7,17 +7,6 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
     exit();
 }
 
-// 2. RBAC Permission Checks for all dashboard views
-$permissions = [
-    'tags' => in_array('View', getPageRuntimePermissions('/dashboard.php?view=tags')),
-    'categories' => in_array('View', getPageRuntimePermissions('/dashboard.php?view=categories')),
-    'profile' => in_array('View', getPageRuntimePermissions('/dashboard.php?view=profile')),
-    'meta' => in_array('View', getPageRuntimePermissions('/dashboard.php?view=meta')),
-    'webSetting' => in_array('View', getPageRuntimePermissions('/dashboard.php?view=webSetting')),
-    'admin' => in_array('View', getPageRuntimePermissions('/dashboard.php?view=admin')),
-];
-
-
 $currentUserId = $_SESSION['user_id'];
 $userTable = USR_LOGIN;
 $dashTable = USR_DASHBOARD;
@@ -45,6 +34,34 @@ $isPageActionView = ($currentView === 'page_action');
 $isPageInfoView   = ($currentView === 'page_info'); // [NEW]
 $isUserRoleView   = ($currentView === 'user_role'); // [NEW]
 $isAdminSection   = ($isAdminHome || $isPageActionView || $isPageInfoView || $isUserRoleView);
+
+$permDashboard  = hasPagePermission($conn, '/dashboard.php');
+$permProfile    = hasPagePermission($conn, '/dashboard.php?view=profile');
+$permTags       = hasPagePermission($conn, '/dashboard.php?view=tags');
+$permTagForm    = hasPagePermission($conn, '/dashboard.php?view=tag_form');
+$permCategories = hasPagePermission($conn, '/dashboard.php?view=categories');
+$permCatForm    = hasPagePermission($conn, '/dashboard.php?view=cat_form');
+$permMeta       = hasPagePermission($conn, '/dashboard.php?view=meta_settings');
+$permWeb        = hasPagePermission($conn, '/dashboard.php?view=web_settings');
+$permAdmin      = hasPagePermission($conn, '/dashboard.php?view=admin');
+$permPageAction = hasPagePermission($conn, '/dashboard.php?view=page_action');
+$permPageInfo   = hasPagePermission($conn, '/dashboard.php?view=page_info');
+$permUserRole   = hasPagePermission($conn, '/dashboard.php?view=user_role');
+
+if ($isTagListView && (empty($permTags) || empty($permTags->view))) denyAccess("权限不足：您没有访问小说标签页面的权限。");
+if ($isTagFormView && (empty($permTagForm) || empty($permTagForm->view))) denyAccess("权限不足：您没有访问标签表单页面的权限。");
+if ($isCatListView && (empty($permCategories) || empty($permCategories->view))) denyAccess("权限不足：您没有访问小说分类页面的权限。");
+if ($isCatFormView && (empty($permCatForm) || empty($permCatForm->view))) denyAccess("权限不足：您没有访问分类表单页面的权限。");
+if ($isProfileView && (empty($permProfile) || empty($permProfile->view))) denyAccess("权限不足：您没有访问账号中心页面的权限。");
+if ($isMetaView && (empty($permMeta) || empty($permMeta->view))) denyAccess("权限不足：您没有访问 Meta 设置页面的权限。");
+if ($isWebSettingView && (empty($permWeb) || empty($permWeb->view))) denyAccess("权限不足：您没有访问网站设置页面的权限。");
+if ($isAdminHome && (empty($permAdmin) || empty($permAdmin->view))) denyAccess("权限不足：您没有访问管理员面板的权限。");
+if ($isPageActionView && (empty($permPageAction) || empty($permPageAction->view))) denyAccess("权限不足：您没有访问页面操作管理的权限。");
+if ($isPageInfoView && (empty($permPageInfo) || empty($permPageInfo->view))) denyAccess("权限不足：您没有访问页面信息列表的权限。");
+if ($isUserRoleView && (empty($permUserRole) || empty($permUserRole->view))) denyAccess("权限不足：您没有访问用户角色管理的权限。");
+if (!$isTagSection && !$isCatSection && !$isProfileView && !$isMetaView && !$isWebSettingView && !$isAdminSection && (empty($permDashboard) || empty($permDashboard->view))) {
+    denyAccess("权限不足：您没有访问仪表盘首页的权限。");
+}
 
 // Data Fetching
 $userQuery = "SELECT name FROM " . $userTable . " WHERE id = ? LIMIT 1";
@@ -97,16 +114,17 @@ $profileComponents = [
 
 // --- SIDEBAR ITEMS ---
 $sidebarItems = [
-    ['label' => '首页',     'url' => URL_USER_DASHBOARD, 'icon' => 'fa-solid fa-house-user', 'active' => (!$isTagSection && !$isCatSection && !$isProfileView && !$isMetaView && !$isWebSettingView && !$isAdminSection), 'permission' => true],
-    ['label' => '账号中心', 'url' => URL_USER_DASHBOARD . '?view=profile', 'icon' => 'fa-solid fa-id-card', 'active' => $isProfileView, 'permission' => $permissions['profile']],
-    ['label' => '写小说',   'url' => URL_AUTHOR_DASHBOARD, 'icon' => 'fa-solid fa-pen-nib',  'active' => false, 'permission' => true], // Assuming all users can be authors
-    ['label' => '小说分类', 'url' => URL_USER_DASHBOARD . '?view=categories', 'icon' => 'fa-solid fa-layer-group','active' => $isCatSection, 'permission' => $permissions['categories']],
-    ['label' => '小说标签', 'url' => URL_USER_DASHBOARD . '?view=tags', 'icon' => 'fa-solid fa-tags', 'active' => $isTagSection, 'permission' => $permissions['tags']],
-    ['label' => 'META 设置',  'url' => URL_USER_DASHBOARD . '?view=meta_settings', 'icon' => 'fa-solid fa-sliders', 'active' => $isMetaView, 'permission' => $permissions['meta']],
-    ['label' => '网站设置',   'url' => URL_USER_DASHBOARD . '?view=web_settings', 'icon' => 'fa-solid fa-paintbrush', 'active' => $isWebSettingView, 'permission' => $permissions['webSetting']],
-    ['label' => '管理员', 'url' => URL_USER_DASHBOARD . '?view=admin', 'icon' => 'fa-solid fa-user-shield', 'active' => $isAdminSection, 'permission' => $permissions['admin']]
+    ['label' => '首页',     'url' => URL_USER_DASHBOARD, 'icon' => 'fa-solid fa-house-user', 'active' => (!$isTagSection && !$isCatSection && !$isProfileView && !$isMetaView && !$isWebSettingView && !$isAdminSection), 'permission' => !empty($permDashboard->view)],
+    ['label' => '账号中心', 'url' => URL_HOME,           'icon' => 'fa-solid fa-id-card',   'active' => false, 'permission' => !empty($permProfile->view)],
+    ['label' => '写小说',   'url' => URL_AUTHOR_DASHBOARD, 'icon' => 'fa-solid fa-pen-nib',  'active' => false],
+    ['label' => '小说分类', 'url' => URL_NOVEL_CATS,     'icon' => 'fa-solid fa-layer-group','active' => $isCatSection, 'permission' => !empty($permCategories->view)],
+    ['label' => '小说标签', 'url' => URL_NOVEL_TAGS,     'icon' => 'fa-solid fa-tags',      'active' => $isTagSection, 'permission' => !empty($permTags->view)],
+    ['label' => 'META 设置',  'url' => URL_USER_DASHBOARD . '?view=meta_settings', 'icon' => 'fa-solid fa-sliders', 'active' => $isMetaView, 'permission' => !empty($permMeta->view)],
+    ['label' => '网站设置',   'url' => URL_USER_DASHBOARD . '?view=web_settings', 'icon' => 'fa-solid fa-paintbrush', 'active' => $isWebSettingView, 'permission' => !empty($permWeb->view)],
+    
+    // [UPDATED] Admin Dashboard Link
+    ['label' => '管理员',     'url' => URL_ADMIN_DASHBOARD, 'icon' => 'fa-solid fa-user-shield', 'active' => $isAdminSection, 'permission' => !empty($permAdmin->view)]
 ];
-
 
 $quickActions = [
     ['label' => '浏览历史', 'url' => URL_USER_HISTORY,     'icon' => 'fa-solid fa-clock-rotate-left',    'style' => ''],
@@ -120,18 +138,18 @@ $customCSS[] = 'dashboard.css';
 
 // Page Meta Key Setting
 switch ($currentView) {
-    case 'categories': $pageMetaKey = 'categories'; break;
-    case 'cat_form':   $pageMetaKey = 'category_form'; break;
-    case 'tags':       $pageMetaKey = 'tags'; break;
-    case 'tag_form':   $pageMetaKey = 'tag_form'; break;
-    case 'profile':    $pageMetaKey = 'profile'; break;
-    case 'meta_settings': $pageMetaKey = 'meta_settings'; break;
-    case 'web_settings':  $pageMetaKey = 'web_settings'; break;
-    case 'admin':         $pageMetaKey = 'admin'; break;
-    case 'page_action':   $pageMetaKey = 'page_action'; break; // [NEW]
-    case 'page_info':     $pageMetaKey = 'page_information_list'; break; // [NEW]
-    case 'user_role':     $pageMetaKey = 'user_role'; break; // [NEW]
-    default:              $pageMetaKey = 'dashboard'; break;
+    case 'categories': $pageMetaKey = '/dashboard.php?view=categories'; break;
+    case 'cat_form':   $pageMetaKey = '/dashboard.php?view=cat_form'; break;
+    case 'tags':       $pageMetaKey = '/dashboard.php?view=tags'; break;
+    case 'tag_form':   $pageMetaKey = 'dashboard.php?view=tag_form'; break;
+    case 'profile':    $pageMetaKey = '/dashboard.php?view=profile'; break;
+    case 'meta_settings': $pageMetaKey = '/dashboard.php?view=meta_settings'; break;
+    case 'web_settings':  $pageMetaKey = '/dashboard.php?view=web_settings'; break;
+    case 'admin':         $pageMetaKey = '/dashboard.php?view=admin'; break;
+    case 'page_action':   $pageMetaKey = '/dashboard.php?view=page_action'; break; // [NEW]
+    case 'page_info':     $pageMetaKey = '/dashboard.php?view=page_info'; break; // [NEW]
+    case 'user_role':     $pageMetaKey = '/dashboard.php?view=user_role'; break; // [NEW]
+    default:              $pageMetaKey = '/dashboard.php'; break;
 }
 ?>
 
@@ -148,7 +166,7 @@ switch ($currentView) {
     <aside class="dashboard-sidebar">
         <ul class="sidebar-menu">
             <?php foreach ($sidebarItems as $item): ?>
-                <?php if ($item['permission']): ?>
+                <?php if (!isset($item['permission']) || $item['permission']): ?>
                 <li>
                     <a href="<?php echo $item['url']; ?>" class="<?php echo $item['active'] ? 'active' : ''; ?>">
                         <i class="<?php echo $item['icon']; ?>"></i> <?php echo $item['label']; ?>
@@ -199,47 +217,51 @@ switch ($currentView) {
         <?php 
         if ($isProfileView):
             if (!defined('PROFILE_EMBEDDED')) define('PROFILE_EMBEDDED', true);
-            require_once __DIR__ . '/../profile.php';
+            require BASE_PATH . PATH_PROFILE;
 
         elseif ($isTagListView):
             $EMBED_TAGS_PAGE = true;
-            require_once dirname(__DIR__) . '/tags/index.php';
+            require BASE_PATH . PATH_NOVEL_TAGS_INDEX;
         
         elseif ($isTagFormView):
             $EMBED_TAG_FORM_PAGE = true;
-            require_once dirname(__DIR__) . '/tags/form.php';
+            require BASE_PATH . PATH_NOVEL_TAGS_FORM;
 
         elseif ($isCatListView):
             $EMBED_CATS_PAGE = true;
-            require_once dirname(__DIR__) . '/category/index.php';
+            require BASE_PATH . PATH_NOVEL_CATS_INDEX;
         
         elseif ($isCatFormView):
             $EMBED_CAT_FORM_PAGE = true;
-            require_once dirname(__DIR__) . '/category/form.php';
+            require BASE_PATH . PATH_NOVEL_CATS_FORM;
         
         elseif ($isMetaView):
             $EMBED_META_PAGE = true;
-            require_once dirname(__DIR__) . '/meta/index.php';
+            require BASE_PATH . PATH_META_SETTINGS;
         
         elseif ($isWebSettingView):
             $EMBED_WEB_SETTING_PAGE = true;
-            require_once dirname(__DIR__) . '/webSetting/index.php';
+            require BASE_PATH . PATH_WEB_SETTINGS;
 
+        // [NEW] Embedded Admin View
         elseif ($isAdminHome):
             $EMBED_ADMIN_PAGE = true;
-            require_once dirname(__DIR__) . '/admin/index.php';
+            require BASE_PATH . PATH_ADMIN_INDEX;
 
+        // [NEW] Embedded Page Action Feature
         elseif ($isPageActionView):
             $EMBED_PAGE_ACTION = true;
-            require_once dirname(__DIR__, 2) . '/admin/page-action.php';
+            require BASE_PATH . PATH_PAGE_ACTION;
 
+        // [NEW] Page Information List Feature
         elseif ($isPageInfoView):
             $EMBED_PAGE_INFO = true;
-            require_once dirname(__DIR__, 2) . '/admin/page-information-list.php';
+            require BASE_PATH . PATH_PAGE_INFO_INDEX;
 
+        // [NEW] User Role Management Feature
         elseif ($isUserRoleView):
             $EMBED_USER_ROLE = true;
-            require_once dirname(__DIR__, 2) . '/admin/user-role.php';
+            require BASE_PATH . PATH_USER_ROLE_INDEX;
         
         else: ?>
             <div class="quick-actions-grid">

@@ -2,6 +2,24 @@
 // Path: src/pages/category/form.php
 require_once dirname(__DIR__, 3) . '/common.php';
 
+// 1. Identify this specific view's URL as registered in your DB
+$currentUrl = '/dashboard.php?view=cat_form'; 
+
+// [ADDED] Fetch dynamic permission object
+$perm = hasPagePermission($conn, $currentUrl);
+
+// 2. Check if the user has View permission for this view
+if (empty($perm) || !$perm->view) {
+    // Handle AJAX DataTables request (if any)
+    if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
+        header('Content-Type: application/json');
+        echo safeJsonEncode(['error' => 'Access Denied']);
+        exit();
+    }
+    // Handle UI load
+    denyAccess("权限不足：您没有访问分类表单的权限。");
+}
+
 // Auth Check
 if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
     if (headers_sent()) {
@@ -20,62 +38,28 @@ $insertQuery = "INSERT INTO $catTable (name, created_by, updated_by) VALUES (?, 
 $updateQuery = "UPDATE $catTable SET name = ?, updated_by = ? WHERE id = ?";
 
 // Context Detection
-$isEmbeddedTagForm = isset($EMBED_CAT_FORM_PAGE) && $EMBED_CAT_FORM_PAGE === true;
+$isEmbeddedCatForm = isset($EMBED_CAT_FORM_PAGE) && $EMBED_CAT_FORM_PAGE === true;
 
 $id = $_GET['id'] ?? null;
-$isEdit = !empty($id);
+$isEditMode = !empty($id);
 
-// 2. RBAC Permission Check
-$currentUrl = '/dashboard.php?view=cat_form'; 
-$allowedActions = getPageRuntimePermissions($currentUrl);
-
-$canView = in_array('View', $allowedActions);
-$canAdd  = in_array('Add', $allowedActions);
-$canEdit = in_array('Edit', $allowedActions);
-
-if (!$canView) {
-    $_SESSION['flash_msg'] = 'Access Denied: You cannot view this form.';
-    $_SESSION['flash_type'] = 'danger';
-    if ($isEmbeddedTagForm || headers_sent()) {
-        echo "<script>window.location.href='" . URL_USER_DASHBOARD . "?view=categories';</script>";
-    } else {
-        header("Location: " . URL_USER_DASHBOARD . "?view=categories");
-    }
-    exit();
+// [ADDED] Specific Action Check
+if ($isEditMode && !$perm->edit) {
+    denyAccess("权限不足：您没有编辑分类的权限。");
+} elseif (!$isEditMode && !$perm->add) {
+    denyAccess("权限不足：您没有新增分类的权限。");
 }
 
-if ($isEdit && !$canEdit) {
-    $_SESSION['flash_msg'] = 'Access Denied: You do not have permission to edit categories.';
-    $_SESSION['flash_type'] = 'danger';
-    if ($isEmbeddedTagForm || headers_sent()) {
-        echo "<script>window.location.href='" . URL_USER_DASHBOARD . "?view=categories';</script>";
-    } else {
-        header("Location: " . URL_USER_DASHBOARD . "?view=categories");
-    }
-    exit();
-}
-
-if (!$isEdit && !$canAdd) {
-    $_SESSION['flash_msg'] = 'Access Denied: You do not have permission to add new categories.';
-    $_SESSION['flash_type'] = 'danger';
-    if ($isEmbeddedTagForm || headers_sent()) {
-        echo "<script>window.location.href='" . URL_USER_DASHBOARD . "?view=categories';</script>";
-    } else {
-        header("Location: " . URL_USER_DASHBOARD . "?view=categories");
-    }
-    exit();
-}
-
-if ($isEmbeddedTagForm) {
+if ($isEmbeddedCatForm) {
     $listPageUrl = URL_USER_DASHBOARD . '?view=categories';
-    $formActionUrl = URL_USER_DASHBOARD . '?view=cat_form' . ($isEdit ? '&id=' . intval($id) : ''); 
+    $formActionUrl = URL_USER_DASHBOARD . '?view=cat_form' . ($isEditMode ? '&id=' . intval($id) : ''); 
 } else {
     $listPageUrl = URL_NOVEL_CATS; 
     $formActionUrl = '';
 }
 
 // Define View Query (Correctly interpolated)
-$viewQuery = $isEdit
+$viewQuery = $isEditMode
     ? "SELECT id, name, created_at, updated_at, created_by, updated_by FROM $catTable WHERE id = " . intval($id)
     : "SELECT id, name FROM $catTable";
 
@@ -99,7 +83,7 @@ if ($_SERVER["REQUEST_METHOD"] !== "POST") {
             logAudit([
                 'page'           => $auditPage,
                 'action'         => 'V',
-                'action_message' => $isEdit ? "Viewing Edit Category Form (ID: $id)" : "Viewing Add Category Form",
+                'action_message' => $isEditMode ? "Viewing Edit Category Form (ID: $id)" : "Viewing Add Category Form",
                 'query'          => $viewQuery,
                 'query_table'    => $catTable,
                 'user_id'        => $_SESSION['user_id']
@@ -109,7 +93,7 @@ if ($_SERVER["REQUEST_METHOD"] !== "POST") {
 }
 
 // 1. Fetch Data
-if ($isEdit) {
+if ($isEditMode) {
     $stmt = $conn->prepare("SELECT id, name, created_at, updated_at, created_by, updated_by FROM $catTable WHERE id = ?");
     $stmt->bind_param("i", $id);
     $stmt->execute();
@@ -122,7 +106,7 @@ if ($isEdit) {
         ];
     } else { 
         $stmt->close();
-        if ($isEmbeddedTagForm || headers_sent()) {
+        if ($isEmbeddedCatForm || headers_sent()) {
             echo "<script>window.location.href='$listPageUrl';</script>";
         } else {
             header("Location: $listPageUrl");
@@ -141,6 +125,12 @@ if ($isEdit) {
 
 // 2. Handle Submit
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
+    if ($isEditMode && !$perm->edit) {
+        throw new Exception("Unauthorized: You do not have permission to edit records.");
+    }
+    if (!$isEditMode && !$perm->add) {
+        throw new Exception("Unauthorized: You do not have permission to add records.");
+    }
     $name = trim($_POST['name'] ?? '');
     $tagIds = $_POST['tags'] ?? []; 
     $uid = $_SESSION['user_id'];
@@ -149,9 +139,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $message = "分类名称不能为空"; $msgType = "danger";
     } else {
         // Check Duplicates
-        $checkSql = $isEdit ? "SELECT id FROM $catTable WHERE name = ? AND id != ?" : "SELECT id FROM $catTable WHERE name = ?";
+        $checkSql = $isEditMode ? "SELECT id FROM $catTable WHERE name = ? AND id != ?" : "SELECT id FROM $catTable WHERE name = ?";
         $chk = $conn->prepare($checkSql);
-        if ($isEdit) $chk->bind_param("si", $name, $id); else $chk->bind_param("s", $name);
+        if ($isEditMode) $chk->bind_param("si", $name, $id); else $chk->bind_param("s", $name);
         $chk->execute();
         $chk->store_result();
         
@@ -184,7 +174,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
             if ($tagsValid) {
                 // [CRITICAL] Ensure Old Value is captured if it was missed
-                if ($isEdit && empty($existingCatRow)) {
+                if ($isEditMode && empty($existingCatRow)) {
                     $fetchOld = $conn->prepare("SELECT id, name, created_at, updated_at, created_by, updated_by FROM $catTable WHERE id = ?");
                     $fetchOld->bind_param("i", $id);
                     $fetchOld->execute();
@@ -196,7 +186,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 }
 
                 // [REUSE] Check for Changes using Helper
-                if ($isEdit && !empty($existingCatRow)) {
+                if ($isEditMode && !empty($existingCatRow)) {
                     // Prepare Tags for comparison (Sort to ignore order differences)
                     $oldTags = $selectedTags; 
                     sort($oldTags);
@@ -218,7 +208,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 $conn->begin_transaction();
                 try {
                     // Prepare Insert/Update
-                    if ($isEdit) {
+                    if ($isEditMode) {
                         $upd = $conn->prepare($updateQuery);
                         $upd->bind_param("sii", $name, $uid, $id);
                         $upd->execute();
@@ -279,14 +269,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                         $newData = [
                             'id' => $targetId,
                             'name' => $name,
-                            'created_at' => $isEdit ? ($existingCatRow['created_at'] ?? null) : $now,
+                            'created_at' => $isEditMode ? ($existingCatRow['created_at'] ?? null) : $now,
                             'updated_at' => $now,
-                            'created_by' => $isEdit ? ($existingCatRow['created_by'] ?? $uid) : $uid,
+                            'created_by' => $isEditMode ? ($existingCatRow['created_by'] ?? $uid) : $uid,
                             'updated_by' => $uid,
                         ];
                     }
 
-                    if ($isEdit && empty($existingCatRow)) {
+                    if ($isEditMode && empty($existingCatRow)) {
                         $existingCatRow = ['id' => $targetId, 'name' => $name];
                     }
 
@@ -295,7 +285,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                             'page'           => $auditPage,
                             'action'         => $action,
                             'action_message' => "Saved Category: $name",
-                            'query'          => $isEdit ? $updateQuery : $insertQuery,
+                            'query'          => $isEditMode ? $updateQuery : $insertQuery,
                             'query_table'    => $catTable,
                             'user_id'        => $uid,
                             'record_id'      => $targetId,
@@ -308,7 +298,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     $_SESSION['flash_msg'] = '分类保存成功！';
                     $_SESSION['flash_type'] = 'success';
                     $redirectUrl = $listPageUrl;
-                    if ($isEmbeddedTagForm || headers_sent()) {
+                    if ($isEmbeddedCatForm || headers_sent()) {
                         echo "<script>window.location.href='$redirectUrl';</script>";
                     } else {
                         header("Location: $redirectUrl");
@@ -338,11 +328,11 @@ if ($atRes) {
     while ($row = $atRes->fetch_assoc()) { $allTags[] = $row; }
 }
 
-if ($isEmbeddedTagForm): ?>
+if ($isEmbeddedCatForm): ?>
 <div class="category-container">
     <div class="card category-card">
         <div class="card-header bg-white py-3">
-            <h4 class="m-0 text-primary"><i class="fa-solid fa-layer-group me-2"></i> <?php echo $isEdit ? "编辑分类" : "新增分类"; ?></h4>
+            <h4 class="m-0 text-primary"><i class="fa-solid fa-layer-group me-2"></i> <?php echo $isEditMode ? "编辑分类" : "新增分类"; ?></h4>
         </div>
         <div class="card-body">
             <?php if ($message): ?>

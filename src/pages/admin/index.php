@@ -1,32 +1,16 @@
 <?php
 // Path: src/pages/admin/index.php
 
-// RBAC Permission Check
 $currentUrl = '/dashboard.php?view=admin';
-$allowedActions = getPageRuntimePermissions($currentUrl);
-$canView = in_array('View', $allowedActions);
+$perm = hasPagePermission($conn, $currentUrl);
 
-if (!$canView) {
-    echo '
-    <div class="container-fluid d-flex align-items-center justify-content-center" style="min-height: 400px;">
-        <div class="text-center">
-            <div class="mb-4">
-                <i class="fa-solid fa-lock text-danger" style="font-size: 5rem; opacity: 0.2;"></i>
-            </div>
-            <h3 class="text-dark fw-bold">无权访问此页面</h3>
-            <p class="text-muted">抱歉，您的角色没有权限查看"管理员面板"。请联系系统管理员进行授权。</p>
-            <a href="' . URL_USER_DASHBOARD . '" class="btn btn-outline-primary mt-3">
-                <i class="fa-solid fa-house me-2"></i>返回仪表盘
-            </a>
-        </div>
-    </div>';
-    return;
+if (empty($perm) || !$perm->view) {
+    denyAccess("权限不足：您没有访问管理员面板的权限。");
 }
 
-// Check sub-page permissions for conditional card visibility
-$canViewPageAction = in_array('View', getPageRuntimePermissions('/dashboard.php?view=page_action'));
-$canViewPageInfo   = in_array('View', getPageRuntimePermissions('/dashboard.php?view=page_info'));
-$canViewUserRole   = in_array('View', getPageRuntimePermissions('/dashboard.php?view=user_role'));
+$permPageAction = hasPagePermission($conn, '/dashboard.php?view=page_action');
+$permPageInfo   = hasPagePermission($conn, '/dashboard.php?view=page_info');
+$permUserRole   = hasPagePermission($conn, '/dashboard.php?view=user_role');
 ?>
 <div class="container-fluid">
     <div class="d-flex align-items-center justify-content-between mb-4">
@@ -34,7 +18,7 @@ $canViewUserRole   = in_array('View', getPageRuntimePermissions('/dashboard.php?
     </div>
 
     <div class="row">
-        <?php if ($canViewPageAction): ?>
+        <?php if (!empty($permPageAction) && $permPageAction->view): ?>
         <div class="col-md-6 col-lg-4 col-xl-3 mb-4">
             <a href="<?php echo URL_USER_DASHBOARD . '?view=page_action'; ?>" class="text-decoration-none">
                 <div class="card h-100 border-0 shadow-sm action-card hover-lift">
@@ -52,7 +36,7 @@ $canViewUserRole   = in_array('View', getPageRuntimePermissions('/dashboard.php?
         </div>
         <?php endif; ?>
 
-        <?php if ($canViewPageInfo): ?>
+        <?php if (!empty($permPageInfo) && $permPageInfo->view): ?>
         <div class="col-md-6 col-lg-4 col-xl-3 mb-4">
             <a href="<?php echo URL_USER_DASHBOARD . '?view=page_info'; ?>" class="text-decoration-none">
                 <div class="card h-100 border-0 shadow-sm action-card hover-lift">
@@ -70,7 +54,7 @@ $canViewUserRole   = in_array('View', getPageRuntimePermissions('/dashboard.php?
         </div>
         <?php endif; ?>
 
-        <?php if ($canViewUserRole): ?>
+        <?php if (!empty($permUserRole) && $permUserRole->view): ?>
         <div class="col-md-6 col-lg-4 col-xl-3 mb-4">
             <a href="<?php echo URL_USER_ROLE; ?>" class="text-decoration-none">
                 <div class="card h-100 border-0 shadow-sm action-card hover-lift">

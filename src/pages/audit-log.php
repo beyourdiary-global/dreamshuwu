@@ -1,61 +1,31 @@
 <?php
 // Path: src/pages/audit-log.php
-
 require_once dirname(__DIR__, 2) . '/common.php';
 
-// 1. Auth Check
+// 1. Basic Login Check
 if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
-    if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
-        header('Content-Type: application/json');
-        echo json_encode(['error' => 'Session expired. Please login again.']);
-        exit();
-    }
     header("Location: " . URL_LOGIN);
     exit();
 }
 
-// 2. RBAC Permission Check
-$currentUrl = '/dashboard.php?view=audit-log';
-$allowedActions = getPageRuntimePermissions($currentUrl);
-$canView = in_array('View', $allowedActions);
+// 2. Dynamic Permission Check (No hardcoded 'View')
+$currentUrl = '/audit-log.php'; 
 
-if (!$canView) {
+// [ADDED] Fetch the dynamic permission object for this page
+$perm = hasPagePermission($conn, $currentUrl);
+
+// 2. Check if the user has View permission for this view
+if (empty($perm) || !$perm->view) {
+    // Handle AJAX DataTables request
     if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
         header('Content-Type: application/json');
-        echo json_encode([
-            'draw' => intval($_GET['draw'] ?? 0),
-            'recordsTotal' => 0,
-            'recordsFiltered' => 0,
-            'data' => [],
-            'error' => 'Access Denied: You lack view permissions.'
-        ]);
+        echo safeJsonEncode(['error' => 'Access Denied']);
         exit();
     }
-    
-    // For non-API requests, show a full-page access denied message.
-    $pageMetaKey = 'access_denied';
-    echo '<!DOCTYPE html><html lang="en"><head>';
-    require_once BASE_PATH . 'include/header.php';
-    echo '</head><body>';
-    require_once BASE_PATH . 'common/menu/header.php';
-    echo '
-    <div class="container-fluid d-flex align-items-center justify-content-center" style="min-height: 80vh;">
-        <div class="text-center">
-            <div class="mb-4">
-                <i class="fa-solid fa-lock text-danger" style="font-size: 5rem; opacity: 0.2;"></i>
-            </div>
-            <h3 class="text-dark fw-bold">无权访问此页面</h3>
-            <p class="text-muted">抱歉，您的角色没有权限查看“审计日志”。请联系系统管理员进行授权。</p>
-            <a href="' . URL_USER_DASHBOARD . '" class="btn btn-outline-primary mt-3">
-                <i class="fa-solid fa-house me-2"></i>返回仪表盘
-            </a>
-        </div>
-    </div>';
-    echo '</body></html>';
-    exit();
+    // Handle UI load
+    denyAccess("权限不足：您没有访问审计日志页面的权限。");
 }
-
-
+// --- END PERMISSION CHECK ---
 $auditActions = ['V' => 'View', 'E' => 'Edit', 'A' => 'Add', 'D' => 'Delete'];
 
 if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
@@ -225,7 +195,7 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
     } catch (Throwable $e) {
         // Return JSON error so DataTable handles it gracefully
         echo safeJsonEncode([
-            "draw"            => (isset($draw) ? $draw : 0),
+            "draw"            => $draw,
             "recordsTotal"    => 0,
             "recordsFiltered" => 0,
             "data"            => [],
@@ -235,7 +205,7 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
     exit();
 }
 
-$pageMetaKey = 'audit_log';
+$pageMetaKey = $currentUrl;
 ?>
 <!DOCTYPE html>
 <html lang="<?php echo defined('SITE_LANG') ? SITE_LANG : 'zh-CN'; ?>">

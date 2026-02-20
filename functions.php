@@ -58,7 +58,6 @@ function safeJsonEncode($data) {
 }
 
 /**
-    /**
  * Decode a JSON string even when the json extension is disabled.
  * Returns the decoded value, or null on failure.
  * Sets $success by reference so the caller knows if decoding worked.
@@ -788,85 +787,6 @@ function fetchPageInfoRowById($conn, $table, $id) {
 }
 
 /**
- * [NEW] Requirement 8.6: Runtime Permission Enforcement
- * Checks permissions for the current page URL against the database configuration.
- * Optimized: Uses 2 separate queries instead of JOIN to reduce table locking potential.
- * @param string $publicUrl The URL of the page (e.g. '/admin/product')
- * @return array List of allowed action names (e.g. ['View', 'Add', 'Edit'])
- */
-
-
-/**
- * [UPDATED] Runtime Permission Enforcement (RBAC)
- * Checks permissions for the current page URL against the user's assigned role.
- * Optimized: Uses separate queries to reduce table locking potential.
- * @param string $publicUrl The URL of the page (e.g. '/dashboard.php?view=tags')
- * @return array List of allowed action names (e.g. ['View', 'Add', 'Edit'])
- */
-function getPageRuntimePermissions($publicUrl) {
-    global $conn;
-
-    // 1. Get user's role ID from session
-    // Make sure your login script sets $_SESSION['role_id']!
-    $roleId = $_SESSION['role_id'] ?? 0;
-    
-    // If the user doesn't have a role, deny everything immediately.
-    if ($roleId <= 0) {
-        return []; 
-    }
-    
-    // 2. Resolve Page ID from the exact URL
-    $stmt = $conn->prepare("SELECT id FROM " . PAGE_INFO_LIST . " WHERE public_url = ? AND status = 'A' LIMIT 1");
-    $stmt->bind_param("s", $publicUrl);
-    $stmt->execute();
-    $stmt->store_result();
-    
-    if ($stmt->num_rows === 0) {
-        $stmt->close();
-        return []; // Page not registered or is inactive -> Deny all
-    }
-    
-    $pageId = 0;
-    $stmt->bind_result($pageId);
-    $stmt->fetch();
-    $stmt->close();
-
-    // 3. Fetch Action IDs from the User Role Permission bridge table
-    $actionIds = [];
-    $stmt = $conn->prepare("SELECT action_id FROM " . USER_ROLE_PERMISSION . " WHERE page_id = ? AND user_role_id = ?");
-    $stmt->bind_param("ii", $pageId, $roleId);
-    $stmt->execute();
-    $stmt->bind_result($aId);
-    
-    while($stmt->fetch()) {
-        $actionIds[] = $aId;
-    }
-    $stmt->close();
-
-    // Optimization: If no actions bound for this role on this page, return early
-    if (empty($actionIds)) {
-        return [];
-    }
-
-    // 4. Fetch the actual Action Names using the IDs
-    $allowedActions = [];
-    
-    // Security: Ensure all IDs are integers to prevent SQL Injection
-    $safeIds = implode(',', array_map('intval', $actionIds));
-    
-    $sql = "SELECT name FROM " . PAGE_ACTION . " WHERE id IN ($safeIds) AND status = 'A'";
-    $result = $conn->query($sql);
-    
-    if ($result) {
-        while ($row = $result->fetch_assoc()) {
-            $allowedActions[] = $row['name'];
-        }
-        $result->free();
-    }
-
-    return $allowedActions; 
-}
-/**
  * [NEW] Fetch a single user_role row by id.
  */
 function fetchUserRoleById($conn, $id) {
@@ -974,3 +894,253 @@ function checkRoleNameDuplicate($conn, $nameCn, $nameEn, $excludeId = 0) {
     return $exists;
 }
 
+/**
+ * Get the default user role ID for new registrations.
+ * Looks for a role named 'Member' or 'User'.
+ */
+function getDefaultUserRoleId($conn) {
+    if (!$conn) return null;
+
+    // 1. Prepare the SQL statement with placeholders
+    $sql = "SELECT id FROM " . USER_ROLE . " 
+            WHERE (name_en IN (?, ?) OR name_cn IN (?, ?)) 
+            AND status = ? 
+            LIMIT 1";
+
+    $stmt = $conn->prepare($sql);
+    
+    if ($stmt) {
+        $name_en1 = 'Member';
+        $name_en2 = 'User';
+        $name_cn1 = '普通用户';
+        $name_cn2 = '会员';
+        $status = 'A';
+
+        // 2. Bind the variables to the placeholders
+        $stmt->bind_param("sssss", $name_en1, $name_en2, $name_cn1, $name_cn2, $status);
+
+        // 3. Execute and get the result
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        if ($result && $result->num_rows > 0) {
+            $row = $result->fetch_assoc();
+            $stmt->close();
+            return (int)$row['id'];
+        }
+
+        $stmt->close();
+    }
+
+    return null;
+}
+
+/**
+ * This will be used for Administrator accounts created by the Super Admin. 
+ * It looks for a role named 'Administrator' or 'Super Administrator'.
+ * 
+ */
+function getAdministratorRoleId($conn) {
+    if (!$conn) return null;
+
+    // 1. Prepare the SQL statement with placeholders
+    $sql = "SELECT id FROM " . USER_ROLE . " 
+            WHERE (name_en IN (?, ?) OR name_cn IN (?, ?)) 
+            AND status = ? 
+            LIMIT 1";
+
+    $stmt = $conn->prepare($sql);
+    
+    if ($stmt) {
+        $name_en1 = 'Super Administrator';
+        $name_en2 = 'Administrator';
+        $name_cn1 = '超级管理员';
+        $name_cn2 = '管理员';
+        $status = 'A';
+
+        // 2. Bind the variables to the placeholders
+        $stmt->bind_param("sssss", $name_en1, $name_en2, $name_cn1, $name_cn2, $status);
+
+        // 3. Execute and get the result
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        if ($result && $result->num_rows > 0) {
+            $row = $result->fetch_assoc();
+            $stmt->close();
+            return (int)$row['id'];
+        }
+
+        $stmt->close();
+    }
+
+    return null;
+}
+
+/**
+ * Fully Dynamic Gatekeeper (Optimized: No JOINs)
+ * 1. Fetches all possible actions from PAGE_ACTION.
+ * 2. Fetches assigned actions from USER_ROLE_PERMISSION.
+ * 3. Fetches enabled actions from ACTION_MASTER.
+ * 4. Intersects them in PHP and returns a dynamic permission object.
+ */
+function hasPagePermission($conn, $pageUrl) {
+    $perm = new stdClass();
+
+    if (!$conn) return $perm;
+
+    // 1. Initialize the object: Fetch ALL possible actions and default them to false
+    // This ensures properties like $perm->view or $perm->delete always exist to prevent PHP warnings
+    $allActionsRes = $conn->query("SELECT id, name FROM " . PAGE_ACTION . " WHERE status = 'A'");
+    $actionMap = []; // Maps ID to Name (e.g., [1 => 'view', 2 => 'add'])
+    if ($allActionsRes) {
+        while ($row = $allActionsRes->fetch_assoc()) {
+            $key = strtolower($row['name']);
+            $perm->$key = false; 
+            $actionMap[(int)$row['id']] = $key;
+        }
+        $allActionsRes->free();
+    }
+
+    if (empty($pageUrl)) return $perm;
+
+    // 2. Get Role ID from Session
+    $roleId = isset($_SESSION['role_id']) ? (int)$_SESSION['role_id'] : 0;
+    if ($roleId <= 0) return $perm;
+
+    // 3. Get Page ID
+    $pageId = 0;
+    $stmt = $conn->prepare("SELECT id FROM " . PAGE_INFO_LIST . " WHERE public_url = ? AND status = 'A' LIMIT 1");
+    if ($stmt) {
+        $stmt->bind_param("s", $pageUrl);
+        $stmt->execute();
+        $stmt->bind_result($pageId);
+        $stmt->fetch();
+        $stmt->close();
+    }
+    if (empty($pageId)) return $perm;
+
+    // 4. Get User Role Permissions (The User's Keys)
+    $roleActionIds = [];
+    $stmt = $conn->prepare("SELECT action_id FROM " . USER_ROLE_PERMISSION . " WHERE user_role_id = ? AND page_id = ?");
+    if ($stmt) {
+        $stmt->bind_param("ii", $roleId, $pageId);
+        $stmt->execute();
+        $aId = null;
+        $stmt->bind_result($aId);
+        while ($stmt->fetch()) {
+            $roleActionIds[] = (int)$aId;
+        }
+        $stmt->close();
+    }
+    
+    // Fast Failure: If role has zero permissions, return the default false object immediately
+    if (empty($roleActionIds)) return $perm;
+
+    // 5. Get Page Master Permissions (The Page's Locks)
+    $masterActionIds = [];
+    $stmt = $conn->prepare("SELECT action_id FROM " . ACTION_MASTER . " WHERE page_id = ?");
+    if ($stmt) {
+        $stmt->bind_param("i", $pageId);
+        $stmt->execute();
+        $mId = null;
+        $stmt->bind_result($mId);
+        while ($stmt->fetch()) {
+            $masterActionIds[] = (int)$mId;
+        }
+        $stmt->close();
+    }
+
+    // 6. Calculate the Intersection in PHP
+    // This strictly enforces that the ID must exist in BOTH tables.
+    $validActionIds = array_intersect($roleActionIds, $masterActionIds);
+
+    // 7. Update the dynamic permission object
+    foreach ($validActionIds as $validId) {
+        if (isset($actionMap[$validId])) {
+            $keyName = $actionMap[$validId];
+            $perm->$keyName = true;
+        }
+    }
+
+    return $perm;
+}
+
+function renderTableActions($htmlString) {
+    $minHeight = '32px'; // Matches standard btn-sm height
+    if (!empty($htmlString)) {
+        return '<div style="display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: '.$minHeight.';">' . $htmlString . '</div>';
+    }
+    // Returns a layout-stable placeholder if no permissions exist
+    return '<div style="display: block; height: '.$minHeight.'; width: 100%;">&nbsp;</div>';
+}
+
+/**
+ * Handles access denial by showing an error message on the CURRENT page.
+ * This stops execution and prevents redirecting to home.
+ */
+function denyAccess($message = "权限不足：您没有访问此页面的权限。") {
+    // Bring the database connection into the function scope
+    global $conn; 
+
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+    
+    // Load components so the user still sees the website frame
+    if (defined('BASE_PATH')) {
+        // Because we used 'global $conn' above, the header can now see the connection
+        require_once BASE_PATH . 'include/header.php';
+        require_once BASE_PATH . 'common/menu/header.php';
+    }
+
+    echo '<div class="container mt-5">
+            <div class="alert alert-danger shadow-sm d-flex align-items-center" role="alert" style="border-left: 5px solid #dc3545;">
+                <i class="fa-solid fa-circle-exclamation me-3 fs-4"></i>
+                <div>
+                    <h4 class="alert-heading mb-1">访问受限</h4>
+                    <p class="mb-0">' . htmlspecialchars($message) . '</p>
+                </div>
+            </div>
+            <div class="mt-3">
+                <button onclick="window.history.back()" class="btn btn-outline-secondary btn-sm">
+                    <i class="fa-solid fa-arrow-left me-1"></i> 返回上一页
+                </button>
+            </div>
+          </div>';
+
+    exit();
+}
+
+/**
+ * Fetch dynamic page registry for Meta Settings dropdown.
+ * Uses public_url as the key so pages can easily map their current URL to their SEO settings.
+ */
+function getDynamicPageRegistry($conn) {
+    $registry = [];
+    if (!$conn) return $registry;
+    
+    // Fetch active pages using prepared statement and bind_result
+    $stmt = $conn->prepare("SELECT public_url, name_en, name_cn FROM " . PAGE_INFO_LIST . " WHERE status = 'A' ORDER BY name_en ASC");
+    
+    if ($stmt) {
+        $stmt->execute();
+        
+        $url = null;
+        $nameEn = null;
+        $nameCn = null;
+        
+        $stmt->bind_result($url, $nameEn, $nameCn);
+        
+        while ($stmt->fetch()) {
+            $trimmedUrl = trim((string)$url);
+            // Only add pages that have a valid public URL defined
+            if (!empty($trimmedUrl)) {
+                $registry[$trimmedUrl] = $nameCn . ' (' . $nameEn . ')';
+            }
+        }
+        $stmt->close();
+    }
+    
+    return $registry;
+}

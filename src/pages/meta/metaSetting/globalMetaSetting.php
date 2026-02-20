@@ -1,6 +1,6 @@
 <?php
-// Path: src/pages/meta/metaSetting/globalMetaSetting.php
-// Global Meta Settings Section - included by meta/index.php
+// Path: src/pages/metaSetting/globalMetaSetting.php
+// Global Meta Settings Section - included by metaSetting/index.php
 ?>
 <div class="row justify-content-center">
     <div class="col-12">
@@ -25,9 +25,9 @@
                             <label class="col-md-3 col-form-label text-md-end form-label"><?php echo htmlspecialchars($config['label']); ?></label>
                             <div class="col-md-9">
                                 <?php if ($config['type'] === 'textarea'): ?>
-                                    <textarea name="<?php echo $key; ?>" class="form-control" rows="3" <?php if (!$canEdit) echo 'disabled'; ?>><?php echo htmlspecialchars($current[$key]); ?></textarea>
+                                    <textarea name="<?php echo $key; ?>" class="form-control" rows="3"><?php echo htmlspecialchars($current[$key]); ?></textarea>
                                 <?php else: ?>
-                                    <input type="text" name="<?php echo $key; ?>" class="form-control" value="<?php echo htmlspecialchars($current[$key]); ?>" <?php if (!$canEdit) echo 'disabled'; ?>>
+                                    <input type="text" name="<?php echo $key; ?>" class="form-control" value="<?php echo htmlspecialchars($current[$key]); ?>">
                                 <?php endif; ?>
                             </div>
                         </div>
@@ -35,10 +35,8 @@
 
                     <div class="row mt-4">
                         <div class="col-md-9 offset-md-3">
-                            <?php if ($canEdit): ?>
-                                <button type="submit" class="btn btn-primary px-5 fw-bold"><i class="fa-solid fa-save"></i> Save Global Settings</button>
-                            <?php else: ?>
-                                <button type="submit" class="btn btn-primary px-5 fw-bold" disabled><i class="fa-solid fa-save"></i> Save Global Settings</button>
+                            <?php if ($perm->edit): ?>
+                            <button type="submit" class="btn btn-primary px-5 fw-bold"><i class="fa-solid fa-save"></i> Save Global Settings</button>
                             <?php endif; ?>
                         </div>
                     </div>

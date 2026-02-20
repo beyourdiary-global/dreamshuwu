@@ -16,21 +16,32 @@ $formRow = [
 // Initialize permissions array (used for checkboxes)
 $assignedPerms = [];
 
+if (empty($perm) || !$perm->view) {
+    denyAccess("权限不足：您没有访问用户角色表单的权限。");
+}
+
+if ($isEditMode && empty($perm->edit)) {
+    denyAccess("权限不足：您没有编辑用户角色的权限。");
+} elseif (!$isEditMode && empty($perm->add)) {
+    denyAccess("权限不足：您没有新增用户角色的权限。");
+}
+
 // 2. Form Submission Handling (POST)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['mode'])) {
-    // Permission Check: Ensure only authorized roles can save
-    if (isset($hasPermission) && !$hasPermission) {
-        $_SESSION['flash_msg'] = '权限不足：仅允许管理员组访问';
-        $_SESSION['flash_type'] = 'danger';
-        userRoleRedirect($baseListUrl);
-    }
-
     $formAction = $_POST['action_type'] ?? '';
     
     // Handle 'save' action
     if ($formAction === 'save') {
         // Collect and sanitize input
         $recordId = isset($_POST['id']) ? (int)$_POST['id'] : 0;
+        $isEditMode = $recordId > 0;
+        if ($isEditMode && empty($perm->edit)) {
+            denyAccess("权限不足：您没有编辑用户角色的权限。");
+        }
+        if (!$isEditMode && empty($perm->add)) {
+            denyAccess("权限不足：您没有新增用户角色的权限。");
+        }
+
         $name_cn = trim($_POST['name_cn'] ?? '');
         $name_en = trim($_POST['name_en'] ?? '');
         $description = trim($_POST['description'] ?? '');
@@ -331,7 +342,9 @@ if ($actRes) {
 
                 <div class="d-flex justify-content-end mt-4 gap-2">
                     <a href="<?php echo $baseListUrl; ?>" class="btn btn-light">取消</a>
+                    <?php if (($isEditMode && !empty($perm->edit)) || (!$isEditMode && !empty($perm->add))): ?>
                     <button type="submit" class="btn btn-primary px-4"><i class="fa-solid fa-save"></i> 保存角色</button>
+                    <?php endif; ?>
                 </div>
             </form>
         </div>

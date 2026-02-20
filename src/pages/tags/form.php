@@ -1,6 +1,17 @@
 <?php
 require_once dirname(__DIR__, 3) . '/common.php';
 
+// 1. Identify this specific view's URL as registered in your DB
+$currentUrl = '/dashboard.php?view=tag_form'; 
+
+// [ADDED] Fetch dynamic permission object
+$perm = hasPagePermission($conn, $currentUrl);
+
+// 2. Base View Check (If they can't even view the form, block them)
+if (empty($perm) || !$perm->view) {
+    denyAccess("权限不足：您没有访问此表单的权限。");
+}
+
 // 1. Auth Check
 if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
     if (headers_sent()) {
@@ -23,45 +34,12 @@ $tagId = $_GET['id'] ?? null;
 $tagId = $tagId !== null ? (int) $tagId : null;
 $isEditMode = !empty($tagId);
 
-// 3. RBAC Permission Check
-$currentUrl = '/dashboard.php?view=tag_form'; 
-$allowedActions = getPageRuntimePermissions($currentUrl);
-
-$canView = in_array('View', $allowedActions);
-$canAdd  = in_array('Add', $allowedActions);
-$canEdit = in_array('Edit', $allowedActions);
-
-if (!$canView) {
-    $_SESSION['flash_msg'] = 'Access Denied: You cannot view this form.';
-    $_SESSION['flash_type'] = 'danger';
-    if ($isEmbeddedTagForm || headers_sent()) {
-        echo "<script>window.location.href='" . URL_USER_DASHBOARD . "?view=tags';</script>";
-    } else {
-        header("Location: " . URL_USER_DASHBOARD . "?view=tags");
-    }
-    exit();
-}
-
-if ($isEditMode && !$canEdit) {
-    $_SESSION['flash_msg'] = 'Access Denied: You do not have permission to edit tags.';
-    $_SESSION['flash_type'] = 'danger';
-    if ($isEmbeddedTagForm || headers_sent()) {
-        echo "<script>window.location.href='" . URL_USER_DASHBOARD . "?view=tags';</script>";
-    } else {
-        header("Location: " . URL_USER_DASHBOARD . "?view=tags");
-    }
-    exit();
-}
-
-if (!$isEditMode && !$canAdd) {
-    $_SESSION['flash_msg'] = 'Access Denied: You do not have permission to add new tags.';
-    $_SESSION['flash_type'] = 'danger';
-    if ($isEmbeddedTagForm || headers_sent()) {
-        echo "<script>window.location.href='" . URL_USER_DASHBOARD . "?view=tags';</script>";
-    } else {
-        header("Location: " . URL_USER_DASHBOARD . "?view=tags");
-    }
-    exit();
+// [ADDED] Specific Action Permission Check
+// If Edit Mode: must have 'edit' permission. If Add Mode: must have 'add' permission.
+if ($isEditMode && !$perm->edit) {
+    denyAccess("权限不足：您没有编辑标签的权限。");
+} elseif (!$isEditMode && !$perm->add) {
+    denyAccess("权限不足：您没有新增标签的权限。");
 }
 
 if ($isEmbeddedTagForm) {
@@ -82,14 +60,14 @@ $message = "";
 $msgType = "";
 $existingTagRow = null;
 
-// Flash Message Check (Reads message after redirect)
+// [NEW] Flash Message Check (Reads message after redirect)
 if (isset($_SESSION['flash_msg'])) {
     $message = $_SESSION['flash_msg'];
     $msgType = $_SESSION['flash_type'];
     unset($_SESSION['flash_msg'], $_SESSION['flash_type']);
 }
 
-// Log "View" Action (Run only on GET request)
+// [NEW] Log "View" Action (Run only on GET request)
 if ($_SERVER["REQUEST_METHOD"] !== "POST") {
     if (!defined('TAG_FORM_VIEW_LOGGED')) {
         define('TAG_FORM_VIEW_LOGGED', true);
@@ -107,7 +85,7 @@ if ($_SERVER["REQUEST_METHOD"] !== "POST") {
 }
 
 try {
-    // 4. Load Existing Data (Initial Page Load)
+    // 3. Load Existing Data (Initial Page Load)
     if ($isEditMode) {
         $stmt = $conn->prepare("SELECT id, name, created_at, updated_at, created_by, updated_by FROM " . $tagTable . " WHERE id = ?");
         $stmt->bind_param("i", $tagId);
@@ -131,8 +109,15 @@ try {
         $stmt->close();
     }
 
-    // 5. Handle Form Submission (POST)
+    // 4. Handle Form Submission (POST)
     if ($_SERVER["REQUEST_METHOD"] === "POST") {
+        // [ADDED] Re-verify strict permissions before DB transaction
+    if ($isEditMode && !$perm->edit) {
+        throw new Exception("Unauthorized: You do not have permission to edit records.");
+    }
+    if (!$isEditMode && !$perm->add) {
+        throw new Exception("Unauthorized: You do not have permission to add records.");
+    }
         $tagName = trim($_POST['tag_name'] ?? '');
         $postedTagId = isset($_POST['tag_id']) ? (int) $_POST['tag_id'] : null;
         
@@ -147,7 +132,7 @@ try {
         if (empty($tagName)) {
             $message = "标签名称不能为空"; $msgType = "danger";
         } else {
-            // Use global helper to check changes and redirect
+            // [NEW] Use global helper to check changes and redirect
             if ($isEditMode && !empty($existingTagRow)) {
                 checkNoChangesAndRedirect(['name' => $tagName], $existingTagRow);
             }
@@ -168,7 +153,7 @@ try {
             } else {
                 $chk->close(); // Close duplicate check statement immediately
 
-                // If Edit Mode, ensure we have Old Data for Audit Log BEFORE updating
+                // [CRITICAL] If Edit Mode, ensure we have Old Data for Audit Log BEFORE updating
                 if ($isEditMode && empty($existingTagRow)) {
                     $fetchOld = $conn->prepare("SELECT id, name, created_at, updated_at, created_by, updated_by FROM " . $tagTable . " WHERE id = ?");
                     $fetchOld->bind_param("i", $tagId);
@@ -192,11 +177,11 @@ try {
                 }
 
                 if ($stmt->execute()) {
-                    // Capture ID and Close Statement immediately
+                    // [CRITICAL FIX] Capture ID and Close Statement immediately
                     $targetId = $isEditMode ? $tagId : $conn->insert_id;
                     $stmt->close(); 
 
-                    // Prepare Data for Audit Log (Fetch fresh data)
+                    // 1. [NEW] Prepare Data for Audit Log (Fetch fresh data)
                     $newData = null;
                     $reload = $conn->prepare("SELECT id, name, created_at, updated_at, created_by, updated_by FROM " . $tagTable . " WHERE id = ?");
                     if ($reload) {
@@ -227,7 +212,7 @@ try {
                         $existingTagRow = ['id' => $targetId, 'name' => $tagName];
                     }
 
-                    // Log the Action (ONLY ONCE)
+                    // 2. [AUDIT] Log the Action (ONLY ONCE)
                     if (function_exists('logAudit')) {
                         logAudit([
                             'page'           => $auditPage,

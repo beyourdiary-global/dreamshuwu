@@ -13,30 +13,28 @@ $formRow = [
 ];
 $boundActions = [];
 
-// RBAC Permission Check for Form
-if (!$canView) {
-    $_SESSION['flash_msg'] = 'Access Denied: You cannot view this form.';
-    $_SESSION['flash_type'] = 'danger';
-    pageInfoRedirect($baseListUrl);
+if (empty($perm) || !$perm->view) {
+    denyAccess("权限不足：您没有访问页面信息表单的权限。");
 }
 
-if ($isEditMode && !$canEdit) {
-    $_SESSION['flash_msg'] = 'Access Denied: You do not have permission to edit page information.';
-    $_SESSION['flash_type'] = 'danger';
-    pageInfoRedirect($baseListUrl);
-}
-
-if (!$isEditMode && !$canAdd) {
-    $_SESSION['flash_msg'] = 'Access Denied: You do not have permission to add page information.';
-    $_SESSION['flash_type'] = 'danger';
-    pageInfoRedirect($baseListUrl);
+if ($isEditMode && empty($perm->edit)) {
+    denyAccess("权限不足：您没有编辑页面信息的权限。");
+} elseif (!$isEditMode && empty($perm->add)) {
+    denyAccess("权限不足：您没有新增页面信息的权限。");
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['mode'])) {
-
     $formAction = $_POST['action_type'] ?? '';
     if ($formAction === 'save') {
         $recordId = isset($_POST['id']) ? (int)$_POST['id'] : 0;
+        $isEditMode = $recordId > 0;
+        if ($isEditMode && empty($perm->edit)) {
+            denyAccess("权限不足：您没有编辑页面信息的权限。");
+        }
+        if (!$isEditMode && empty($perm->add)) {
+            denyAccess("权限不足：您没有新增页面信息的权限。");
+        }
+
         $name_en = trim($_POST['name_en'] ?? '');
         $name_cn = trim($_POST['name_cn'] ?? '');
         $public_url = trim($_POST['public_url'] ?? '');
@@ -56,7 +54,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['mode'])) {
             pageInfoRedirect($redirectTo);
         }
 
-        // [UPDATED] Regex now allows ?, =, and & for query parameters
         if ($public_url[0] !== '/' || !preg_match('#^/[A-Za-z0-9/_\-.?=&]*$#', $public_url)) {
             $_SESSION['flash_msg'] = 'Public URL 格式无效，必须以 / 开头且仅包含字母、数字、/、_、-、. 以及 ? = &';
             $_SESSION['flash_type'] = 'danger';
@@ -315,7 +312,9 @@ if ($res) {
 
                 <div class="d-flex justify-content-end mt-4 gap-2">
                     <a href="<?php echo $baseListUrl; ?>" class="btn btn-light">取消</a>
+                    <?php if (($isEditMode && !empty($perm->edit)) || (!$isEditMode && !empty($perm->add))): ?>
                     <button type="submit" class="btn btn-primary px-4"><i class="fa-solid fa-save"></i> 保存设置</button>
+                    <?php endif; ?>
                 </div>
             </form>
         </div>

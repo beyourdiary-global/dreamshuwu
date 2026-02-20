@@ -30,7 +30,7 @@ if (!$specificSeo && isset($category['id'])) {
     $specificSeo = getMetaSettings($conn, 'category', $category['id']);
 }
 
-$siteName = !empty($webSettings['website_name']) ? $webSettings['website_name'] : 'StarAdmin';
+$siteName = !empty($webSettings['website_name']) ? $webSettings['website_name'] : 'Website Name';
 
 $finalMetaTitle = !empty($specificSeo['meta_title']) ? $specificSeo['meta_title'] : ($globalSeo['meta_title'] ?? $siteName);
 $finalMetaDesc  = !empty($specificSeo['meta_description']) ? $specificSeo['meta_description'] : ($globalSeo['meta_description'] ?? '');

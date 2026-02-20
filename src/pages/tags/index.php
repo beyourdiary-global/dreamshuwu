@@ -2,6 +2,24 @@
 // Path: src/pages/tags/index.php
 require_once dirname(__DIR__, 3) . '/common.php';
 
+// 1. Identify this specific view's URL as registered in your DB
+$currentUrl = '/dashboard.php?view=tags'; 
+
+// [ADDED] Fetch the dynamic permission object for this page
+$perm = hasPagePermission($conn, $currentUrl);
+
+// 2. Check if the user has View permission for this view
+if (empty($perm) || !$perm->view) {
+    // Handle AJAX DataTables request
+    if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
+        header('Content-Type: application/json');
+        echo safeJsonEncode(['error' => 'Access Denied']);
+        exit();
+    }
+    // Handle UI load
+    denyAccess("权限不足：您没有访问标签管理页面的权限。");
+}
+
 $tagTable = NOVEL_TAGS;
 $auditPage = 'Tag Management';
 $viewQuery = "SELECT id, name FROM " . $tagTable;
@@ -28,56 +46,8 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
     header("Location: " . URL_LOGIN); 
     exit();
 }
-// 2. RBAC Permission Check
-$currentUrl = '/dashboard.php?view=tags'; 
-$allowedActions = getPageRuntimePermissions($currentUrl);
 
-$canView   = in_array('View', $allowedActions);
-$canAdd    = in_array('Add', $allowedActions);
-$canEdit   = in_array('Edit', $allowedActions);
-$canDelete = in_array('Delete', $allowedActions);
-
-// Block Page Access / List API
-if (!$canView) {
-    if ($isAjaxRequest || $isDeleteRequest) {
-        header('Content-Type: application/json');
-        echo json_encode([
-            'draw' => intval($_GET['draw'] ?? 0),
-            'recordsTotal' => 0,
-            'recordsFiltered' => 0,
-            'data' => [],
-            'error' => 'Access Denied: You lack view permissions.'
-        ]);
-        exit();
-    }
-    
-    // Instead of redirecting, we output a stylized "No Access" message
-    echo '
-    <div class="container-fluid d-flex align-items-center justify-content-center" style="min-height: 400px;">
-        <div class="text-center">
-            <div class="mb-4">
-                <i class="fa-solid fa-lock text-danger" style="font-size: 5rem; opacity: 0.2;"></i>
-            </div>
-            <h3 class="text-dark fw-bold">无权访问此页面</h3>
-            <p class="text-muted">抱歉，您的角色没有权限查看“标签管理”。请联系系统管理员进行授权。</p>
-            <a href="' . URL_USER_DASHBOARD . '" class="btn btn-outline-primary mt-3">
-                <i class="fa-solid fa-house me-2"></i>返回仪表盘
-            </a>
-        </div>
-    </div>';
-    
-    // We stop execution here so the rest of the tag list doesn't load
-    return; 
-}
-
-// Block Delete API
-if ($isDeleteRequest && !$canDelete) {
-    header('Content-Type: application/json');
-    echo json_encode(['success' => false, 'message' => 'Access Denied: You do not have permission to delete tags.']);
-    exit();
-}
-
-// 3. Helper Functions (safeJsonEncode is loaded from functions.php via common.php)
+// 2. Helper Functions (safeJsonEncode is loaded from functions.php via common.php)
 
 if (!function_exists('jsonEncodeWrapper')) {
     function jsonEncodeWrapper($data) {
@@ -133,7 +103,7 @@ if (!function_exists('bindDynamicParams')) {
     }
 }
 
-// 4. API: List Data (GET)
+// 3. API: List Data (GET)
 if ($isAjaxRequest) {
     header('Content-Type: application/json');
 
@@ -180,7 +150,7 @@ if ($isAjaxRequest) {
     $cStmt->fetch();
     $cStmt->close();
 
-// Data
+    // Data
     $stmt = $conn->prepare($sql);
     if ($stmt === false) sendTagTableError('System error while loading tag list.');
     bindDynamicParams($stmt, $mainTypes, $mainParams);
@@ -192,25 +162,19 @@ if ($isAjaxRequest) {
     while ($stmt->fetch()) {
         $editUrl = URL_USER_DASHBOARD . '?view=tag_form&id=' . (int) $id;
         
-        // [CRITICAL FIX] Reset actions string for every row
-        $actions = '';
-
-        // Only add Edit button if $canEdit is true
-        if ($canEdit) {
-            $actions .= '<a href="' . $editUrl . '" class="btn btn-sm btn-outline-primary btn-action" title="Edit"><i class="fa-solid fa-pen"></i></a> ';
+        $actionsHtml = '';
+        // 1. Check dynamic permission properties
+        if ($perm->edit) {
+            $actionsHtml .= '<a href="' . $editUrl . '" class="btn btn-sm btn-outline-primary btn-action" title="Edit"><i class="fa-solid fa-pen"></i></a>';
+        }
+        if ($perm->delete) {
+            $actionsHtml .= '<button class="btn btn-sm btn-outline-danger btn-action delete-btn" data-id="' . $id . '" data-name="' . htmlspecialchars($name) . '" title="Delete"><i class="fa-solid fa-trash"></i></button>';
         }
 
-        // Only add Delete button if $canDelete is true
-        if ($canDelete) {
-            $actions .= '<button class="btn btn-sm btn-outline-danger btn-action delete-btn" data-id="' . $id . '" data-name="' . htmlspecialchars($name) . '" title="Delete"><i class="fa-solid fa-trash"></i></button>';
-        }
-
-        // If no actions are allowed, show a small badge or text
-        if (!$canEdit && !$canDelete) {
-            $actions = '<span class="text-muted small">无操作权限</span>';
-        }
+        // 2. Use the global helper to wrap buttons and fix CSS alignment
+        $outputActions = renderTableActions($actionsHtml);
         
-        $data[] = [htmlspecialchars($name), $actions];
+        $data[] = [htmlspecialchars($name), $outputActions];
     }
     $stmt->close();
 
@@ -223,8 +187,13 @@ if ($isAjaxRequest) {
     exit();
 }
 
-// 5. API: Delete (POST)
+// 4. API: Delete (POST)
 if ($isDeleteRequest) {
+    // [ADDED] Secure the Delete API
+    if (!$perm->delete) {
+        sendDeleteError('操作禁止：您没有删除权限。');
+    }
+
     while (ob_get_level()) { ob_end_clean(); }
     ob_start();
     header('Content-Type: application/json; charset=utf-8');
@@ -316,9 +285,9 @@ if ($flashMsg !== '') {
     unset($_SESSION['flash_msg'], $_SESSION['flash_type']);
 }
 
-// 6. Audit Log (View) & HTML Render
+// 5. Audit Log (View) & HTML Render
 
-// Log that user viewed this page
+// [NEW] Log that user viewed this page
 if (function_exists('logAudit')) {
     logAudit([
         'page'           => $auditPage,
@@ -335,7 +304,7 @@ if ($isEmbeddedInDashboard): ?>
         <div class="card tag-card">
             <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
                 <h4 class="m-0 text-primary"><i class="fa-solid fa-tags"></i> 标签管理</h4>
-                <?php if ($canAdd): ?>
+                <?php if ($perm->add): ?>
                 <a href="<?php echo URL_USER_DASHBOARD; ?>?view=tag_form" class="btn btn-primary desktop-add-btn">
                     <i class="fa-solid fa-plus"></i> 新增标签
                 </a>
@@ -365,7 +334,7 @@ if ($isEmbeddedInDashboard): ?>
         </div>
     </div>
 <?php else: ?>
-<?php $pageMetaKey = 'tags'; ?>
+<?php $pageMetaKey = '/dashboard.php?view=tags'; ?>
 <!DOCTYPE html>
 <html lang="<?php echo defined('SITE_LANG') ? SITE_LANG : 'zh-CN'; ?>">
 <head>
@@ -379,7 +348,7 @@ if ($isEmbeddedInDashboard): ?>
     <div class="card tag-card">
         <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
             <h4 class="m-0 text-primary"><i class="fa-solid fa-tags"></i> 标签管理</h4>
-            <?php if ($canAdd): ?>
+            <?php if ($perm->add): ?>
             <a href="<?php echo URL_USER_DASHBOARD; ?>?view=tag_form" class="btn btn-primary desktop-add-btn">
                 <i class="fa-solid fa-plus"></i> 新增标签
             </a>

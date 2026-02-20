@@ -25,13 +25,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     elseif ($password === "") $errorCode = "PASSWORD_REQUIRED";
 
     if ($errorCode === "") {
-        // [FIXED DB LOGIC]
         $stmt = mysqli_prepare($conn, $loginQuery . " LIMIT 1");
         mysqli_stmt_bind_param($stmt, "s", $email);
         mysqli_stmt_execute($stmt);
         
-        // --- COMPATIBILITY FIX: REPLACEMENT FOR get_result() ---
-        // This block grabs the data even if your server lacks mysqlnd
+        // COMPATIBILITY FIX: REPLACEMENT FOR get_result()
         $meta = $stmt->result_metadata();
         $row = [];
         $params = [];
@@ -47,7 +45,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $user = null;
         }
         $stmt->close();
-        // -------------------------------------------------------
 
         if (!$user) {
             $errorCode = "EMAIL_NOT_FOUND";
@@ -55,8 +52,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             if (!isUserActive($user)) {
                 $errorCode = "ACCOUNT_DISABLED";
             } 
-            // Note: Ensure your DB column is actually 'password' or 'password_hash'
-            // We check both just in case
             elseif (!password_verify($password, $user['password_hash'] ?? ($user['password'] ?? ''))) {
                 $errorCode = "PASSWORD_INCORRECT";
             } 
@@ -64,10 +59,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 if (session_status() !== PHP_SESSION_ACTIVE) session_start();
                 session_regenerate_id(true);
 
+                // Set session variables including role_id
                 $_SESSION['user_id'] = (int)$user['id'];
                 $_SESSION['user_name'] = $user['name'] ?? $email;
-                $_SESSION['logged_in'] = true;
                 $_SESSION['role_id'] = isset($user['user_role_id']) ? (int)$user['user_role_id'] : 0;
+                $_SESSION['logged_in'] = true;
                 
                 // Audit Log (Safely)
                 if (function_exists('logAudit')) {
@@ -83,7 +79,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
                 if ($isAjax) {
                     header('Content-Type: application/json');
-                    // Safety check for json_encode
                     if (function_exists('json_encode')) {
                         echo json_encode(['success' => true, 'redirect' => $redirectTarget]);
                     } else {

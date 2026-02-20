@@ -2,38 +2,18 @@
 // Path: src/pages/webSetting/index.php
 require_once dirname(__DIR__, 3) . '/common.php';
 
-// 1. Auth Check
+// Auth Check
 if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
     header("Location: " . URL_LOGIN);
     exit();
 }
 
-// 2. RBAC Permission Check
-$currentUrl = '/dashboard.php?view=webSetting';
-$allowedActions = getPageRuntimePermissions($currentUrl);
+$currentUrl = '/dashboard.php?view=web_settings';
+$perm = hasPagePermission($conn, $currentUrl);
 
-$canView   = in_array('View', $allowedActions);
-$canEdit   = in_array('Edit', $allowedActions);
-$canDelete = in_array('Delete', $allowedActions);
-
-// Block Page Access
-if (!$canView) {
-    echo '
-    <div class="container-fluid d-flex align-items-center justify-content-center" style="min-height: 400px;">
-        <div class="text-center">
-            <div class="mb-4">
-                <i class="fa-solid fa-lock text-danger" style="font-size: 5rem; opacity: 0.2;"></i>
-            </div>
-            <h3 class="text-dark fw-bold">无权访问此页面</h3>
-            <p class="text-muted">抱歉，您的角色没有权限查看“网站设置”。请联系系统管理员进行授权。</p>
-            <a href="' . URL_USER_DASHBOARD . '" class="btn btn-outline-primary mt-3">
-                <i class="fa-solid fa-house me-2"></i>返回仪表盘
-            </a>
-        </div>
-    </div>';
-    return;
+if (empty($perm) || !$perm->view) {
+    denyAccess("权限不足：您没有访问网站设置页面的权限。");
 }
-
 
 $auditPage = 'Web Settings';
 $auditUserId = $_SESSION['user_id'] ?? 0;
@@ -103,7 +83,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST' && function_exists('logAudit') && !def
 
 // Context Detection
 $isEmbeddedWebSetting = isset($EMBED_WEB_SETTING_PAGE) && $EMBED_WEB_SETTING_PAGE === true;
-$webBaseUrl = $isEmbeddedWebSetting ? URL_USER_DASHBOARD . '?view=webSetting' : URL_WEB_SETTINGS;
+$webBaseUrl = $isEmbeddedWebSetting ? URL_WEB_SETTINGS : '?';
 
 // ========== HANDLE POST REQUESTS ==========
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -114,205 +94,214 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $logMessage = '';
     $logQuery = '';
 
-    // Permission check for POST actions
-    if (($actionType === 'save' && !$canEdit) || ($actionType === 'reset_defaults' && !$canDelete) || (($actionType === 'remove_logo' || $actionType === 'remove_favicon') && !$canEdit)) {
-        $message = "You do not have permission to perform this action.";
-        $msgType = "danger";
+    if ($actionType === 'reset_defaults' && empty($perm->delete)) {
+        denyAccess("权限不足：您没有重置网站设置的权限。");
+    }
+    if (($actionType === 'remove_logo' || $actionType === 'remove_favicon') && empty($perm->edit)) {
+        denyAccess("权限不足：您没有编辑网站设置的权限。");
+    }
+
+    // [NEW] Sanitize and Validate Website Name length
+    $rawWebsiteName = $_POST['website_name'] ?? '';
+    $sanitizedWebsiteName = trim($rawWebsiteName);
+    $maxWebsiteNameLength = 255;
+
+    if (function_exists('mb_strlen') && function_exists('mb_substr')) {
+        if (mb_strlen($sanitizedWebsiteName, 'UTF-8') > $maxWebsiteNameLength) {
+            $sanitizedWebsiteName = mb_substr($sanitizedWebsiteName, 0, $maxWebsiteNameLength, 'UTF-8');
+        }
     } else {
+        if (strlen($sanitizedWebsiteName) > $maxWebsiteNameLength) {
+            $sanitizedWebsiteName = substr($sanitizedWebsiteName, 0, $maxWebsiteNameLength);
+        }
+    }
 
-        // [NEW] Sanitize and Validate Website Name length
-        $rawWebsiteName = $_POST['website_name'] ?? '';
-        $sanitizedWebsiteName = trim($rawWebsiteName);
-        $maxWebsiteNameLength = 255;
+    // [NEW] 2. Validate Hex Color helper function
+    $validateHex = function($value, $default) {
+    if (!is_string($value)) return $default;
+    // Matches #RRGGBB format
+    return preg_match('/^#[0-9A-Fa-f]{6}$/', $value) ? $value : $default;
+   };
 
-        if (function_exists('mb_strlen') && function_exists('mb_substr')) {
-            if (mb_strlen($sanitizedWebsiteName, 'UTF-8') > $maxWebsiteNameLength) {
-                $sanitizedWebsiteName = mb_substr($sanitizedWebsiteName, 0, $maxWebsiteNameLength, 'UTF-8');
-            }
+    // --- 1. RESET DEFAULTS ---
+    if ($actionType === 'reset_defaults') {
+        // [UPDATED] Use prepared statement for consistency
+        $stmt = $conn->prepare($sqlResetDefaults);
+        if ($stmt->execute()) {
+            $_SESSION['flash_msg'] = "系统设置已重置为默认值！";
+            $_SESSION['flash_type'] = "warning";
+            $redirectNeeded = true;
+            $logActionCode = 'D'; 
+            $logMessage = 'Reset Website Settings to Default';
+            $logQuery = $sqlResetDefaults;
         } else {
-            if (strlen($sanitizedWebsiteName) > $maxWebsiteNameLength) {
-                $sanitizedWebsiteName = substr($sanitizedWebsiteName, 0, $maxWebsiteNameLength);
+            $message = "重置系统设置为默认值时发生错误，请稍后重试。";
+            $msgType = "error";
+        }
+        
+        $stmt->close();
+    }
+    // --- 2. REMOVE LOGO ---
+    elseif ($actionType === 'remove_logo') {
+        // [SECURE DELETE] Delete physical file with path validation
+        if (!empty($current['website_logo'])) {
+            $fileToDelete = $uploadDir . $current['website_logo'];
+            $realBase = realpath($uploadDir);
+            $realFile = realpath($fileToDelete);
+
+            // Validate path traversal protection
+            if ($realFile && strpos($realFile, $realBase) === 0 && file_exists($realFile)) {
+                unlink($realFile);
             }
         }
 
-        // [NEW] 2. Validate Hex Color helper function
-        $validateHex = function($value, $default) {
-        if (!is_string($value)) return $default;
-        // Matches #RRGGBB format
-        return preg_match('/^#[0-9A-Fa-f]{6}$/', $value) ? $value : $default;
-       };
+        // [UPDATED] Use prepared statement
+        $stmt = $conn->prepare($sqlRemoveLogo);
+        if ($stmt->execute()) {
+            $_SESSION['flash_msg'] = "网站 Logo 已移除！";
+            $_SESSION['flash_type'] = "success";
+            $redirectNeeded = true;
+            $logMessage = 'Removed Website Logo';
+            $logQuery = $sqlRemoveLogo;
+        }else {
+            $_SESSION['flash_msg'] = "移除网站 Logo 失败，请稍后重试。";
+            $_SESSION['flash_type'] = "danger";
+        }
 
-        // --- 1. RESET DEFAULTS ---
-        if ($actionType === 'reset_defaults') {
-            // [UPDATED] Use prepared statement for consistency
-            $stmt = $conn->prepare($sqlResetDefaults);
-            if ($stmt->execute()) {
-                $_SESSION['flash_msg'] = "系统设置已重置为默认值！";
-                $_SESSION['flash_type'] = "warning";
-                $redirectNeeded = true;
-                $logActionCode = 'D'; 
-                $logMessage = 'Reset Website Settings to Default';
-                $logQuery = $sqlResetDefaults;
+        $stmt->close();
+    }
+    // --- 3. REMOVE FAVICON ---
+    elseif ($actionType === 'remove_favicon') {
+        // [SECURE DELETE] Delete physical file with path validation
+        if (!empty($current['website_favicon'])) {
+            $fileToDelete = $uploadDir . $current['website_favicon'];
+            $realBase = realpath($uploadDir);
+            $realFile = realpath($fileToDelete);
+
+            if ($realFile && strpos($realFile, $realBase) === 0 && file_exists($realFile)) {
+                unlink($realFile);
+            }
+        }
+
+        // [UPDATED] Use prepared statement
+        $stmt = $conn->prepare($sqlRemoveFavicon);
+        if ($stmt->execute()) {
+            $_SESSION['flash_msg'] = "网站 Favicon 已移除！";
+            $_SESSION['flash_type'] = "success";
+            $redirectNeeded = true;
+            $logMessage = 'Removed Website Favicon';
+            $logQuery = $sqlRemoveFavicon;
+        }else {
+            $_SESSION['flash_msg'] = "移除网站 Favicon 时出错，请稍后重试。";
+            $_SESSION['flash_type'] = "danger";
+        }
+        
+        $stmt->close();
+    }
+
+    // --- 4. SAVE SETTINGS (Default) ---
+    else {
+        $existingRes = $conn->query("SELECT id FROM $table WHERE id = 1");
+        $isEditMode = ($existingRes && $existingRes->num_rows > 0);
+        if ($isEditMode && empty($perm->edit)) {
+            denyAccess("权限不足：您没有编辑网站设置的权限。");
+        }
+        if (!$isEditMode && empty($perm->add)) {
+            denyAccess("权限不足：您没有新增网站设置的权限。");
+        }
+
+        // Prepare Data
+        $newData = [
+            'website_name'     => $sanitizedWebsiteName,
+            'theme_bg_color'   => $validateHex($_POST['theme_bg_color'] ?? '', '#ffffff'),
+            'theme_text_color' => $validateHex($_POST['theme_text_color'] ?? '', '#333333'),
+            'button_color'     => $validateHex($_POST['button_color'] ?? '', '#233dd2'),
+            'button_text_color'=> $validateHex($_POST['button_text_color'] ?? '', '#ffffff'),
+            'background_color' => $validateHex($_POST['background_color'] ?? '', '#f4f7f6'),
+        ];
+
+        // Check for changes (Logic: If text changed OR any file uploaded)
+        $hasFile = (!empty($_FILES['website_logo']['name']) || !empty($_FILES['website_favicon']['name']));
+        
+        if (!$hasFile) {
+            checkNoChangesAndRedirect($newData, $current, null, $webBaseUrl);
+        }
+
+        // Handle File Uploads
+        $logoName = $current['website_logo'];
+        $favName = $current['website_favicon'];
+        
+        // [NEW] Array to collect all upload errors gracefully
+        $uploadErrors = [];
+
+        // Handle Logo Upload
+        if (!empty($_FILES['website_logo']['name'])) {
+            $upRes = uploadImage($_FILES['website_logo'], $uploadDir);
+            if ($upRes['success']) {
+                if (!empty($current['website_logo'])) {
+                    $realBase = realpath($uploadDir);
+                    $realOld = realpath($uploadDir . $current['website_logo']);
+                    if ($realOld && strpos($realOld, $realBase) === 0 && file_exists($realOld)) {
+                        unlink($realOld);
+                    }
+                }
+                $logoName = $upRes['filename'];
             } else {
-                $message = "重置系统设置为默认值时发生错误，请稍后重试。";
-                $msgType = "error";
+                $uploadErrors[] = "Logo Error: " . $upRes['message']; 
             }
-            
-            $stmt->close();
         }
-        // --- 2. REMOVE LOGO ---
-        elseif ($actionType === 'remove_logo') {
-            // [SECURE DELETE] Delete physical file with path validation
-            if (!empty($current['website_logo'])) {
-                $fileToDelete = $uploadDir . $current['website_logo'];
-                $realBase = realpath($uploadDir);
-                $realFile = realpath($fileToDelete);
 
-                // Validate path traversal protection
-                if ($realFile && strpos($realFile, $realBase) === 0 && file_exists($realFile)) {
-                    unlink($realFile);
+        // Handle Favicon Upload
+        if (!empty($_FILES['website_favicon']['name'])) {
+            $upRes = uploadImage($_FILES['website_favicon'], $uploadDir);
+            if ($upRes['success']) {
+                if (!empty($current['website_favicon'])) {
+                    $realBase = realpath($uploadDir);
+                    $realOld = realpath($uploadDir . $current['website_favicon']);
+                    if ($realOld && strpos($realOld, $realBase) === 0 && file_exists($realOld)) {
+                        unlink($realOld);
+                    }
                 }
+                $favName = $upRes['filename'];
+            } else { 
+                $uploadErrors[] = "Favicon Error: " . $upRes['message']; 
             }
+        }
 
-            // [UPDATED] Use prepared statement
-            $stmt = $conn->prepare($sqlRemoveLogo);
+        // [NEW] Graceful Error Display
+        if (!empty($uploadErrors)) {
+            $message = implode("<br>", $uploadErrors);
+            $msgType = "danger";
+        }
+
+        if (empty($uploadErrors)) {
+            // Check row existence
+            $check = $conn->query("SELECT id FROM $table WHERE id = 1");
+            $sql = ($check && $check->num_rows > 0) ? $sqlWebSettingsUpdate : $sqlWebSettingsInsert;
+            
+            $stmt = $conn->prepare($sql);
+            $stmt->bind_param("ssssssss", 
+                $newData['website_name'], $logoName, $favName, 
+                $newData['theme_bg_color'], $newData['theme_text_color'], 
+                $newData['button_color'], $newData['button_text_color'], 
+                $newData['background_color']
+            );
+
             if ($stmt->execute()) {
-                $_SESSION['flash_msg'] = "网站 Logo 已移除！";
+                $_SESSION['flash_msg'] = "网站设置已更新！";
                 $_SESSION['flash_type'] = "success";
                 $redirectNeeded = true;
-                $logMessage = 'Removed Website Logo';
-                $logQuery = $sqlRemoveLogo;
-            }else {
-                $_SESSION['flash_msg'] = "移除网站 Logo 失败，请稍后重试。";
-                $_SESSION['flash_type'] = "danger";
-            }
-
-            $stmt->close();
-        }
-        // --- 3. REMOVE FAVICON ---
-        elseif ($actionType === 'remove_favicon') {
-            // [SECURE DELETE] Delete physical file with path validation
-            if (!empty($current['website_favicon'])) {
-                $fileToDelete = $uploadDir . $current['website_favicon'];
-                $realBase = realpath($uploadDir);
-                $realFile = realpath($fileToDelete);
-
-                if ($realFile && strpos($realFile, $realBase) === 0 && file_exists($realFile)) {
-                    unlink($realFile);
-                }
-            }
-
-            // [UPDATED] Use prepared statement
-            $stmt = $conn->prepare($sqlRemoveFavicon);
-            if ($stmt->execute()) {
-                $_SESSION['flash_msg'] = "网站 Favicon 已移除！";
-                $_SESSION['flash_type'] = "success";
-                $redirectNeeded = true;
-                $logMessage = 'Removed Website Favicon';
-                $logQuery = $sqlRemoveFavicon;
-            }else {
-                $_SESSION['flash_msg'] = "移除网站 Favicon 时出错，请稍后重试。";
-                $_SESSION['flash_type'] = "danger";
-            }
-            
-            $stmt->close();
-        }
-
-        // --- 4. SAVE SETTINGS (Default) ---
-        else {
-            // Prepare Data
-            $newData = [
-                'website_name'     => $sanitizedWebsiteName,
-                'theme_bg_color'   => $validateHex($_POST['theme_bg_color'] ?? '', '#ffffff'),
-                'theme_text_color' => $validateHex($_POST['theme_text_color'] ?? '', '#333333'),
-                'button_color'     => $validateHex($_POST['button_color'] ?? '', '#233dd2'),
-                'button_text_color'=> $validateHex($_POST['button_text_color'] ?? '', '#ffffff'),
-                'background_color' => $validateHex($_POST['background_color'] ?? '', '#f4f7f6'),
-            ];
-
-            // Check for changes (Logic: If text changed OR any file uploaded)
-            $hasFile = (!empty($_FILES['website_logo']['name']) || !empty($_FILES['website_favicon']['name']));
-            
-            if (!$hasFile) {
-                checkNoChangesAndRedirect($newData, $current, null, $webBaseUrl);
-            }
-
-            // Handle File Uploads
-            $logoName = $current['website_logo'];
-            $favName = $current['website_favicon'];
-            
-            // [NEW] Array to collect all upload errors gracefully
-            $uploadErrors = [];
-
-            // Handle Logo Upload
-            if (!empty($_FILES['website_logo']['name'])) {
-                $upRes = uploadImage($_FILES['website_logo'], $uploadDir);
-                if ($upRes['success']) {
-                    if (!empty($current['website_logo'])) {
-                        $realBase = realpath($uploadDir);
-                        $realOld = realpath($uploadDir . $current['website_logo']);
-                        if ($realOld && strpos($realOld, $realBase) === 0 && file_exists($realOld)) {
-                            unlink($realOld);
-                        }
-                    }
-                    $logoName = $upRes['filename'];
-                } else {
-                    $uploadErrors[] = "Logo Error: " . $upRes['message']; 
-                }
-            }
-
-            // Handle Favicon Upload
-            if (!empty($_FILES['website_favicon']['name'])) {
-                $upRes = uploadImage($_FILES['website_favicon'], $uploadDir);
-                if ($upRes['success']) {
-                    if (!empty($current['website_favicon'])) {
-                        $realBase = realpath($uploadDir);
-                        $realOld = realpath($uploadDir . $current['website_favicon']);
-                        if ($realOld && strpos($realOld, $realBase) === 0 && file_exists($realOld)) {
-                            unlink($realOld);
-                        }
-                    }
-                    $favName = $upRes['filename'];
-                } else { 
-                    $uploadErrors[] = "Favicon Error: " . $upRes['message']; 
-                }
-            }
-
-            // [NEW] Graceful Error Display
-            if (!empty($uploadErrors)) {
-                $message = implode("<br>", $uploadErrors);
+                $logMessage = 'Updated Website Settings';
+                $logQuery = $sql;
+                
+                // Update new data with filenames for audit log
+                $newData['website_logo'] = $logoName;
+                $newData['website_favicon'] = $favName;
+            } else {
+                $message = "Save Failed: " . $conn->error;
                 $msgType = "danger";
             }
-
-            if (empty($uploadErrors)) {
-                // Check row existence
-                $check = $conn->query("SELECT id FROM $table WHERE id = 1");
-                $sql = ($check && $check->num_rows > 0) ? $sqlWebSettingsUpdate : $sqlWebSettingsInsert;
-                
-                $stmt = $conn->prepare($sql);
-                $stmt->bind_param("ssssssss", 
-                    $newData['website_name'], $logoName, $favName, 
-                    $newData['theme_bg_color'], $newData['theme_text_color'], 
-                    $newData['button_color'], $newData['button_text_color'], 
-                    $newData['background_color']
-                );
-
-                if ($stmt->execute()) {
-                    $_SESSION['flash_msg'] = "网站设置已更新！";
-                    $_SESSION['flash_type'] = "success";
-                    $redirectNeeded = true;
-                    $logMessage = 'Updated Website Settings';
-                    $logQuery = $sql;
-                    
-                    // Update new data with filenames for audit log
-                    $newData['website_logo'] = $logoName;
-                    $newData['website_favicon'] = $favName;
-                } else {
-                    $message = "Save Failed: " . $conn->error;
-                    $msgType = "danger";
-                }
-                $stmt->close();
-            }
+            $stmt->close();
         }
     }
 
@@ -368,7 +357,6 @@ if ($isEmbeddedWebSetting): ?>
     <script src="<?php echo URL_ASSETS; ?>/js/webSetting.js"></script>
 
 <?php else: ?>
-    <?php $pageMetaKey = 'web_settings'; ?>
     <!DOCTYPE html>
     <html lang="zh-CN">
     <head>

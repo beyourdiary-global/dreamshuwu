@@ -1,38 +1,22 @@
 <?php
-// Path: src/pages/meta/index.php
+// Path: src/pages/metaSetting/index.php
 require_once dirname(__DIR__, 3) . '/common.php';
 
-// 1. Auth Check
+// 1. Identify this specific view's URL as registered in your DB
+$currentUrl = '/dashboard.php?view=meta_settings'; 
+
+// [ADDED] Fetch the dynamic permission object for this page
+$perm = hasPagePermission($conn, $currentUrl);
+
+// 2. Check if the user has View permission for this view
+if (empty($perm) || !$perm->view) {
+    denyAccess("权限不足：您没有访问 Meta 设置页面的权限。");
+}
+
+// Auth Check
 if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
     header("Location: " . URL_LOGIN);
     exit();
-}
-
-// 2. RBAC Permission Check
-$currentUrl = '/dashboard.php?view=meta';
-$allowedActions = getPageRuntimePermissions($currentUrl);
-
-$canView   = in_array('View', $allowedActions);
-$canAdd    = in_array('Add', $allowedActions);
-$canEdit   = in_array('Edit', $allowedActions);
-$canDelete = in_array('Delete', $allowedActions);
-
-// Block Page Access
-if (!$canView) {
-    echo '
-    <div class="container-fluid d-flex align-items-center justify-content-center" style="min-height: 400px;">
-        <div class="text-center">
-            <div class="mb-4">
-                <i class="fa-solid fa-lock text-danger" style="font-size: 5rem; opacity: 0.2;"></i>
-            </div>
-            <h3 class="text-dark fw-bold">无权访问此页面</h3>
-            <p class="text-muted">抱歉，您的角色没有权限查看“Meta设置”。请联系系统管理员进行授权。</p>
-            <a href="' . URL_USER_DASHBOARD . '" class="btn btn-outline-primary mt-3">
-                <i class="fa-solid fa-house me-2"></i>返回仪表盘
-            </a>
-        </div>
-    </div>';
-    return;
 }
 
 $auditPage = 'Meta Settings';
@@ -46,6 +30,9 @@ $pageMsgType = "";
 // Ensure constants are defined
 $metaTable = defined('META_SETTINGS') ? META_SETTINGS : 'meta_settings';
 $pageMetaTable = defined('META_SETTINGS_PAGE') ? META_SETTINGS_PAGE : 'meta_settings_page';
+
+// [ADDED] Dynamically fetch the Page Registry using our new bind_result helper
+$PAGE_META_REGISTRY = getDynamicPageRegistry($conn);
 
 // --- DEFINED QUERIES  ---
 // Global Queries
@@ -113,7 +100,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST' && function_exists('logAudit') && !def
 $isEmbeddedMeta = isset($EMBED_META_PAGE) && $EMBED_META_PAGE === true;
 
 if ($isEmbeddedMeta) {
-    $metaBaseUrl = URL_USER_DASHBOARD . '?view=meta';
+    $metaBaseUrl = URL_USER_DASHBOARD . '?view=meta_settings';
 } else {
     $metaBaseUrl = URL_META_SETTINGS;
 }
@@ -123,24 +110,121 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     // 1. GLOBAL POST
     if (isset($_POST['form_type']) && $_POST['form_type'] === 'global') {
-        if(!$canEdit) {
-            $message = "You do not have permission to edit global meta settings.";
-            $msgType = "danger";
+        // [ADDED] Re-verify Edit Permission
+        if (!$perm->edit) {
+            denyAccess("权限不足：您没有修改全局 Meta 设置的权限。");
+        }
+
+        $oldGlobal = null;
+        $hasGlobal = false;
+        
+        // REUSED QUERY VAR
+        $checkStmt = $conn->prepare($sqlGlobalCheck);
+        if ($checkStmt) {
+            $checkStmt->execute();
+            $checkStmt->store_result();
+            if ($checkStmt->num_rows > 0) {
+                $hasGlobal = true;
+                $oTitle = null; $oDesc = null; $oOgTitle = null; $oOgDesc = null; $oOgUrl = null;
+                $checkStmt->bind_result($oTitle, $oDesc, $oOgTitle, $oOgDesc, $oOgUrl);
+                $checkStmt->fetch();
+                $oldGlobal = [
+                    'meta_title' => $oTitle,
+                    'meta_description' => $oDesc,
+                    'og_title' => $oOgTitle,
+                    'og_description' => $oOgDesc,
+                    'og_url' => $oOgUrl,
+                ];
+            }
+            $checkStmt->close();
+        }
+
+        if ($hasGlobal) {
+            $redirectUrl = $isEmbeddedMeta ? ($metaBaseUrl . '&section=global') : ($metaBaseUrl . '?section=global');
+            checkNoChangesAndRedirect(
+                [
+                    'meta_title' => $_POST['meta_title'] ?? '',
+                    'meta_description' => $_POST['meta_description'] ?? '',
+                    'og_title' => $_POST['og_title'] ?? '',
+                    'og_description' => $_POST['og_description'] ?? '',
+                    'og_url' => $_POST['og_url'] ?? '',
+                ],
+                $oldGlobal,
+                null,
+                $redirectUrl
+            );
+        }
+
+        if ($hasGlobal) {
+            // REUSED QUERY VAR
+            $sql = $sqlGlobalUpdate;
+            $stmt = $conn->prepare($sql);
+            $stmt->bind_param("sssss", $_POST['meta_title'], $_POST['meta_description'], $_POST['og_title'], $_POST['og_description'], $_POST['og_url']);
         } else {
-            $oldGlobal = null;
-            $hasGlobal = false;
+            // REUSED QUERY VAR
+            $sql = $sqlGlobalInsert;
+            $stmt = $conn->prepare($sql);
+            $stmt->bind_param("sssss", $_POST['meta_title'], $_POST['meta_description'], $_POST['og_title'], $_POST['og_description'], $_POST['og_url']);
+        }
+        
+        if ($stmt->execute()) {
+            $message = "全局设置保存成功！";
+            $msgType = "success";
+
+            if (function_exists('logAudit')) {
+                $newGlobal = [
+                    'meta_title' => $_POST['meta_title'] ?? '',
+                    'meta_description' => $_POST['meta_description'] ?? '',
+                    'og_title' => $_POST['og_title'] ?? '',
+                    'og_description' => $_POST['og_description'] ?? '',
+                    'og_url' => $_POST['og_url'] ?? '',
+                ];
+
+                logAudit([
+                    'page'           => $auditPage,
+                    'action'         => $hasGlobal ? 'E' : 'A',
+                    'action_message' => $hasGlobal ? 'Updated Global Meta Settings' : 'Added Global Meta Settings',
+                    'query'          => $sql,
+                    'query_table'    => $metaTable,
+                    'user_id'        => $auditUserId,
+                    'record_id'      => 0,
+                    'record_name'    => 'global',
+                    'old_value'      => $oldGlobal,
+                    'new_value'      => $newGlobal
+                ]);
+            }
+        } else {
+            $message = "保存失败: " . $conn->error;
+            $msgType = "danger";
+        }
+        $stmt->close();
+    }
+
+    // 2. PAGE POST
+    if (isset($_POST['form_type']) && $_POST['form_type'] === 'page') {
+        // [ADDED] Re-verify Edit Permission
+        if (!$perm->edit) {
+            denyAccess("权限不足：您没有修改页面 Meta 设置的权限。");
+        }
+
+        $pKey = $_POST['page_key'] ?? '';
+        if (!empty($pKey) && array_key_exists($pKey, $PAGE_META_REGISTRY)) {
+            $oldPage = null;
+            $hasPage = false;
             
             // REUSED QUERY VAR
-            $checkStmt = $conn->prepare($sqlGlobalCheck);
+            $checkStmt = $conn->prepare($sqlPageCheck);
             if ($checkStmt) {
+                $checkStmt->bind_param("s", $pKey);
                 $checkStmt->execute();
                 $checkStmt->store_result();
                 if ($checkStmt->num_rows > 0) {
-                    $hasGlobal = true;
+                    $hasPage = true;
                     $oTitle = null; $oDesc = null; $oOgTitle = null; $oOgDesc = null; $oOgUrl = null;
                     $checkStmt->bind_result($oTitle, $oDesc, $oOgTitle, $oOgDesc, $oOgUrl);
                     $checkStmt->fetch();
-                    $oldGlobal = [
+                    $oldPage = [
+                        'page_key' => $pKey,
                         'meta_title' => $oTitle,
                         'meta_description' => $oDesc,
                         'og_title' => $oOgTitle,
@@ -151,89 +235,95 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $checkStmt->close();
             }
 
-            if ($hasGlobal) {
-                $redirectUrl = $isEmbeddedMeta ? ($metaBaseUrl . '&section=global') : ($metaBaseUrl . '?section=global');
+            if ($hasPage) {
+                $redirectUrl = $isEmbeddedMeta
+                    ? ($metaBaseUrl . '&section=page&page=' . urlencode($pKey))
+                    : ($metaBaseUrl . '?section=page&page=' . urlencode($pKey));
+
                 checkNoChangesAndRedirect(
                     [
-                        'meta_title' => $_POST['meta_title'] ?? '',
-                        'meta_description' => $_POST['meta_description'] ?? '',
-                        'og_title' => $_POST['og_title'] ?? '',
-                        'og_description' => $_POST['og_description'] ?? '',
-                        'og_url' => $_POST['og_url'] ?? '',
+                        'meta_title' => $_POST['page_meta_title'] ?? '',
+                        'meta_description' => $_POST['page_meta_description'] ?? '',
+                        'og_title' => $_POST['page_og_title'] ?? '',
+                        'og_description' => $_POST['page_og_description'] ?? '',
+                        'og_url' => $_POST['page_og_url'] ?? '',
                     ],
-                    $oldGlobal,
+                    $oldPage,
                     null,
                     $redirectUrl
                 );
             }
 
-            $sql = $hasGlobal ? $sqlGlobalUpdate : $sqlGlobalInsert;
-            $stmt = $conn->prepare($sql);
-
-            if ($hasGlobal) {
-                $stmt->bind_param("sssss", $_POST['meta_title'], $_POST['meta_description'], $_POST['og_title'], $_POST['og_description'], $_POST['og_url']);
+            if ($hasPage) {
+                // REUSED QUERY VAR
+                $sql = $sqlPageUpdate;
+                $stmt = $conn->prepare($sql);
+                $stmt->bind_param("ssssss", $_POST['page_meta_title'], $_POST['page_meta_description'], $_POST['page_og_title'], $_POST['page_og_description'], $_POST['page_og_url'], $pKey);
             } else {
-                $stmt->bind_param("sssss", $_POST['meta_title'], $_POST['meta_description'], $_POST['og_title'], $_POST['og_description'], $_POST['og_url']);
+                // REUSED QUERY VAR
+                $sql = $sqlPageInsert;
+                $stmt = $conn->prepare($sql);
+                $stmt->bind_param("ssssss", $pKey, $_POST['page_meta_title'], $_POST['page_meta_description'], $_POST['page_og_title'], $_POST['page_og_description'], $_POST['page_og_url']);
             }
             
             if ($stmt->execute()) {
-                $message = "全局设置保存成功！";
-                $msgType = "success";
+                $pageMessage = "页面设置保存成功！";
+                $pageMsgType = "success";
 
                 if (function_exists('logAudit')) {
-                    $newGlobal = [
-                        'meta_title' => $_POST['meta_title'] ?? '',
-                        'meta_description' => $_POST['meta_description'] ?? '',
-                        'og_title' => $_POST['og_title'] ?? '',
-                        'og_description' => $_POST['og_description'] ?? '',
-                        'og_url' => $_POST['og_url'] ?? '',
+                    $newPage = [
+                        'page_key' => $pKey,
+                        'meta_title' => $_POST['page_meta_title'] ?? '',
+                        'meta_description' => $_POST['page_meta_description'] ?? '',
+                        'og_title' => $_POST['page_og_title'] ?? '',
+                        'og_description' => $_POST['page_og_description'] ?? '',
+                        'og_url' => $_POST['page_og_url'] ?? '',
                     ];
 
                     logAudit([
                         'page'           => $auditPage,
-                        'action'         => $hasGlobal ? 'E' : 'A',
-                        'action_message' => $hasGlobal ? 'Updated Global Meta Settings' : 'Added Global Meta Settings',
+                        'action'         => $hasPage ? 'E' : 'A',
+                        'action_message' => $hasPage ? 'Updated Page Meta Settings' : 'Added Page Meta Settings',
                         'query'          => $sql,
-                        'query_table'    => $metaTable,
+                        'query_table'    => $pageMetaTable,
                         'user_id'        => $auditUserId,
                         'record_id'      => 0,
-                        'record_name'    => 'global',
-                        'old_value'      => $oldGlobal,
-                        'new_value'      => $newGlobal
+                        'record_name'    => $pKey,
+                        'old_value'      => $oldPage,
+                        'new_value'      => $newPage
                     ]);
                 }
             } else {
-                $message = "保存失败: " . $conn->error;
-                $msgType = "danger";
+                $pageMessage = "保存失败: " . $conn->error;
+                $pageMsgType = "danger";
             }
             $stmt->close();
         }
     }
 
-    // 2. PAGE POST
-    if (isset($_POST['form_type']) && $_POST['form_type'] === 'page') {
-        if(!$canEdit && !$canAdd) {
-            $pageMessage = "You do not have permission to edit or add page meta settings.";
-            $pageMsgType = "danger";
-        } else {
-            $pKey = $_POST['page_key'] ?? '';
-            if (!empty($pKey) && array_key_exists($pKey, $PAGE_META_REGISTRY)) {
-                $oldPage = null;
-                $hasPage = false;
-                
-                // REUSED QUERY VAR
+    // 3. DELETE PAGE POST
+    if (isset($_POST['form_type']) && $_POST['form_type'] === 'delete_page') {
+        // [ADDED] Re-verify Delete Permission
+        if (!$perm->delete) {
+            denyAccess("权限不足：您没有删除(重置)页面 Meta 设置的权限。");
+        }
+
+        $delKey = $_POST['page_key'] ?? '';
+        if (!empty($delKey) && array_key_exists($delKey, $PAGE_META_REGISTRY)) {
+            $oldPage = null;
+            if (function_exists('logAudit')) {
+                // REUSED QUERY VAR (Using Page Check since it selects the same columns)
                 $checkStmt = $conn->prepare($sqlPageCheck);
                 if ($checkStmt) {
-                    $checkStmt->bind_param("s", $pKey);
+                    $checkStmt->bind_param("s", $delKey);
                     $checkStmt->execute();
                     $checkStmt->store_result();
                     if ($checkStmt->num_rows > 0) {
-                        $hasPage = true;
                         $oTitle = null; $oDesc = null; $oOgTitle = null; $oOgDesc = null; $oOgUrl = null;
                         $checkStmt->bind_result($oTitle, $oDesc, $oOgTitle, $oOgDesc, $oOgUrl);
                         $checkStmt->fetch();
                         $oldPage = [
-                            'page_key' => $pKey,
+                            'page_key' => $delKey,
                             'meta_title' => $oTitle,
                             'meta_description' => $oDesc,
                             'og_title' => $oOgTitle,
@@ -243,134 +333,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                     $checkStmt->close();
                 }
+            }
 
-                if ($hasPage) {
-                    $redirectUrl = $isEmbeddedMeta
-                        ? ($metaBaseUrl . '&section=page&page=' . urlencode($pKey))
-                        : ($metaBaseUrl . '?section=page&page=' . urlencode($pKey));
-
-                    checkNoChangesAndRedirect(
-                        [
-                            'meta_title' => $_POST['page_meta_title'] ?? '',
-                            'meta_description' => $_POST['page_meta_description'] ?? '',
-                            'og_title' => $_POST['page_og_title'] ?? '',
-                            'og_description' => $_POST['page_og_description'] ?? '',
-                            'og_url' => $_POST['page_og_url'] ?? '',
-                        ],
-                        $oldPage,
-                        null,
-                        $redirectUrl
-                    );
-                }
-
-                $sql = $hasPage ? $sqlPageUpdate : $sqlPageInsert;
-                $stmt = $conn->prepare($sql);
-
-                if ($hasPage) {
-                    $stmt->bind_param("ssssss", $_POST['page_meta_title'], $_POST['page_meta_description'], $_POST['page_og_title'], $_POST['page_og_description'], $_POST['page_og_url'], $pKey);
-                } else {
-                    $stmt->bind_param("ssssss", $pKey, $_POST['page_meta_title'], $_POST['page_meta_description'], $_POST['page_og_title'], $_POST['page_og_description'], $_POST['page_og_url']);
-                }
-                
+            // REUSED QUERY VAR
+            $sql = $sqlPageDelete;
+            if ($stmt = $conn->prepare($sql)) {
+                $stmt->bind_param("s", $delKey);
                 if ($stmt->execute()) {
-                    $pageMessage = "页面设置保存成功！";
+                    $pageMessage = "已恢复为全局默认设置！";
                     $pageMsgType = "success";
 
                     if (function_exists('logAudit')) {
-                        $newPage = [
-                            'page_key' => $pKey,
-                            'meta_title' => $_POST['page_meta_title'] ?? '',
-                            'meta_description' => $_POST['page_meta_description'] ?? '',
-                            'og_title' => $_POST['page_og_title'] ?? '',
-                            'og_description' => $_POST['page_og_description'] ?? '',
-                            'og_url' => $_POST['page_og_url'] ?? '',
-                        ];
-
                         logAudit([
                             'page'           => $auditPage,
-                            'action'         => $hasPage ? 'E' : 'A',
-                            'action_message' => $hasPage ? 'Updated Page Meta Settings' : 'Added Page Meta Settings',
+                            'action'         => 'D',
+                            'action_message' => 'Deleted Page Meta Settings',
                             'query'          => $sql,
                             'query_table'    => $pageMetaTable,
                             'user_id'        => $auditUserId,
                             'record_id'      => 0,
-                            'record_name'    => $pKey,
-                            'old_value'      => $oldPage,
-                            'new_value'      => $newPage
+                            'record_name'    => $delKey,
+                            'old_value'      => $oldPage
                         ]);
                     }
                 } else {
-                    $pageMessage = "保存失败: " . $conn->error;
+                    $pageMessage = "删除失败: " . $conn->error;
                     $pageMsgType = "danger";
                 }
                 $stmt->close();
-            }
-        }
-    }
-
-    // 3. DELETE PAGE POST
-    if (isset($_POST['form_type']) && $_POST['form_type'] === 'delete_page') {
-        if(!$canDelete) {
-            $pageMessage = "You do not have permission to delete page meta settings.";
-            $pageMsgType = "danger";
-        } else {
-            $delKey = $_POST['page_key'] ?? '';
-            if (!empty($delKey) && array_key_exists($delKey, $PAGE_META_REGISTRY)) {
-                $oldPage = null;
-                if (function_exists('logAudit')) {
-                    // REUSED QUERY VAR (Using Page Check since it selects the same columns)
-                    $checkStmt = $conn->prepare($sqlPageCheck);
-                    if ($checkStmt) {
-                        $checkStmt->bind_param("s", $delKey);
-                        $checkStmt->execute();
-                        $checkStmt->store_result();
-                        if ($checkStmt->num_rows > 0) {
-                            $oTitle = null; $oDesc = null; $oOgTitle = null; $oOgDesc = null; $oOgUrl = null;
-                            $checkStmt->bind_result($oTitle, $oDesc, $oOgTitle, $oOgDesc, $oOgUrl);
-                            $checkStmt->fetch();
-                            $oldPage = [
-                                'page_key' => $delKey,
-                                'meta_title' => $oTitle,
-                                'meta_description' => $oDesc,
-                                'og_title' => $oOgTitle,
-                                'og_description' => $oOgDesc,
-                                'og_url' => $oOgUrl,
-                            ];
-                        }
-                        $checkStmt->close();
-                    }
-                }
-
-                // REUSED QUERY VAR
-                $sql = $sqlPageDelete;
-                if ($stmt = $conn->prepare($sql)) {
-                    $stmt->bind_param("s", $delKey);
-                    if ($stmt->execute()) {
-                        $pageMessage = "已恢复为全局默认设置！";
-                        $pageMsgType = "success";
-
-                        if (function_exists('logAudit')) {
-                            logAudit([
-                                'page'           => $auditPage,
-                                'action'         => 'D',
-                                'action_message' => 'Deleted Page Meta Settings',
-                                'query'          => $sql,
-                                'query_table'    => $pageMetaTable,
-                                'user_id'        => $auditUserId,
-                                'record_id'      => 0,
-                                'record_name'    => $delKey,
-                                'old_value'      => $oldPage
-                            ]);
-                        }
-                    } else {
-                        $pageMessage = "删除失败: " . $conn->error;
-                        $pageMsgType = "danger";
-                    }
-                    $stmt->close();
-                } else {
-                    $pageMessage = "删除失败: 无法准备删除语句。";
-                    $pageMsgType = "danger";
-                }
+            } else {
+                $pageMessage = "删除失败: 无法准备删除语句。";
+                $pageMsgType = "danger";
             }
         }
     }
@@ -414,16 +407,15 @@ if ($isEmbeddedMeta): ?>
         </div>
 
         <?php if ($activeSection === 'global'): ?>
-            <?php include __DIR__ . '/metaSetting/globalMetaSetting.php'; ?>
+            <?php require __DIR__ . '/metaSetting/globalMetaSetting.php'; ?>
         <?php endif; ?>
 
         <?php if ($activeSection === 'page'): ?>
-            <?php include __DIR__ . '/metaSetting/pageMetaSetting.php'; ?>
+            <?php require __DIR__ . '/metaSetting/pageMetaSetting.php'; ?>
         <?php endif; ?>
     </div>
 
 <?php else: ?>
-    <?php $pageMetaKey = 'meta_settings'; ?>
     <!DOCTYPE html>
     <html lang="zh-CN">
     <head>
@@ -449,11 +441,11 @@ if ($isEmbeddedMeta): ?>
         </div>
 
         <?php if ($activeSection === 'global'): ?>
-            <?php include __DIR__ . '/metaSetting/globalMetaSetting.php'; ?>
+            <?php require __DIR__ . '/metaSetting/globalMetaSetting.php'; ?>
         <?php endif; ?>
 
         <?php if ($activeSection === 'page'): ?>
-            <?php include __DIR__ . '/metaSetting/pageMetaSetting.php'; ?>
+            <?php require __DIR__ . '/metaSetting/pageMetaSetting.php'; ?>
         <?php endif; ?>
 
     </div>

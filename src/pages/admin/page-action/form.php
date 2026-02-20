@@ -3,30 +3,29 @@ $recordId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 $isEditMode = $recordId > 0;
 $formRow = ['id' => 0, 'name' => '', 'status' => 'A'];
 
-// RBAC Permission Check for Form
-if (!$canView) {
-    $_SESSION['flash_msg'] = 'Access Denied: You cannot view this form.';
-    $_SESSION['flash_type'] = 'danger';
-    pageActionRedirect($baseListUrl);
+if (empty($perm) || !$perm->view) {
+    denyAccess("权限不足：您没有访问页面操作表单的权限。");
 }
 
-if ($isEditMode && !$canEdit) {
-    $_SESSION['flash_msg'] = 'Access Denied: You do not have permission to edit page actions.';
-    $_SESSION['flash_type'] = 'danger';
-    pageActionRedirect($baseListUrl);
-}
-
-if (!$isEditMode && !$canAdd) {
-    $_SESSION['flash_msg'] = 'Access Denied: You do not have permission to add page actions.';
-    $_SESSION['flash_type'] = 'danger';
-    pageActionRedirect($baseListUrl);
+if ($isEditMode && empty($perm->edit)) {
+    denyAccess("权限不足：您没有编辑页面操作的权限。");
+} elseif (!$isEditMode && empty($perm->add)) {
+    denyAccess("权限不足：您没有新增页面操作的权限。");
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['mode'])) {
-
     $formAction = $_POST['form_action'] ?? '';
     if ($formAction === 'save') {
         $recordId = isset($_POST['id']) ? (int)$_POST['id'] : 0;
+        $isEditMode = $recordId > 0;
+
+        if ($isEditMode && empty($perm->edit)) {
+            denyAccess("权限不足：您没有编辑页面操作的权限。");
+        }
+        if (!$isEditMode && empty($perm->add)) {
+            denyAccess("权限不足：您没有新增页面操作的权限。");
+        }
+
         $name = trim($_POST['name'] ?? '');
         $redirectTo = $recordId > 0 ? ($formBaseUrl . '&id=' . $recordId) : $formBaseUrl;
 
@@ -196,9 +195,11 @@ if ($isEditMode) {
 
                 <div class="d-flex justify-content-between">
                     <a href="<?php echo $baseListUrl; ?>" class="btn btn-light">取消</a>
+                    <?php if (($isEditMode && !empty($perm->edit)) || (!$isEditMode && !empty($perm->add))): ?>
                     <button type="submit" class="btn btn-primary px-4 fw-bold">
                         <i class="fa-solid fa-save"></i> <?php echo $isEditMode ? '更新操作' : '保存操作'; ?>
                     </button>
+                    <?php endif; ?>
                 </div>
             </form>
         </div>
