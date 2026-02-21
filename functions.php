@@ -1082,7 +1082,7 @@ function renderTableActions($htmlString) {
 // @param bool $redirect Whether to redirect directly when access is denied
 function checkPermissionError($actionType, $perm, $moduleName = '数据', $redirect = true) {
     
-    // [FIX 1] Force ABSOLUTE path to the dashboard home page.
+    // Force absolute path to the dashboard home page.
     $dashboardUrl = '/dashboard.php'; 
     $errorMessage = null;
 
@@ -1119,21 +1119,31 @@ function checkPermissionError($actionType, $perm, $moduleName = '数据', $redir
             exit();
         }
 
-        // Set Flash Message in session
+        // [CRITICAL FIX]: Prevent Infinite Redirect Loop!
+        // Check if we are currently on the Dashboard Home
+        $currentView = $_GET['view'] ?? '';
+        $isDashboardHome = (strpos($_SERVER['SCRIPT_NAME'], 'dashboard.php') !== false) && empty($currentView);
+
+        // If the user lacks permission for the Dashboard Home itself, redirecting them TO the Dashboard Home causes a loop.
+        if ($isDashboardHome || $moduleName === '仪表盘首页') {
+            // Halt completely and show the static error UI instead of redirecting
+            denyAccess($errorMessage);
+        }
+
+        // For all other sub-pages, it is safe to redirect back to the Dashboard Home
         if (session_status() === PHP_SESSION_NONE) session_start();
         $_SESSION['flash_msg'] = $errorMessage;
         $_SESSION['flash_type'] = 'danger';
         
-        // Prevent infinite loop: if they lack Dashboard Home access, kick them to frontend home
-        $currentView = $_GET['view'] ?? 'home';
-        if ($currentView === 'home' && $moduleName === '仪表盘首页') {
-            $dashboardUrl = URL_USER_DASHBOARD; 
-        }
-
         // Execute Redirect
         if (!headers_sent()) {
             header("Location: " . $dashboardUrl);
         } else {
+            // Output a full-screen overlay to hide the broken layout before JS redirects
+            echo '<div style="position:fixed; top:0; left:0; width:100vw; height:100vh; background:#ffffff; z-index:999999; display:flex; justify-content:center; align-items:center;">';
+            echo '<h4 style="color:#dc3545;">权限不足，正在返回首页...</h4>';
+            echo '</div>';
+            
             // Use replace() so users cannot click 'Back' into the forbidden page
             echo "<script>window.location.replace('" . $dashboardUrl . "');</script>";
         }

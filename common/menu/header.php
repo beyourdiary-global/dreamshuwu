@@ -15,6 +15,9 @@ $siteLogo = !empty($webSettings['website_logo']) ? $webSettings['website_logo'] 
 
 $currentPage = basename($_SERVER['PHP_SELF']);
 $isLoggedIn = (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true);
+$dashboardPath = parse_url(URL_USER_DASHBOARD, PHP_URL_PATH);
+$dashboardPage = basename($dashboardPath ?: 'dashboard.php');
+$isUserDashboardPage = ($currentPage === $dashboardPage);
 
 // Helper to create navigation items with login logic
 function createNavItem($title, $url, $mobile = false, $icon = null) {
@@ -67,8 +70,12 @@ $navLinks = [
                 <button type="submit"><i class="fa-solid fa-search"></i></button>
             </form>
 
-            <a href="<?php echo $isLoggedIn ? URL_AUTHOR_DASHBOARD : URL_LOGIN; ?>" class="author-link">
-                作者专区
+            <?php 
+            $isAuthorPage = ($currentPage === 'author-register.php' || (isset($isAuthorDashboard) && $isAuthorDashboard === true));
+            ?>
+            <a href="<?php echo $isLoggedIn ? URL_AUTHOR_REGISTER : URL_LOGIN; ?>" 
+            class="author-link <?php echo $isAuthorPage ? 'active' : ''; ?>">
+            作者专区
             </a>
 
             <?php if (!$isLoggedIn): ?>
@@ -79,7 +86,7 @@ $navLinks = [
                 </div>
             <?php else: ?>
                 <div class="auth-buttons">
-                    <a href="<?php echo URL_USER_DASHBOARD; ?>" class="user-name-link" title="进入个人后台">
+                    <a href="<?php echo URL_USER_DASHBOARD; ?>" class="user-name-link <?php echo $isUserDashboardPage ? 'active' : ''; ?>" title="进入个人后台">
                         <i class="fa-solid fa-circle-user"></i>
                         <span class="user-name-text">
                             <?php echo htmlspecialchars($_SESSION['user_name'] ?? '用户'); ?>

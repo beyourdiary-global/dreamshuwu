@@ -25,8 +25,10 @@ defined('PATH_PROFILE')       || define('PATH_PROFILE',  '/src/pages/user/profil
 defined('URL_USER_HISTORY')   || define('URL_USER_HISTORY', SITEURL . '/src/pages/user/history.php');
 defined('URL_USER_MESSAGES')  || define('URL_USER_MESSAGES', SITEURL . '/src/pages/user/messages.php');
 
-// --- 5. Author Dashboard ---
+// --- 5. Author Dashboard & Registration ---
 defined('URL_AUTHOR_DASHBOARD') || define('URL_AUTHOR_DASHBOARD', SITEURL . '/src/pages/author/dashboard.php');
+defined('URL_AUTHOR_REGISTER')  || define('URL_AUTHOR_REGISTER', SITEURL . '/author/author-register.php');
+defined('PATH_AUTHOR_REGISTER') || define('PATH_AUTHOR_REGISTER', 'src/pages/author/author-register.php');
 
 // --- 6. Novel Management (Tags) ---
 defined('URL_NOVEL_TAGS')        || define('URL_NOVEL_TAGS', URL_USER_DASHBOARD . '?view=tags');

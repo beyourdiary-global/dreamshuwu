@@ -186,9 +186,32 @@
   margin-right: 20px;
   transition: color 0.2s;
   white-space: nowrap;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  position: relative;
 }
 .author-link:hover {
   color: var(--theme-blue);
+}
+
+.author-link.active {
+  color: var(--theme-blue);
+  font-weight: bold;
+}
+
+.author-link.active::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 20px;
+  height: 3px;
+  background-color: var(--theme-blue);
+  border-top-left-radius: 3px;
+  border-top-right-radius: 3px;
+  z-index: 1022;
 }
 
 .auth-buttons {
@@ -220,6 +243,8 @@
   gap: 6px;
   font-weight: 500;
   color: var(--text-dark) !important;
+  height: 50px;
+  position: relative;
 }
 
 .user-name-link i {
@@ -229,6 +254,25 @@
 
 .user-name-link:hover {
   color: var(--theme-blue) !important;
+}
+
+.user-name-link.active {
+  color: var(--theme-blue) !important;
+  font-weight: bold;
+}
+
+.user-name-link.active::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 20px;
+  height: 3px;
+  background-color: var(--theme-blue);
+  border-top-left-radius: 3px;
+  border-top-right-radius: 3px;
+  z-index: 1022;
 }
 
 /* Prevent super long names from breaking the header layout */

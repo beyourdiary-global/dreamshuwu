@@ -238,6 +238,9 @@ defined('ACTION_MASTER') || define('ACTION_MASTER', 'action_master');
 defined('USER_ROLE') || define('USER_ROLE', 'user_role');
 defined('USER_ROLE_PERMISSION') || define('USER_ROLE_PERMISSION', 'user_role_permission');
 
+// --- Author Profile Table Constant ---
+defined('AUTHOR_PROFILE') || define('AUTHOR_PROFILE', 'author_profile');
+
 // --- Application Constants ---
 defined('MIN_AGE_REQUIREMENT') || define('MIN_AGE_REQUIREMENT', 13);
 defined('MIN_PWD_LENGTH')      || define('MIN_PWD_LENGTH', 8);
