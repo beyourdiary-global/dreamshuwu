@@ -35,6 +35,26 @@ $isPageInfoView   = ($currentView === 'page_info'); // [NEW]
 $isUserRoleView   = ($currentView === 'user_role'); // [NEW]
 $isAdminSection   = ($isAdminHome || $isPageActionView || $isPageInfoView || $isUserRoleView);
 
+// Define the base path to prevent redundant hardcoding
+$baseViewPath = '/dashboard.php?view=';
+
+$permDashboard  = hasPagePermission($conn, '/dashboard.php');
+$permProfile    = hasPagePermission($conn, $baseViewPath . 'profile');
+$permTags       = hasPagePermission($conn, $baseViewPath . 'tags');
+$permTagForm    = hasPagePermission($conn, $baseViewPath . 'tag_form');
+$permCategories = hasPagePermission($conn, $baseViewPath . 'categories');
+$permCatForm    = hasPagePermission($conn, $baseViewPath . 'cat_form');
+$permMeta       = hasPagePermission($conn, $baseViewPath . 'meta_settings');
+$permWeb        = hasPagePermission($conn, $baseViewPath . 'web_settings');
+$permAdmin      = hasPagePermission($conn, $baseViewPath . 'admin');
+$permPageAction = hasPagePermission($conn, $baseViewPath . 'page_action');
+$permPageInfo   = hasPagePermission($conn, $baseViewPath . 'page_info');
+$permUserRole   = hasPagePermission($conn, $baseViewPath . 'user_role');
+
+if (!$isTagSection && !$isCatSection && !$isProfileView && !$isMetaView && !$isWebSettingView && !$isAdminSection) {
+    checkPermissionError('view', $permDashboard, '仪表盘首页');
+}
+
 // Data Fetching
 $userQuery = "SELECT name FROM " . $userTable . " WHERE id = ? LIMIT 1";
 $dashQuery = "SELECT avatar, level, following_count, followers_count FROM " . $dashTable . " WHERE user_id = ? LIMIT 1";
@@ -86,16 +106,16 @@ $profileComponents = [
 
 // --- SIDEBAR ITEMS ---
 $sidebarItems = [
-    ['label' => '首页',     'url' => URL_USER_DASHBOARD, 'icon' => 'fa-solid fa-house-user', 'active' => (!$isTagSection && !$isCatSection && !$isProfileView && !$isMetaView && !$isWebSettingView && !$isAdminSection)],
-    ['label' => '账号中心', 'url' => URL_HOME,           'icon' => 'fa-solid fa-id-card',   'active' => false],
+    ['label' => '首页',     'url' => URL_USER_DASHBOARD, 'icon' => 'fa-solid fa-house-user', 'active' => (!$isTagSection && !$isCatSection && !$isProfileView && !$isMetaView && !$isWebSettingView && !$isAdminSection), 'permission' => !empty($permDashboard->view)],
+    ['label' => '账号中心', 'url' => URL_HOME,           'icon' => 'fa-solid fa-id-card',   'active' => false, 'permission' => !empty($permProfile->view)],
     ['label' => '写小说',   'url' => URL_AUTHOR_DASHBOARD, 'icon' => 'fa-solid fa-pen-nib',  'active' => false],
-    ['label' => '小说分类', 'url' => URL_NOVEL_CATS,     'icon' => 'fa-solid fa-layer-group','active' => $isCatSection],
-    ['label' => '小说标签', 'url' => URL_NOVEL_TAGS,     'icon' => 'fa-solid fa-tags',      'active' => $isTagSection],
-    ['label' => 'META 设置',  'url' => URL_USER_DASHBOARD . '?view=meta_settings', 'icon' => 'fa-solid fa-sliders', 'active' => $isMetaView],
-    ['label' => '网站设置',   'url' => URL_USER_DASHBOARD . '?view=web_settings', 'icon' => 'fa-solid fa-paintbrush', 'active' => $isWebSettingView],
+    ['label' => '小说分类', 'url' => URL_NOVEL_CATS,     'icon' => 'fa-solid fa-layer-group','active' => $isCatSection, 'permission' => !empty($permCategories->view)],
+    ['label' => '小说标签', 'url' => URL_NOVEL_TAGS,     'icon' => 'fa-solid fa-tags',      'active' => $isTagSection, 'permission' => !empty($permTags->view)],
+    ['label' => 'META 设置',  'url' => URL_USER_DASHBOARD . '?view=meta_settings', 'icon' => 'fa-solid fa-sliders', 'active' => $isMetaView, 'permission' => !empty($permMeta->view)],
+    ['label' => '网站设置',   'url' => URL_USER_DASHBOARD . '?view=web_settings', 'icon' => 'fa-solid fa-paintbrush', 'active' => $isWebSettingView, 'permission' => !empty($permWeb->view)],
     
     // [UPDATED] Admin Dashboard Link
-    ['label' => '管理员',     'url' => URL_ADMIN_DASHBOARD, 'icon' => 'fa-solid fa-user-shield', 'active' => $isAdminSection]
+    ['label' => '管理员',     'url' => URL_ADMIN_DASHBOARD, 'icon' => 'fa-solid fa-user-shield', 'active' => $isAdminSection, 'permission' => !empty($permAdmin->view)]
 ];
 
 $quickActions = [
@@ -109,20 +129,8 @@ if ($isMetaView) $customCSS[] = 'meta.css';
 $customCSS[] = 'dashboard.css';
 
 // Page Meta Key Setting
-switch ($currentView) {
-    case 'categories': $pageMetaKey = 'categories'; break;
-    case 'cat_form':   $pageMetaKey = 'category_form'; break;
-    case 'tags':       $pageMetaKey = 'tags'; break;
-    case 'tag_form':   $pageMetaKey = 'tag_form'; break;
-    case 'profile':    $pageMetaKey = 'profile'; break;
-    case 'meta_settings': $pageMetaKey = 'meta_settings'; break;
-    case 'web_settings':  $pageMetaKey = 'web_settings'; break;
-    case 'admin':         $pageMetaKey = 'admin'; break;
-    case 'page_action':   $pageMetaKey = 'page_action'; break; // [NEW]
-    case 'page_info':     $pageMetaKey = 'page_information_list'; break; // [NEW]
-    case 'user_role':     $pageMetaKey = 'user_role'; break; // [NEW]
-    default:              $pageMetaKey = 'dashboard'; break;
-}
+// Dynamically generate the key based on the current view instead of a switch statement
+$pageMetaKey = ($currentView === 'home' || empty($currentView)) ? '/dashboard.php' : $baseViewPath . $currentView;
 ?>
 
 <!DOCTYPE html>
@@ -138,11 +146,13 @@ switch ($currentView) {
     <aside class="dashboard-sidebar">
         <ul class="sidebar-menu">
             <?php foreach ($sidebarItems as $item): ?>
+                <?php if (!isset($item['permission']) || $item['permission']): ?>
                 <li>
                     <a href="<?php echo $item['url']; ?>" class="<?php echo $item['active'] ? 'active' : ''; ?>">
                         <i class="<?php echo $item['icon']; ?>"></i> <?php echo $item['label']; ?>
                     </a>
                 </li>
+                <?php endif; ?>
             <?php endforeach; ?>
             <li style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 10px;">
             <a href="<?php echo URL_LOGOUT; ?>" class="logout-btn" style="color: #d9534f;" data-api-url="<?php echo URL_LOGOUT; ?>"> 
@@ -153,6 +163,18 @@ switch ($currentView) {
     </aside>
 
     <main class="dashboard-main">
+        <?php 
+        // [NEW] Global error alert block for the dashboard
+        if (isset($_SESSION['flash_msg'])) {
+            $dashFlashMsg = $_SESSION['flash_msg'];
+            $dashFlashType = $_SESSION['flash_type'] ?? 'danger';
+            unset($_SESSION['flash_msg'], $_SESSION['flash_type']);
+        ?>
+            <div class="alert alert-<?php echo $dashFlashType; ?> alert-dismissible fade show m-3 shadow-sm" role="alert">
+                <i class="fa-solid fa-circle-exclamation me-2"></i> <?php echo htmlspecialchars($dashFlashMsg); ?>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        <?php } ?>
         <?php if (!$isTagSection && !$isCatSection && !$isProfileView && !$isMetaView && !$isWebSettingView && !$isAdminSection): ?>
         <div class="profile-card">
             <?php foreach ($profileComponents as $component): ?>
@@ -269,7 +291,7 @@ switch ($currentView) {
 <?php elseif ($isAdminHome || $isPageActionView || $isPageInfoView || $isUserRoleView): ?>
     <script src="<?php echo URL_ASSETS; ?>/js/admin.js"></script>
 <?php endif; ?>
-<script src="<?php echo URL_ASSETS; ?>/js/login-script.js"></script>
+<script src="<?php echo URL_ASSETS; ?>/js/auth.js"></script>
 <script src="<?php echo URL_ASSETS; ?>/js/logout-handler.js"></script>
 </body>
 </html>

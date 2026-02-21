@@ -69,6 +69,7 @@
                         </h5>
 
                         <?php if (in_array($selectedPageKey, $customizedPages)): ?>
+                        <?php if ($perm->delete): ?>
                         <form method="POST" class="reset-form">
                             <input type="hidden" name="form_type" value="delete_page">
                             <input type="hidden" name="page_key" value="<?php echo htmlspecialchars($selectedPageKey, ENT_QUOTES, 'UTF-8'); ?>">
@@ -76,6 +77,7 @@
                             <i class="fa-solid fa-rotate-left"></i> Reset
                             </button>
                         </form>
+                        <?php endif; ?>
                         <?php endif; ?>
                     </div>
 
@@ -105,7 +107,9 @@
 
                         <div class="row mt-4">
                             <div class="col-md-9 offset-md-3">
+                                <?php if ($perm->edit): ?>
                                 <button type="submit" class="btn btn-success px-5 fw-bold"><i class="fa-solid fa-save"></i> Save Page Settings</button>
+                                <?php endif; ?>
                             </div>
                         </div>
                     </form>

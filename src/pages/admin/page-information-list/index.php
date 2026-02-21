@@ -32,27 +32,19 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
     pageInfoRedirect(URL_LOGIN);
 }
 
-$rawGroup = $_SESSION['user_group'] ?? '';
-$normalizedGroup = normalizeGroupKey($rawGroup);
-$allowedGroups = ['admin', 'super_admin', 'administrator', 'system_admin'];
-$hasPermission = true; //$hasPermission = in_array($normalizedGroup, $allowedGroups, true); removed comment to enable permission check
+$currentUrl = '/dashboard.php?view=page_info';
+$perm = hasPagePermission($conn, $currentUrl);
 
-if (!$hasPermission) {
-    $_SESSION['flash_msg'] = "权限不足：您属于 '{$rawGroup}' 组，无权访问此页面。";
-    $_SESSION['flash_type'] = 'danger';
-
-    if ($isEmbedded) {
-        echo '<div class="alert alert-danger">' . htmlspecialchars($_SESSION['flash_msg']) . '</div>';
-        return;
-    }
-
-    pageInfoRedirect(URL_USER_DASHBOARD);
-}
+// 1. Check View Permission for the list
+checkPermissionError('view', $perm, '页面信息列表');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $actionType = $_POST['action_type'] ?? '';
 
     if ($actionType === 'delete') {
+        // 2. Check Delete Permission
+        checkPermissionError('delete', $perm, '页面信息');
+
         $delId = isset($_POST['id']) ? (int)$_POST['id'] : 0;
         if ($delId > 0) {
             $oldValue = fetchPageInfoRowById($conn, $tableInfo, $delId);
@@ -204,7 +196,9 @@ if ($isEmbedded):
                 <div class="page-action-breadcrumb text-muted mb-1">Admin / Page Info</div>
                 <h4 class="m-0 text-primary"><i class="fa-solid fa-file-signature me-2"></i>页面信息列表</h4>
             </div>
+            <?php if (!empty($perm->add)): ?>
             <a href="<?php echo $formBaseUrl; ?>" class="btn btn-primary desktop-add-btn"><i class="fa-solid fa-plus"></i> 新增页面</a>
+            <?php endif; ?>
         </div>
 
         <div class="card-body">
@@ -243,8 +237,14 @@ if ($isEmbedded):
                                 <td><code><?php echo htmlspecialchars($row['url']); ?></code></td>
                                 <td><span class="badge bg-success">Active</span></td>
                                 <td class="text-center">
+                                    <?php if (!empty($perm->edit)): ?>
                                     <a href="<?php echo $formBaseUrl . '&id=' . (int)$row['id']; ?>" class="btn btn-sm btn-outline-primary me-1"><i class="fa-solid fa-pen"></i></a>
+                                    <?php endif; ?>
+                                    <?php if (!empty($perm->delete)): ?>
                                     <button type="button" class="btn btn-sm btn-outline-danger" onclick="confirmDelete(<?php echo (int)$row['id']; ?>)"><i class="fa-solid fa-trash"></i></button>
+                                    <?php endif; ?>
+                                    <?php if (empty($perm->edit) && empty($perm->delete)): ?>
+                                    <?php endif; ?>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
@@ -267,8 +267,15 @@ if ($isEmbedded):
                                 <span class="badge bg-success">Active</span>
                             </div>
                             <div class="page-action-mobile-body">
+                                <?php if (!empty($perm->edit)): ?>
                                 <a href="<?php echo $formBaseUrl . '&id=' . (int)$row['id']; ?>" class="btn btn-sm btn-outline-primary me-2"><i class="fa-solid fa-pen"></i> 编辑</a>
+                                <?php endif; ?>
+                                <?php if (!empty($perm->delete)): ?>
                                 <button type="button" class="btn btn-sm btn-outline-danger" onclick="confirmDelete(<?php echo (int)$row['id']; ?>)"><i class="fa-solid fa-trash"></i> 删除</button>
+                                <?php endif; ?>
+                                <?php if (empty($perm->edit) && empty($perm->delete)): ?>
+                                <span class="text-muted small">无操作权限</span>
+                                <?php endif; ?>
                             </div>
                         </div>
                     <?php endforeach; ?>

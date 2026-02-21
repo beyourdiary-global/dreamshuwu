@@ -2,6 +2,15 @@
 // Path: src/pages/metaSetting/index.php
 require_once dirname(__DIR__, 3) . '/common.php';
 
+// 1. Identify this specific view's URL as registered in your DB
+$currentUrl = '/dashboard.php?view=meta_settings'; 
+
+// [ADDED] Fetch the dynamic permission object for this page
+$perm = hasPagePermission($conn, $currentUrl);
+
+// Use centralized function to check View permission
+checkPermissionError('view', $perm, 'Meta 设置页面');
+
 // Auth Check
 if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
     header("Location: " . URL_LOGIN);
@@ -19,6 +28,9 @@ $pageMsgType = "";
 // Ensure constants are defined
 $metaTable = defined('META_SETTINGS') ? META_SETTINGS : 'meta_settings';
 $pageMetaTable = defined('META_SETTINGS_PAGE') ? META_SETTINGS_PAGE : 'meta_settings_page';
+
+// [ADDED] Dynamically fetch the Page Registry using our new bind_result helper
+$PAGE_META_REGISTRY = getDynamicPageRegistry($conn);
 
 // --- DEFINED QUERIES  ---
 // Global Queries
@@ -96,6 +108,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     // 1. GLOBAL POST
     if (isset($_POST['form_type']) && $_POST['form_type'] === 'global') {
+        checkPermissionError('edit', $perm, '全局 Meta 设置');
+
         $oldGlobal = null;
         $hasGlobal = false;
         
@@ -183,6 +197,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // 2. PAGE POST
     if (isset($_POST['form_type']) && $_POST['form_type'] === 'page') {
+        checkPermissionError('edit', $perm, '页面 Meta 设置');
+
         $pKey = $_POST['page_key'] ?? '';
         if (!empty($pKey) && array_key_exists($pKey, $PAGE_META_REGISTRY)) {
             $oldPage = null;
@@ -279,6 +295,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // 3. DELETE PAGE POST
     if (isset($_POST['form_type']) && $_POST['form_type'] === 'delete_page') {
+        checkPermissionError('delete', $perm, '页面 Meta 设置');
+
         $delKey = $_POST['page_key'] ?? '';
         if (!empty($delKey) && array_key_exists($delKey, $PAGE_META_REGISTRY)) {
             $oldPage = null;
@@ -387,7 +405,6 @@ if ($isEmbeddedMeta): ?>
     </div>
 
 <?php else: ?>
-    <?php $pageMetaKey = 'meta_settings'; ?>
     <!DOCTYPE html>
     <html lang="zh-CN">
     <head>

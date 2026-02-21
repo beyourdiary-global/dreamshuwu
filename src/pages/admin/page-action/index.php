@@ -28,10 +28,11 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
     pageActionRedirect(URL_LOGIN);
 }
 
-$rawGroup = $_SESSION['user_group'] ?? (defined('USER_GROUP') ? USER_GROUP : '');
-$normalizedGroup = normalizeGroupKey($rawGroup);
-$allowedGroups = ['admin', 'administrator', 'super_admin', 'system_admin'];
-$hasPermission = true;
+$currentUrl = '/dashboard.php?view=page_action';
+$perm = hasPagePermission($conn, $currentUrl);
+
+// 1. Check View Permission
+checkPermissionError('view', $perm, '页面操作列表');
 
 $baseListUrl = defined('URL_PAGE_ACTION') ? URL_PAGE_ACTION : (URL_USER_DASHBOARD . '?view=page_action');
 $formBaseUrl = $baseListUrl . '&pa_mode=form';
@@ -137,9 +138,11 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
 
 if (isset($_POST['mode']) && $_POST['mode'] === 'delete_api') {
     header('Content-Type: application/json');
-    if (!$hasPermission) {
+    // 2. Check Delete Permission for API
+    $deleteError = checkPermissionError('delete', $perm, '页面操作');
+    if ($deleteError) {
         http_response_code(403);
-        echo safeJsonEncode(['success' => false, 'message' => 'Forbidden']);
+        echo safeJsonEncode(['success' => false, 'message' => $deleteError]);
         exit();
     }
 
@@ -305,11 +308,7 @@ $queryForPager = [
 if ($isEmbeddedPageAction):
 ?>
 
-<?php if (!$hasPermission): ?>
-<div class="container-fluid px-0">
-    <div class="alert alert-danger mb-0">权限不足：仅允许管理员组访问页面操作管理。</div>
-</div>
-<?php elseif ($pageActionMode === 'form'): ?>
+<?php if ($pageActionMode === 'form'): ?>
     <?php require __DIR__ . '/form.php'; ?>
 <?php else: ?>
 <div class="container-fluid px-0" id="pageActionApp" data-delete-api-url="<?php echo htmlspecialchars($apiEndpoint); ?>">
@@ -319,9 +318,11 @@ if ($isEmbeddedPageAction):
                 <div class="page-action-breadcrumb text-muted mb-1">Admin / Page Action</div>
                 <h4 class="m-0 text-primary"><i class="fa-solid fa-gears me-2"></i>页面操作管理</h4>
             </div>
+            <?php if (!empty($perm->add)): ?>
             <a href="<?php echo $formBaseUrl; ?>" class="btn btn-primary desktop-add-btn">
                 <i class="fa-solid fa-plus"></i> 新增操作
             </a>
+            <?php endif; ?>
         </div>
 
         <div class="card-body">
@@ -369,12 +370,18 @@ if ($isEmbeddedPageAction):
                                 <td><?php echo htmlspecialchars($item['name']); ?></td>
                                 <td><span class="badge bg-success">A</span></td>
                                 <td class="text-center">
+                                    <?php if (!empty($perm->edit)): ?>
                                     <a href="<?php echo $formBaseUrl . '&id=' . (int)$item['id']; ?>" class="btn btn-sm btn-outline-primary btn-action" title="编辑">
                                         <i class="fa-solid fa-pen"></i>
                                     </a>
+                                    <?php endif; ?>
+                                    <?php if (!empty($perm->delete)): ?>
                                     <button type="button" class="btn btn-sm btn-outline-danger btn-action page-action-delete-btn" data-id="<?php echo (int)$item['id']; ?>" data-name="<?php echo htmlspecialchars($item['name']); ?>" title="软删除">
                                         <i class="fa-solid fa-trash"></i>
                                     </button>
+                                    <?php endif; ?>
+                                    <?php if (empty($perm->edit) && empty($perm->delete)): ?>
+                                    <?php endif; ?>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
@@ -398,12 +405,19 @@ if ($isEmbeddedPageAction):
                             </div>
                             <div class="page-action-mobile-body">
                                 <div class="d-flex justify-content-end gap-2">
+                                    <?php if (!empty($perm->edit)): ?>
                                     <a href="<?php echo $formBaseUrl . '&id=' . (int)$item['id']; ?>" class="btn btn-sm btn-outline-primary">
                                         <i class="fa-solid fa-pen"></i> 编辑
                                     </a>
+                                    <?php endif; ?>
+                                    <?php if (!empty($perm->delete)): ?>
                                     <button type="button" class="btn btn-sm btn-outline-danger page-action-delete-btn" data-id="<?php echo (int)$item['id']; ?>" data-name="<?php echo htmlspecialchars($item['name']); ?>">
                                         <i class="fa-solid fa-trash"></i> 软删除
                                     </button>
+                                    <?php endif; ?>
+                                    <?php if (empty($perm->edit) && empty($perm->delete)): ?>
+                                    <span class="text-muted small">无操作权限</span>
+                                    <?php endif; ?>
                                 </div>
                             </div>
                         </div>

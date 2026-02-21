@@ -238,28 +238,6 @@ defined('ACTION_MASTER') || define('ACTION_MASTER', 'action_master');
 defined('USER_ROLE') || define('USER_ROLE', 'user_role');
 defined('USER_ROLE_PERMISSION') || define('USER_ROLE_PERMISSION', 'user_role_permission');
 
-// --- Page Meta Registry (Dropdown Options) ---
-$PAGE_META_REGISTRY = [
-    'home'            => '首页 (Home)',
-    'login'           => '登录 (Login)',
-    'register'        => '注册 (Register)',
-    'forgot_password'  => '忘记密码 (Forgot Password)',
-    'reset_password'   => '重置密码 (Reset Password)',
-    'dashboard'       => '仪表盘 (Dashboard)',
-    'profile'         => '个人资料 (Profile)',
-    'audit_log'       => '审计日志 (Audit Log)',
-    'categories'      => '分类管理 (Categories)',
-    'category_form'   => '分类表单 (Category Form)',
-    'tags'            => '标签管理 (Tags)',
-    'tag_form'        => '标签表单 (Tag Form)',
-    'meta_settings'   => 'META 设置 (Meta Settings)',
-    'web_settings'   => '网站设置 (Web Settings)',
-    'admin'          => '管理员 (Admin)',
-    'page_action'   => '页面操作 (Page Action)',
-    'page_information_list' => '页面信息列表 (Page Information List)',
-    'user_role'     => '用户角色 (User Role)'
-];
-
 // --- Application Constants ---
 defined('MIN_AGE_REQUIREMENT') || define('MIN_AGE_REQUIREMENT', 13);
 defined('MIN_PWD_LENGTH')      || define('MIN_PWD_LENGTH', 8);
@@ -309,4 +287,3 @@ if (!$conn || mysqli_connect_errno()) {
 }
 
 mysqli_set_charset($conn, 'utf8mb4');
-?>

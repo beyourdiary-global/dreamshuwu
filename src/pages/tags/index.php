@@ -2,6 +2,14 @@
 // Path: src/pages/tags/index.php
 require_once dirname(__DIR__, 3) . '/common.php';
 
+// 1. Identify this specific view's URL as registered in your DB
+$currentUrl = '/dashboard.php?view=tags'; 
+
+// [ADDED] Fetch the dynamic permission object for this page
+$perm = hasPagePermission($conn, $currentUrl);
+
+checkPermissionError('view', $perm, '标签管理页面');
+
 $tagTable = NOVEL_TAGS;
 $auditPage = 'Tag Management';
 $viewQuery = "SELECT id, name FROM " . $tagTable;
@@ -143,10 +151,20 @@ if ($isAjaxRequest) {
     $data = [];
     while ($stmt->fetch()) {
         $editUrl = URL_USER_DASHBOARD . '?view=tag_form&id=' . (int) $id;
-        $editUrl = URL_USER_DASHBOARD . '?view=tag_form&id=' . (int) $id;
-        $actions = '<a href="' . $editUrl . '" class="btn btn-sm btn-outline-primary btn-action" title="Edit"><i class="fa-solid fa-pen"></i></a>'
-            . '<button class="btn btn-sm btn-outline-danger btn-action delete-btn" data-id="' . $id . '" data-name="' . htmlspecialchars($name) . '" title="Delete"><i class="fa-solid fa-trash"></i></button>';
-        $data[] = [htmlspecialchars($name), $actions];
+        
+        $actionsHtml = '';
+        // 1. Check dynamic permission properties
+        if ($perm->edit) {
+            $actionsHtml .= '<a href="' . $editUrl . '" class="btn btn-sm btn-outline-primary btn-action" title="Edit"><i class="fa-solid fa-pen"></i></a>';
+        }
+        if ($perm->delete) {
+            $actionsHtml .= '<button class="btn btn-sm btn-outline-danger btn-action delete-btn" data-id="' . $id . '" data-name="' . htmlspecialchars($name) . '" title="Delete"><i class="fa-solid fa-trash"></i></button>';
+        }
+
+        // 2. Use the global helper to wrap buttons and fix CSS alignment
+        $outputActions = renderTableActions($actionsHtml);
+        
+        $data[] = [htmlspecialchars($name), $outputActions];
     }
     $stmt->close();
 
@@ -161,6 +179,12 @@ if ($isAjaxRequest) {
 
 // 4. API: Delete (POST)
 if ($isDeleteRequest) {
+    // [ADDED] Secure the Delete API
+$deleteError = checkPermissionError('delete', $perm, '标签');
+    if ($deleteError) {
+        sendDeleteError($deleteError);
+    }
+
     while (ob_get_level()) { ob_end_clean(); }
     ob_start();
     header('Content-Type: application/json; charset=utf-8');
@@ -271,9 +295,11 @@ if ($isEmbeddedInDashboard): ?>
         <div class="card tag-card">
             <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
                 <h4 class="m-0 text-primary"><i class="fa-solid fa-tags"></i> 标签管理</h4>
+                <?php if ($perm->add): ?>
                 <a href="<?php echo URL_USER_DASHBOARD; ?>?view=tag_form" class="btn btn-primary desktop-add-btn">
                     <i class="fa-solid fa-plus"></i> 新增标签
                 </a>
+                <?php endif; ?>
             </div>
             <div class="card-body">
                 <?php if ($flashMsg): ?>
@@ -299,7 +325,7 @@ if ($isEmbeddedInDashboard): ?>
         </div>
     </div>
 <?php else: ?>
-<?php $pageMetaKey = 'tags'; ?>
+<?php $pageMetaKey = '/dashboard.php?view=tags'; ?>
 <!DOCTYPE html>
 <html lang="<?php echo defined('SITE_LANG') ? SITE_LANG : 'zh-CN'; ?>">
 <head>
@@ -313,9 +339,11 @@ if ($isEmbeddedInDashboard): ?>
     <div class="card tag-card">
         <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
             <h4 class="m-0 text-primary"><i class="fa-solid fa-tags"></i> 标签管理</h4>
+            <?php if ($perm->add): ?>
             <a href="<?php echo URL_USER_DASHBOARD; ?>?view=tag_form" class="btn btn-primary desktop-add-btn">
                 <i class="fa-solid fa-plus"></i> 新增标签
             </a>
+            <?php endif; ?>
         </div>
         <div class="card-body">
             <?php if (isset($_GET['msg']) && $_GET['msg'] == 'saved'): ?>

@@ -7,6 +7,11 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
     exit();
 }
 
+$currentUrl = '/dashboard.php?view=profile';
+$perm = hasPagePermission($conn, $currentUrl);
+
+checkPermissionError('view', $perm, '个人资料页面');
+
 $userId = $_SESSION['user_id'];
 $message = "";
 $msgType = ""; 
@@ -26,6 +31,8 @@ if (isset($_SESSION['flash_msg'])) {
 
 // --- HANDLE FORM A: UPDATE INFO ---
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['action']) && $_POST['action'] === 'update_info') {
+    checkPermissionError('edit', $perm, '个人资料');
+
     $name = trim($_POST['display_name']);
     $email = trim($_POST['email']);
     $gender = $_POST['gender'] ?? null;
@@ -146,6 +153,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['action']) && $_POST['
 // ... (Rest of the file remains unchanged) ...
 // --- HANDLE FORM B: CHANGE PASSWORD ---
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['action']) && $_POST['action'] === 'change_pwd') {
+    checkPermissionError('edit', $perm, '密码');
+
     // ... existing password logic ...
     $currentPwd = $_POST['current_password'];
     $newPwd = $_POST['new_password'];
@@ -307,7 +316,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && function_exists('logAudit') && !defi
                 </div>
             </div>
             <div class="mt-3">
+                <?php if (!empty($perm->edit)): ?>
                 <button type="submit" class="btn-save">保存资料</button>
+                <?php endif; ?>
             </div>
         </form>
     </div>
@@ -331,7 +342,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && function_exists('logAudit') && !defi
                 </div>
             </div>
             <div class="mt-3">
+                <?php if (!empty($perm->edit)): ?>
                 <button type="submit" class="btn-danger">修改密码</button>
+                <?php endif; ?>
             </div>
         </form>
     </div>

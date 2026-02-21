@@ -5,7 +5,7 @@ require_once dirname(__DIR__, 3) . '/common.php';
 $auditPage = 'Register Page';
 
 $dbTable = USR_LOGIN;
-$insertQuery = "INSERT INTO " . $dbTable . " (name, email, password_hash, gender, birthday) VALUES (?, ?, ?, ?, ?)";
+// Updated to include user_role_id
 $checkQuery  = "SELECT id FROM " . $dbTable . " WHERE email = ?";
 
 $message = "";
@@ -15,7 +15,7 @@ $email = "";
 $gender = "";
 $birthday = "";
 
-// Process Form Submission (POST Request) ---
+// Process Form Submission (POST Request)
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $name = trim($_POST['name']);
     $email = trim($_POST['email']);
@@ -52,7 +52,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
     }
 
-    // Database Operations ---
+    // Database Operations
     if (empty($fieldErrors)) {
         // Check if email already exists in the system
         $check = mysqli_prepare($conn, $checkQuery);
@@ -69,13 +69,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $genderDb = $gender !== "" ? $gender : null;
             $birthdayDb = $birthday !== "" ? $birthday : null;
 
-            // Prepare the insertion SQL
-            // UPDATE: Used USR_LOGIN constant instead of hardcoded 'users'
-            $stmt = mysqli_prepare(
-                $conn,
-                $insertQuery
-            );
-            mysqli_stmt_bind_param($stmt, "sssss", $name, $email, $hash, $genderDb, $birthdayDb);
+            // Get the default role ID for this new user
+            $defaultRoleId = getDefaultUserRoleId($conn);
+
+            // Prepare the insertion SQL with user_role_id
+            $insertQueryWithRole = "INSERT INTO " . $dbTable . " (name, email, password_hash, gender, birthday, user_role_id) VALUES (?, ?, ?, ?, ?, ?)";
+            $stmt = mysqli_prepare($conn, $insertQueryWithRole);
+            
+            // Bind the new role ID parameter (added 'i' for integer)
+            mysqli_stmt_bind_param($stmt, "sssssi", $name, $email, $hash, $genderDb, $birthdayDb, $defaultRoleId);
             $success = mysqli_stmt_execute($stmt);
 
             if ($success) {
@@ -84,26 +86,28 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 
                 logAudit([
                     'page'           => $auditPage,
-                    'action'         => 'A',             // A = Add
+                    'action'         => 'A',
                     'action_message' => 'New user registered',
-                    'query'          => $insertQuery,
+                    'query'          => $insertQueryWithRole,
                     'query_table'    => $dbTable,
                     'new_value'      => [
-                        'name'     => $name,
-                        'email'    => $email,
-                        'gender'   => $gender,
-                        'birthday' => $birthday
+                        'name'         => $name,
+                        'email'        => $email,
+                        'gender'       => $gender,
+                        'birthday'     => $birthday,
+                        'user_role_id' => $defaultRoleId
                     ],
                     'user_id'        => $newUserId
                 ]);
             
-            // ---------------------------------------------------------
+                // Initialize Session variables
                 if (session_status() !== PHP_SESSION_ACTIVE) {
                     session_start();
                 }
-                $userId = mysqli_insert_id($conn);
-                $_SESSION['user_id'] = $userId ? (int)$userId : null;
+                
+                $_SESSION['user_id'] = $newUserId ? (int)$newUserId : null;
                 $_SESSION['user_name'] = $name;
+                $_SESSION['role_id'] = $defaultRoleId; // Save Role ID to session
                 $_SESSION['logged_in'] = true;
 
                 header("Location: " . URL_HOME);
@@ -116,7 +120,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 }
 ?>
 
-<?php $pageMetaKey = 'register'; ?>
+<?php $pageMetaKey = '/register.php'; ?>
 <!DOCTYPE html>
 <html lang="<?php echo defined('SITE_LANG') ? SITE_LANG : 'zh-CN'; ?>">
 <head>
@@ -135,48 +139,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             <form id="regForm" method="POST" autocomplete="off" data-field-errors="<?php echo htmlspecialchars(json_encode($fieldErrors ?? [])); ?>">
                 <div class="auth-field">
                     <label class="form-label" for="name">姓名</label>
-                    <input
-                        type="text"
-                        class="form-control"
-                        id="name"
-                        name="name"
-                        placeholder="姓名"
-                        value="<?php echo htmlspecialchars($name); ?>"
-                        required
-                    >
+                    <input type="text" class="form-control" id="name" name="name" placeholder="姓名" value="<?php echo htmlspecialchars($name); ?>" required>
                 </div>
 
                 <div class="auth-field">
                     <label class="form-label" for="email">邮箱地址</label>
-                    <input
-                        type="email"
-                        class="form-control"
-                        id="email"
-                        name="email"
-                        placeholder="请输入邮箱"
-                        value="<?php echo htmlspecialchars($email); ?>"
-                        required
-                    >
+                    <input type="email" class="form-control" id="email" name="email" placeholder="请输入邮箱" value="<?php echo htmlspecialchars($email); ?>" required>
                 </div>
 
                 <div class="auth-field">
                     <label class="form-label" for="password">密码</label>
                     <div style="position: relative;">
-                        <input
-                            type="password"
-                            class="form-control"
-                            name="password"
-                            id="password"
-                            placeholder="请输入密码"
-                            required
-                            style="padding-right: 45px;"
-                        >
-                        <button
-                            type="button"
-                            id="togglePassword"
-                            style="position: absolute; right: 20px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; padding: 0; color: #666; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;"
-                            title="显示/隐藏密码"
-                        >
+                        <input type="password" class="form-control" name="password" id="password" placeholder="请输入密码" required style="padding-right: 45px;">
+                        <button type="button" id="togglePassword" style="position: absolute; right: 20px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; padding: 0; color: #666; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;" title="显示/隐藏密码">
                             <i class="fa fa-eye" style="font-size: 16px;"></i>
                         </button>
                     </div>
@@ -196,16 +171,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
                 <div class="auth-field">
                     <label class="form-label" for="birthday">生日 (可选)</label>
-                    <input
-                        type="date"
-                        class="form-control"
-                        name="birthday"
-                        id="birthday"
-                        max="<?php echo date('Y-m-d'); ?>"
-                        value="<?php echo htmlspecialchars($birthday); ?>"
-                        oninvalid="this.setCustomValidity('日期不能晚于今天')"
-                        oninput="this.setCustomValidity('')"
-                    >
+                    <input type="date" class="form-control" name="birthday" id="birthday" max="<?php echo date('Y-m-d'); ?>" value="<?php echo htmlspecialchars($birthday); ?>" oninvalid="this.setCustomValidity('日期不能晚于今天')" oninput="this.setCustomValidity('')">
                 </div>
 
                 <div class="auth-field">
@@ -220,9 +186,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
            <div class="footer-links">
             已有账号？
-            <a href="<?= URL_LOGIN ?>" style="color: #233dd2; text-decoration: none;">
-                直接登录
-            </a>
+            <a href="<?= URL_LOGIN ?>" style="color: #233dd2; text-decoration: none;">直接登录</a>
         </div>
         </div>
     </div>

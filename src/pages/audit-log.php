@@ -1,12 +1,20 @@
 <?php
 // Path: src/pages/audit-log.php
-
 require_once dirname(__DIR__, 2) . '/common.php';
 
+// 1. Basic Login Check
 if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
     header("Location: " . URL_LOGIN);
     exit();
 }
+
+// 2. Dynamic Permission Check (No hardcoded 'View')
+$currentUrl = '/audit-log.php'; 
+
+// [ADDED] Fetch the dynamic permission object for this page
+$perm = hasPagePermission($conn, $currentUrl);
+
+checkPermissionError('view', $perm, '审计日志页面');
 
 $auditActions = ['V' => 'View', 'E' => 'Edit', 'A' => 'Add', 'D' => 'Delete'];
 
@@ -187,7 +195,7 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
     exit();
 }
 
-$pageMetaKey = 'audit_log';
+$pageMetaKey = $currentUrl;
 ?>
 <!DOCTYPE html>
 <html lang="<?php echo defined('SITE_LANG') ? SITE_LANG : 'zh-CN'; ?>">

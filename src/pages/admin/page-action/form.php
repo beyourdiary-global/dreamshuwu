@@ -3,16 +3,23 @@ $recordId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 $isEditMode = $recordId > 0;
 $formRow = ['id' => 0, 'name' => '', 'status' => 'A'];
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['mode'])) {
-    if (!$hasPermission) {
-        $_SESSION['flash_msg'] = '权限不足：仅允许管理员组访问';
-        $_SESSION['flash_type'] = 'danger';
-        pageActionRedirect($baseListUrl);
-    }
+// 1. Check Base View Permission
+checkPermissionError('view', $perm, '页面操作表单');
 
+// 2. Check Add/Edit Permission for initial load
+$actionToCheck = $isEditMode ? 'edit' : 'add';
+checkPermissionError($actionToCheck, $perm, '页面操作');
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['mode'])) {
     $formAction = $_POST['form_action'] ?? '';
     if ($formAction === 'save') {
         $recordId = isset($_POST['id']) ? (int)$_POST['id'] : 0;
+        $isEditMode = $recordId > 0;
+
+        // 3. Check Add/Edit Permission for form submission
+        $submitAction = $isEditMode ? 'edit' : 'add';
+        checkPermissionError($submitAction, $perm, '页面操作');
+
         $name = trim($_POST['name'] ?? '');
         $redirectTo = $recordId > 0 ? ($formBaseUrl . '&id=' . $recordId) : $formBaseUrl;
 
@@ -182,9 +189,11 @@ if ($isEditMode) {
 
                 <div class="d-flex justify-content-between">
                     <a href="<?php echo $baseListUrl; ?>" class="btn btn-light">取消</a>
+                    <?php if (($isEditMode && !empty($perm->edit)) || (!$isEditMode && !empty($perm->add))): ?>
                     <button type="submit" class="btn btn-primary px-4 fw-bold">
                         <i class="fa-solid fa-save"></i> <?php echo $isEditMode ? '更新操作' : '保存操作'; ?>
                     </button>
+                    <?php endif; ?>
                 </div>
             </form>
         </div>

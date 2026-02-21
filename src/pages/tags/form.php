@@ -1,6 +1,14 @@
 <?php
 require_once dirname(__DIR__, 3) . '/common.php';
 
+// 1. Identify this specific view's URL as registered in your DB
+$currentUrl = '/dashboard.php?view=tag_form'; 
+
+// [ADDED] Fetch dynamic permission object
+$perm = hasPagePermission($conn, $currentUrl);
+
+checkPermissionError('view', $perm, '标签表单');
+
 // 1. Auth Check
 if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
     if (headers_sent()) {
@@ -22,6 +30,11 @@ $isEmbeddedTagForm = isset($EMBED_TAG_FORM_PAGE) && $EMBED_TAG_FORM_PAGE === tru
 $tagId = $_GET['id'] ?? null;
 $tagId = $tagId !== null ? (int) $tagId : null;
 $isEditMode = !empty($tagId);
+
+// [ADDED] Specific Action Permission Check
+// If Edit Mode: must have 'edit' permission. If Add Mode: must have 'add' permission.
+$actionToCheck = $isEditMode ? 'edit' : 'add';
+checkPermissionError($actionToCheck, $perm, '标签');
 
 if ($isEmbeddedTagForm) {
     $listPageUrl = URL_USER_DASHBOARD . '?view=tags';
@@ -92,6 +105,14 @@ try {
 
     // 4. Handle Form Submission (POST)
     if ($_SERVER["REQUEST_METHOD"] === "POST") {
+        // [ADDED] Re-verify strict permissions before DB transaction
+    $submitAction = $isEditMode ? 'edit' : 'add';
+    $submitError = checkPermissionError($submitAction, $perm, '标签');
+    
+    if ($submitError) {
+        $message = $submitError;
+        $msgType = "danger";
+    } else {
         $tagName = trim($_POST['tag_name'] ?? '');
         $postedTagId = isset($_POST['tag_id']) ? (int) $_POST['tag_id'] : null;
         
@@ -210,11 +231,11 @@ try {
                     exit();
                 } else {
                     throw new Exception($stmt->error);
+                    }
                 }
             }
-        }
-    } 
-
+        } 
+    }
 } catch (Exception $e) {
     $message = "System Error: " . $e->getMessage(); $msgType = "danger";
 }

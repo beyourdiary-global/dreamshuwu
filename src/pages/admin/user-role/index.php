@@ -37,28 +37,19 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
 }
 
 // 2. Permission Check
-$rawGroup = $_SESSION['user_group'] ?? '';
-$normalizedGroup = normalizeGroupKey($rawGroup);
-$allowedGroups = ['admin', 'super_admin', 'administrator', 'system_admin'];
-$hasPermission = true;  // Permission check enabled via logic below
-
-if (!$hasPermission) {
-    $_SESSION['flash_msg'] = "权限不足：您属于 '{$rawGroup}' 组，无权访问此页面。";
-    $_SESSION['flash_type'] = 'danger';
-
-    if ($isEmbedded) {
-        echo '<div class="alert alert-danger">' . htmlspecialchars($_SESSION['flash_msg']) . '</div>';
-        return;
-    }
-
-    userRoleRedirect(URL_USER_DASHBOARD);
-}
+$currentUrl = '/dashboard.php?view=user_role';
+$perm = hasPagePermission($conn, $currentUrl);
+// Check View Permission for the list
+checkPermissionError('view', $perm, '用户角色管理');
 
 // 3. POST Handling (Delete Action)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $actionType = $_POST['action_type'] ?? '';
 
     if ($actionType === 'delete') {
+        // Check Delete Permission
+        checkPermissionError('delete', $perm, '用户角色');
+
         $delId = isset($_POST['id']) ? (int)$_POST['id'] : 0;
         if ($delId > 0) {
             // Fetch old data for audit
@@ -225,7 +216,9 @@ if ($isEmbedded):
                 <div class="page-action-breadcrumb text-muted mb-1">Admin / User Role</div>
                 <h4 class="m-0 text-primary"><i class="fa-solid fa-shield me-2"></i>用户角色管理</h4>
             </div>
+            <?php if (!empty($perm->add)): ?>
             <a href="<?php echo $formBaseUrl; ?>" class="btn btn-primary desktop-add-btn"><i class="fa-solid fa-plus"></i> 新增角色</a>
+            <?php endif; ?>
         </div>
 
         <div class="card-body">
@@ -263,8 +256,14 @@ if ($isEmbedded):
                                 <td><?php echo htmlspecialchars($row['description'] ?? ''); ?></td>
                                 <td><span class="badge bg-success">Active</span></td>
                                 <td class="text-center">
+                                    <?php if (!empty($perm->edit)): ?>
                                     <a href="<?php echo $formBaseUrl . '&id=' . (int)$row['id']; ?>" class="btn btn-sm btn-outline-primary me-1"><i class="fa-solid fa-pen"></i></a>
+                                    <?php endif; ?>
+                                    <?php if (!empty($perm->delete)): ?>
                                     <button type="button" class="btn btn-sm btn-outline-danger" onclick="confirmDelete(<?php echo (int)$row['id']; ?>)"><i class="fa-solid fa-trash"></i></button>
+                                    <?php endif; ?>
+                                    <?php if (empty($perm->edit) && empty($perm->delete)): ?>
+                                    <?php endif; ?>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
@@ -286,8 +285,15 @@ if ($isEmbedded):
                                 <span class="badge bg-success">Active</span>
                             </div>
                             <div class="page-action-mobile-body">
+                                <?php if (!empty($perm->edit)): ?>
                                 <a href="<?php echo $formBaseUrl . '&id=' . (int)$row['id']; ?>" class="btn btn-sm btn-outline-primary me-2"><i class="fa-solid fa-pen"></i> 编辑</a>
+                                <?php endif; ?>
+                                <?php if (!empty($perm->delete)): ?>
                                 <button type="button" class="btn btn-sm btn-outline-danger" onclick="confirmDelete(<?php echo (int)$row['id']; ?>)"><i class="fa-solid fa-trash"></i> 删除</button>
+                                <?php endif; ?>
+                                <?php if (empty($perm->edit) && empty($perm->delete)): ?>
+                                <span class="text-muted small">无操作权限</span>
+                                <?php endif; ?>
                             </div>
                         </div>
                     <?php endforeach; ?>

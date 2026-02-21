@@ -8,6 +8,11 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
     exit();
 }
 
+$currentUrl = '/dashboard.php?view=web_settings';
+$perm = hasPagePermission($conn, $currentUrl);
+
+checkPermissionError('view', $perm, '网站设置页面');
+
 $auditPage = 'Web Settings';
 $auditUserId = $_SESSION['user_id'] ?? 0;
 $table = WEB_SETTINGS;
@@ -86,6 +91,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $logActionCode = 'E';
     $logMessage = '';
     $logQuery = '';
+
+    if ($actionType === 'reset_defaults') {
+    checkPermissionError('delete', $perm, '网站设置');
+    }
+
+    if (($actionType === 'remove_logo' || $actionType === 'remove_favicon')) {
+    checkPermissionError('edit', $perm, '网站设置');
+   }
 
     // [NEW] Sanitize and Validate Website Name length
     $rawWebsiteName = $_POST['website_name'] ?? '';
@@ -187,6 +200,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // --- 4. SAVE SETTINGS (Default) ---
     else {
+        $existingRes = $conn->query("SELECT id FROM $table WHERE id = 1");
+        $isEditMode = ($existingRes && $existingRes->num_rows > 0);
+        $submitAction = $isEditMode ? 'edit' : 'add';
+        checkPermissionError($submitAction, $perm, '网站设置');
+
         // Prepare Data
         $newData = [
             'website_name'     => $sanitizedWebsiteName,
@@ -334,7 +352,6 @@ if ($isEmbeddedWebSetting): ?>
     <script src="<?php echo URL_ASSETS; ?>/js/webSetting.js"></script>
 
 <?php else: ?>
-    <?php $pageMetaKey = 'web_settings'; ?>
     <!DOCTYPE html>
     <html lang="zh-CN">
     <head>

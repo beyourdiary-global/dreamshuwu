@@ -58,7 +58,6 @@ function safeJsonEncode($data) {
 }
 
 /**
-    /**
  * Decode a JSON string even when the json extension is disabled.
  * Returns the decoded value, or null on failure.
  * Sets $success by reference so the caller knows if decoding worked.
@@ -788,79 +787,6 @@ function fetchPageInfoRowById($conn, $table, $id) {
 }
 
 /**
- * [NEW] Requirement 8.6: Runtime Permission Enforcement
- * Checks permissions for the current page URL against the database configuration.
- * Optimized: Uses 2 separate queries instead of JOIN to reduce table locking potential.
- * @param string $publicUrl The URL of the page (e.g. '/admin/product')
- * @return array List of allowed action names (e.g. ['View', 'Add', 'Edit'])
- */
-function getPageRuntimePermissions($publicUrl) {
-        global $conn;
-
-        // LOGIC 0: Check User Group Permissions first (deny early)
-        $rawGroup = $_SESSION['user_group'] ?? '';
-        $userGroup = normalizeGroupKey($rawGroup);
-        $allowedUserGroups = ['admin', 'super_admin', 'administrator', 'system_admin'];
-        if (!in_array($userGroup, $allowedUserGroups, true)) {
-            return [];
-        }
-        
-        // 1. Sanitize and normalize URL (remove query params)
-        $cleanUrl = strtok($publicUrl, '?');
-        
-        // QUERY 1: Resolve Page ID
-        $stmt = $conn->prepare("SELECT id FROM " . PAGE_INFO_LIST . " WHERE public_url = ? AND status = 'A' LIMIT 1");
-        $stmt->bind_param("s", $cleanUrl);
-        $stmt->execute();
-        $stmt->store_result();
-        
-        if ($stmt->num_rows === 0) {
-            $stmt->close();
-            return []; // Page not defined or is Deleted -> Deny all
-        }
-        
-        $pageId = 0;
-        $stmt->bind_result($pageId);
-        $stmt->fetch();
-        $stmt->close();
-
-        // QUERY 2: Fetch Action IDs (from Bridge Table)
-        $actionIds = [];
-        $stmt = $conn->prepare("SELECT action_id FROM " . ACTION_MASTER . " WHERE page_id = ?");
-        $stmt->bind_param("i", $pageId);
-        $stmt->execute();
-        $stmt->bind_result($aId);
-        
-        while($stmt->fetch()) {
-            $actionIds[] = $aId;
-        }
-        $stmt->close();
-
-        // Optimization: If no actions bound, return early to save DB call
-        if (empty($actionIds)) {
-            return [];
-        }
-
-        // QUERY 3: Fetch Action Names (from Definition Table)
-        $allowedActions = [];
-        
-        // Security: Ensure all IDs are integers to prevent SQL Injection in the IN clause
-        $safeIds = implode(',', array_map('intval', $actionIds));
-        
-        $sql = "SELECT name FROM " . PAGE_ACTION . " WHERE id IN ($safeIds) AND status = 'A'";
-        $result = $conn->query($sql);
-        
-        if ($result) {
-            while ($row = $result->fetch_assoc()) {
-                $allowedActions[] = $row['name'];
-            }
-            $result->free();
-        }
-
-        return $allowedActions; 
-}
-
-/**
  * [NEW] Fetch a single user_role row by id.
  */
 function fetchUserRoleById($conn, $id) {
@@ -967,5 +893,285 @@ function checkRoleNameDuplicate($conn, $nameCn, $nameEn, $excludeId = 0) {
 
     return $exists;
 }
-?>
 
+/**
+ * Get the default user role ID for new registrations.
+ * Looks for a role named 'Member' or 'User'.
+ */
+function getDefaultUserRoleId($conn) {
+    if (!$conn) return null;
+
+    // 1. Prepare the SQL statement with placeholders
+    $sql = "SELECT id FROM " . USER_ROLE . " 
+            WHERE (name_en IN (?, ?) OR name_cn IN (?, ?)) 
+            AND status = ? 
+            LIMIT 1";
+
+    $stmt = $conn->prepare($sql);
+    
+    if ($stmt) {
+        $name_en1 = 'Member';
+        $name_en2 = 'User';
+        $name_cn1 = '普通用户';
+        $name_cn2 = '会员';
+        $status = 'A';
+
+        // 2. Bind the variables to the placeholders
+        $stmt->bind_param("sssss", $name_en1, $name_en2, $name_cn1, $name_cn2, $status);
+
+        // 3. Execute and get the result
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        if ($result && $result->num_rows > 0) {
+            $row = $result->fetch_assoc();
+            $stmt->close();
+            return (int)$row['id'];
+        }
+
+        $stmt->close();
+    }
+
+    return null;
+}
+
+/**
+ * This will be used for Administrator accounts created by the Super Admin. 
+ * It looks for a role named 'Administrator' or 'Super Administrator'.
+ * 
+ */
+function getAdministratorRoleId($conn) {
+    if (!$conn) return null;
+
+    // 1. Prepare the SQL statement with placeholders
+    $sql = "SELECT id FROM " . USER_ROLE . " 
+            WHERE (name_en IN (?, ?) OR name_cn IN (?, ?)) 
+            AND status = ? 
+            LIMIT 1";
+
+    $stmt = $conn->prepare($sql);
+    
+    if ($stmt) {
+        $name_en1 = 'Super Administrator';
+        $name_en2 = 'Administrator';
+        $name_cn1 = '超级管理员';
+        $name_cn2 = '管理员';
+        $status = 'A';
+
+        // 2. Bind the variables to the placeholders
+        $stmt->bind_param("sssss", $name_en1, $name_en2, $name_cn1, $name_cn2, $status);
+
+        // 3. Execute and get the result
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        if ($result && $result->num_rows > 0) {
+            $row = $result->fetch_assoc();
+            $stmt->close();
+            return (int)$row['id'];
+        }
+
+        $stmt->close();
+    }
+
+    return null;
+}
+
+/**
+ * Fully Dynamic Gatekeeper (Optimized: No JOINs)
+ * 1. Fetches all possible actions from PAGE_ACTION.
+ * 2. Fetches assigned actions from USER_ROLE_PERMISSION.
+ * 3. Fetches enabled actions from ACTION_MASTER.
+ * 4. Intersects them in PHP and returns a dynamic permission object.
+ */
+function hasPagePermission($conn, $pageUrl) {
+    $perm = new stdClass();
+
+    if (!$conn) return $perm;
+
+    // 1. Initialize the object: Fetch ALL possible actions and default them to false
+    // This ensures properties like $perm->view or $perm->delete always exist to prevent PHP warnings
+    $allActionsRes = $conn->query("SELECT id, name FROM " . PAGE_ACTION . " WHERE status = 'A'");
+    $actionMap = []; // Maps ID to Name (e.g., [1 => 'view', 2 => 'add'])
+    if ($allActionsRes) {
+        while ($row = $allActionsRes->fetch_assoc()) {
+            $key = strtolower($row['name']);
+            $perm->$key = false; 
+            $actionMap[(int)$row['id']] = $key;
+        }
+        $allActionsRes->free();
+    }
+
+    if (empty($pageUrl)) return $perm;
+
+    // 2. Get Role ID from Session
+    $roleId = isset($_SESSION['role_id']) ? (int)$_SESSION['role_id'] : 0;
+    if ($roleId <= 0) return $perm;
+
+    // 3. Get Page ID
+    $pageId = 0;
+    $stmt = $conn->prepare("SELECT id FROM " . PAGE_INFO_LIST . " WHERE public_url = ? AND status = 'A' LIMIT 1");
+    if ($stmt) {
+        $stmt->bind_param("s", $pageUrl);
+        $stmt->execute();
+        $stmt->bind_result($pageId);
+        $stmt->fetch();
+        $stmt->close();
+    }
+    if (empty($pageId)) return $perm;
+
+    // 4. Get User Role Permissions (The User's Keys)
+    $roleActionIds = [];
+    $stmt = $conn->prepare("SELECT action_id FROM " . USER_ROLE_PERMISSION . " WHERE user_role_id = ? AND page_id = ?");
+    if ($stmt) {
+        $stmt->bind_param("ii", $roleId, $pageId);
+        $stmt->execute();
+        $aId = null;
+        $stmt->bind_result($aId);
+        while ($stmt->fetch()) {
+            $roleActionIds[] = (int)$aId;
+        }
+        $stmt->close();
+    }
+    
+    // Fast Failure: If role has zero permissions, return the default false object immediately
+    if (empty($roleActionIds)) return $perm;
+
+    // 5. Get Page Master Permissions (The Page's Locks)
+    $masterActionIds = [];
+    $stmt = $conn->prepare("SELECT action_id FROM " . ACTION_MASTER . " WHERE page_id = ?");
+    if ($stmt) {
+        $stmt->bind_param("i", $pageId);
+        $stmt->execute();
+        $mId = null;
+        $stmt->bind_result($mId);
+        while ($stmt->fetch()) {
+            $masterActionIds[] = (int)$mId;
+        }
+        $stmt->close();
+    }
+
+    // 6. Calculate the Intersection in PHP
+    // This strictly enforces that the ID must exist in BOTH tables.
+    $validActionIds = array_intersect($roleActionIds, $masterActionIds);
+
+    // 7. Update the dynamic permission object
+    foreach ($validActionIds as $validId) {
+        if (isset($actionMap[$validId])) {
+            $keyName = $actionMap[$validId];
+            $perm->$keyName = true;
+        }
+    }
+
+    return $perm;
+}
+
+function renderTableActions($htmlString) {
+    $minHeight = '32px'; // Matches standard btn-sm height
+    if (!empty($htmlString)) {
+        return '<div style="display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: '.$minHeight.';">' . $htmlString . '</div>';
+    }
+    // Returns a layout-stable placeholder if no permissions exist
+    return '<div style="display: block; height: '.$minHeight.'; width: 100%;">&nbsp;</div>';
+}
+
+// Unified permission error handler (with forced redirection to dashboard home)
+// @param string $actionType Operation type ('view', 'add', 'edit', 'delete')
+// @param object $perm Permission object
+// @param string $moduleName Module name for the error message
+// @param bool $redirect Whether to redirect directly when access is denied
+function checkPermissionError($actionType, $perm, $moduleName = '数据', $redirect = true) {
+    
+    // [FIX 1] Force ABSOLUTE path to the dashboard home page.
+    $dashboardUrl = '/dashboard.php'; 
+    $errorMessage = null;
+
+    // Check if the permission object exists
+    if (empty($perm)) {
+        $errorMessage = "系统错误：无法获取 {$moduleName} 的权限信息。";
+    } else {
+        // Check specific permission based on the action type
+        switch ($actionType) {
+            case 'view':
+                if (empty($perm->view)) $errorMessage = "权限不足：您没有访问 {$moduleName} 的权限。";
+                break;
+            case 'add':
+                if (empty($perm->add)) $errorMessage = "权限不足：您没有新增 {$moduleName} 的权限。";
+                break;
+            case 'edit':
+                if (empty($perm->edit)) $errorMessage = "权限不足：您没有编辑 {$moduleName} 的权限。";
+                break;
+            case 'delete':
+                if (empty($perm->delete)) $errorMessage = "权限不足：您没有删除 {$moduleName} 的权限。";
+                break;
+            default:
+                $errorMessage = "权限不足：未知的操作类型。";
+        }
+    }
+
+    // If an error occurred and redirection is enabled
+    if ($errorMessage && $redirect) {
+        
+        // If it's an AJAX request (e.g., DataTables), return JSON
+        if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => $errorMessage]);
+            exit();
+        }
+
+        // Set Flash Message in session
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $_SESSION['flash_msg'] = $errorMessage;
+        $_SESSION['flash_type'] = 'danger';
+        
+        // Prevent infinite loop: if they lack Dashboard Home access, kick them to frontend home
+        $currentView = $_GET['view'] ?? 'home';
+        if ($currentView === 'home' && $moduleName === '仪表盘首页') {
+            $dashboardUrl = URL_USER_DASHBOARD; 
+        }
+
+        // Execute Redirect
+        if (!headers_sent()) {
+            header("Location: " . $dashboardUrl);
+        } else {
+            // Use replace() so users cannot click 'Back' into the forbidden page
+            echo "<script>window.location.replace('" . $dashboardUrl . "');</script>";
+        }
+        exit();
+    }
+
+    return $errorMessage;
+}
+
+/**
+ * Fetch dynamic page registry for Meta Settings dropdown.
+ * Uses public_url as the key so pages can easily map their current URL to their SEO settings.
+ */
+function getDynamicPageRegistry($conn) {
+    $registry = [];
+    if (!$conn) return $registry;
+    
+    // Fetch active pages using prepared statement and bind_result
+    $stmt = $conn->prepare("SELECT public_url, name_en, name_cn FROM " . PAGE_INFO_LIST . " WHERE status = 'A' ORDER BY name_en ASC");
+    
+    if ($stmt) {
+        $stmt->execute();
+        
+        $url = null;
+        $nameEn = null;
+        $nameCn = null;
+        
+        $stmt->bind_result($url, $nameEn, $nameCn);
+        
+        while ($stmt->fetch()) {
+            $trimmedUrl = trim((string)$url);
+            // Only add pages that have a valid public URL defined
+            if (!empty($trimmedUrl)) {
+                $registry[$trimmedUrl] = $nameCn . ' (' . $nameEn . ')';
+            }
+        }
+        $stmt->close();
+    }
+    
+    return $registry;
+}

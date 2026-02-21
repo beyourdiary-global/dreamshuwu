@@ -69,7 +69,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $validToken) {
 }
 ?>
 
-<?php $pageMetaKey = 'reset_password'; ?>
+<?php $pageMetaKey = '/reset-password.php'; ?>
 <!DOCTYPE html>
 <html lang="<?php echo defined('SITE_LANG') ? SITE_LANG : 'zh-CN'; ?>">
 <head>

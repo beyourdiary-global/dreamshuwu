@@ -13,16 +13,23 @@ $formRow = [
 ];
 $boundActions = [];
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['mode'])) {
-    if (isset($hasPermission) && !$hasPermission) {
-        $_SESSION['flash_msg'] = '权限不足：仅允许管理员组访问';
-        $_SESSION['flash_type'] = 'danger';
-        pageInfoRedirect($baseListUrl);
-    }
+// 1. Check View Permission for the form page
+checkPermissionError('view', $perm, '页面信息表单');
 
+// 2. Check Add/Edit Permission for loading the form
+$actionToCheck = $isEditMode ? 'edit' : 'add';
+checkPermissionError($actionToCheck, $perm, '页面信息');
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['mode'])) {
     $formAction = $_POST['action_type'] ?? '';
     if ($formAction === 'save') {
         $recordId = isset($_POST['id']) ? (int)$_POST['id'] : 0;
+        $isEditMode = $recordId > 0;
+
+// 3. Check Add/Edit Permission again for the POST submission
+        $submitActionToCheck = $isEditMode ? 'edit' : 'add';
+    checkPermissionError($submitActionToCheck, $perm, '页面信息');
+
         $name_en = trim($_POST['name_en'] ?? '');
         $name_cn = trim($_POST['name_cn'] ?? '');
         $public_url = trim($_POST['public_url'] ?? '');
@@ -42,8 +49,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['mode'])) {
             pageInfoRedirect($redirectTo);
         }
 
-        if ($public_url[0] !== '/' || !preg_match('#^/[A-Za-z0-9/_\-.]*$#', $public_url)) {
-            $_SESSION['flash_msg'] = 'Public URL 格式无效，必须以 / 开头且仅包含字母、数字、/、_、-、.';
+        if ($public_url[0] !== '/' || !preg_match('#^/[A-Za-z0-9/_\-.?=&]*$#', $public_url)) {
+            $_SESSION['flash_msg'] = 'Public URL 格式无效，必须以 / 开头且仅包含字母、数字、/、_、-、. 以及 ? = &';
             $_SESSION['flash_type'] = 'danger';
             pageInfoRedirect($redirectTo);
         }
@@ -300,7 +307,9 @@ if ($res) {
 
                 <div class="d-flex justify-content-end mt-4 gap-2">
                     <a href="<?php echo $baseListUrl; ?>" class="btn btn-light">取消</a>
+                    <?php if (($isEditMode && !empty($perm->edit)) || (!$isEditMode && !empty($perm->add))): ?>
                     <button type="submit" class="btn btn-primary px-4"><i class="fa-solid fa-save"></i> 保存设置</button>
+                    <?php endif; ?>
                 </div>
             </form>
         </div>

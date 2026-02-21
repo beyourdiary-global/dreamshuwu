@@ -2,6 +2,14 @@
 // Path: src/pages/category/index.php
 require_once dirname(__DIR__, 3) . '/common.php';
 
+// 1. Identify this specific view's URL as registered in your DB
+$currentUrl = '/dashboard.php?view=categories'; 
+
+// [ADDED] Fetch the dynamic permission object for this page
+$perm = hasPagePermission($conn, $currentUrl);
+
+// --- 2. Check View Permission ---
+checkPermissionError('view', $perm, '分类管理页面');
 
 // 1. Auth Check
 if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
@@ -120,11 +128,22 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
         // Edit URL points to Dashboard
         $editUrl = URL_USER_DASHBOARD . "?view=cat_form&id=" . (int) $cat['id'];
         
-        $actions = '
-            <a href="'.$editUrl.'" class="btn btn-sm btn-outline-primary btn-action" title="编辑"><i class="fa-solid fa-pen"></i></a>
-            <button class="btn btn-sm btn-outline-danger btn-action delete-btn" data-id="'.$cat['id'].'" data-name="'.htmlspecialchars($cat['name']).'" title="删除"><i class="fa-solid fa-trash"></i></button>
-        ';
-        $data[] = [htmlspecialchars($cat['name']), $tagHtml, $actions];
+        // [ADDED] Dynamically build actions based on permission object properties
+        $btns = '';
+        if ($perm->edit) {
+            $btns .= '<a href="'.$editUrl.'" class="btn btn-sm btn-outline-primary btn-action" title="编辑"><i class="fa-solid fa-pen"></i></a>';
+        }
+        if ($perm->delete) {
+            $btns .= '<button class="btn btn-sm btn-outline-danger btn-action delete-btn" data-id="'.$cat['id'].'" data-name="'.htmlspecialchars($cat['name']).'" title="删除"><i class="fa-solid fa-trash"></i></button>';
+        }
+
+        // [ADDED] Apply global helper for CSS alignment fix
+        $data[] = [
+            htmlspecialchars($cat['name']), 
+            $tagHtml, 
+            renderTableActions($btns)
+        ];
+    
     }
 
     echo safeJsonEncode([
@@ -139,6 +158,13 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
 // API: DELETE
 if (isset($_POST['mode']) && $_POST['mode'] === 'delete') {
     header('Content-Type: application/json');
+
+$deleteError = checkPermissionError('delete', $perm, '分类');
+    if ($deleteError) {
+        echo safeJsonEncode(['success' => false, 'message' => $deleteError]);
+        exit();
+    }
+
     $id = intval($_POST['id']);
     $name = $_POST['name'] ?? 'Unknown';
 
@@ -224,7 +250,9 @@ if ($isEmbeddedInDashboard): ?>
     <div class="card category-card">
         <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
             <h4 class="m-0 text-primary"><i class="fa-solid fa-layer-group"></i> 分类管理</h4>
+            <?php if ($perm->add): ?>
             <a href="<?php echo URL_USER_DASHBOARD; ?>?view=cat_form" class="btn btn-primary desktop-add-btn"><i class="fa-solid fa-plus"></i> 新增分类</a>
+            <?php endif; ?>
         </div>
         <div class="card-body">
             <?php if ($flashMsg): ?>
@@ -240,7 +268,8 @@ if ($isEmbeddedInDashboard): ?>
         </div>
     </div>
 </div>
+<?php if ($perm->add): ?>
 <a href="<?php echo URL_USER_DASHBOARD; ?>?view=cat_form" class="btn btn-primary btn-add-mobile"><i class="fa-solid fa-plus fa-lg"></i></a>
+<?php endif; ?>
 <?php else: ?>
 <?php endif; ?>
-<?php $pageMetaKey = 'category'; ?>

@@ -16,21 +16,26 @@ $formRow = [
 // Initialize permissions array (used for checkboxes)
 $assignedPerms = [];
 
+// 1. Check View Permission for the form page
+checkPermissionError('view', $perm, '用户角色表单');
+
+// 2. Check Add/Edit Permission for loading the form
+$actionToCheck = $isEditMode ? 'edit' : 'add';
+checkPermissionError($actionToCheck, $perm, '用户角色');
+
 // 2. Form Submission Handling (POST)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['mode'])) {
-    // Permission Check: Ensure only authorized roles can save
-    if (isset($hasPermission) && !$hasPermission) {
-        $_SESSION['flash_msg'] = '权限不足：仅允许管理员组访问';
-        $_SESSION['flash_type'] = 'danger';
-        userRoleRedirect($baseListUrl);
-    }
-
     $formAction = $_POST['action_type'] ?? '';
     
     // Handle 'save' action
     if ($formAction === 'save') {
         // Collect and sanitize input
         $recordId = isset($_POST['id']) ? (int)$_POST['id'] : 0;
+        $isEditMode = $recordId > 0;
+        // 3. Check Add/Edit Permission for form submission
+        $submitAction = $isEditMode ? 'edit' : 'add';
+        checkPermissionError($submitAction, $perm, '用户角色');
+
         $name_cn = trim($_POST['name_cn'] ?? '');
         $name_en = trim($_POST['name_en'] ?? '');
         $description = trim($_POST['description'] ?? '');
@@ -331,7 +336,9 @@ if ($actRes) {
 
                 <div class="d-flex justify-content-end mt-4 gap-2">
                     <a href="<?php echo $baseListUrl; ?>" class="btn btn-light">取消</a>
+                    <?php if (($isEditMode && !empty($perm->edit)) || (!$isEditMode && !empty($perm->add))): ?>
                     <button type="submit" class="btn btn-primary px-4"><i class="fa-solid fa-save"></i> 保存角色</button>
+                    <?php endif; ?>
                 </div>
             </form>
         </div>
