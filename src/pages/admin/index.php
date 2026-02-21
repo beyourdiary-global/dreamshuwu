@@ -1,16 +1,20 @@
 <?php
 // Path: src/pages/admin/index.php
 
-$currentUrl = '/dashboard.php?view=admin';
+// 1. Define the base path to prevent redundant hardcoding
+$baseViewPath = '/dashboard.php?view=';
+
+$currentUrl = $baseViewPath . 'admin';
 $perm = hasPagePermission($conn, $currentUrl);
 
-if (empty($perm) || !$perm->view) {
-    denyAccess("权限不足：您没有访问管理员面板的权限。");
-}
+// 2. Use the unified helper to handle view permission and redirection
+// This handles the access check and redirects to /dashboard.php if denied
+checkPermissionError('view', $perm, '管理员面板');
 
-$permPageAction = hasPagePermission($conn, '/dashboard.php?view=page_action');
-$permPageInfo   = hasPagePermission($conn, '/dashboard.php?view=page_info');
-$permUserRole   = hasPagePermission($conn, '/dashboard.php?view=user_role');
+// 3. Fetch permissions for child cards using the base path
+$permPageAction = hasPagePermission($conn, $baseViewPath . 'page_action');
+$permPageInfo   = hasPagePermission($conn, $baseViewPath . 'page_info');
+$permUserRole   = hasPagePermission($conn, $baseViewPath . 'user_role');
 ?>
 <div class="container-fluid">
     <div class="d-flex align-items-center justify-content-between mb-4">
@@ -20,7 +24,7 @@ $permUserRole   = hasPagePermission($conn, '/dashboard.php?view=user_role');
     <div class="row">
         <?php if (!empty($permPageAction) && $permPageAction->view): ?>
         <div class="col-md-6 col-lg-4 col-xl-3 mb-4">
-            <a href="<?php echo URL_USER_DASHBOARD . '?view=page_action'; ?>" class="text-decoration-none">
+            <a href="<?php echo $baseViewPath . 'page_action'; ?>" class="text-decoration-none">
                 <div class="card h-100 border-0 shadow-sm action-card hover-lift">
                     <div class="card-body text-center p-4">
                         <div class="mb-3">
@@ -38,7 +42,7 @@ $permUserRole   = hasPagePermission($conn, '/dashboard.php?view=user_role');
 
         <?php if (!empty($permPageInfo) && $permPageInfo->view): ?>
         <div class="col-md-6 col-lg-4 col-xl-3 mb-4">
-            <a href="<?php echo URL_USER_DASHBOARD . '?view=page_info'; ?>" class="text-decoration-none">
+            <a href="<?php echo $baseViewPath . 'page_info'; ?>" class="text-decoration-none">
                 <div class="card h-100 border-0 shadow-sm action-card hover-lift">
                     <div class="card-body text-center p-4">
                         <div class="mb-3">
@@ -56,7 +60,7 @@ $permUserRole   = hasPagePermission($conn, '/dashboard.php?view=user_role');
 
         <?php if (!empty($permUserRole) && $permUserRole->view): ?>
         <div class="col-md-6 col-lg-4 col-xl-3 mb-4">
-            <a href="<?php echo URL_USER_ROLE; ?>" class="text-decoration-none">
+            <a href="<?php echo $baseViewPath . 'user_role'; ?>" class="text-decoration-none">
                 <div class="card h-100 border-0 shadow-sm action-card hover-lift">
                     <div class="card-body text-center p-4">
                         <div class="mb-3">

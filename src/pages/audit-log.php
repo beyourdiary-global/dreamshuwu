@@ -14,18 +14,8 @@ $currentUrl = '/audit-log.php';
 // [ADDED] Fetch the dynamic permission object for this page
 $perm = hasPagePermission($conn, $currentUrl);
 
-// 2. Check if the user has View permission for this view
-if (empty($perm) || !$perm->view) {
-    // Handle AJAX DataTables request
-    if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
-        header('Content-Type: application/json');
-        echo safeJsonEncode(['error' => 'Access Denied']);
-        exit();
-    }
-    // Handle UI load
-    denyAccess("权限不足：您没有访问审计日志页面的权限。");
-}
-// --- END PERMISSION CHECK ---
+checkPermissionError('view', $perm, '审计日志页面');
+
 $auditActions = ['V' => 'View', 'E' => 'Edit', 'A' => 'Add', 'D' => 'Delete'];
 
 if (isset($_GET['mode']) && $_GET['mode'] === 'data') {

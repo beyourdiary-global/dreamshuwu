@@ -7,10 +7,7 @@ $currentUrl = '/dashboard.php?view=tag_form';
 // [ADDED] Fetch dynamic permission object
 $perm = hasPagePermission($conn, $currentUrl);
 
-// 2. Base View Check (If they can't even view the form, block them)
-if (empty($perm) || !$perm->view) {
-    denyAccess("权限不足：您没有访问此表单的权限。");
-}
+checkPermissionError('view', $perm, '标签表单');
 
 // 1. Auth Check
 if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
@@ -36,11 +33,8 @@ $isEditMode = !empty($tagId);
 
 // [ADDED] Specific Action Permission Check
 // If Edit Mode: must have 'edit' permission. If Add Mode: must have 'add' permission.
-if ($isEditMode && !$perm->edit) {
-    denyAccess("权限不足：您没有编辑标签的权限。");
-} elseif (!$isEditMode && !$perm->add) {
-    denyAccess("权限不足：您没有新增标签的权限。");
-}
+$actionToCheck = $isEditMode ? 'edit' : 'add';
+checkPermissionError($actionToCheck, $perm, '标签');
 
 if ($isEmbeddedTagForm) {
     $listPageUrl = URL_USER_DASHBOARD . '?view=tags';
@@ -112,12 +106,13 @@ try {
     // 4. Handle Form Submission (POST)
     if ($_SERVER["REQUEST_METHOD"] === "POST") {
         // [ADDED] Re-verify strict permissions before DB transaction
-    if ($isEditMode && !$perm->edit) {
-        throw new Exception("Unauthorized: You do not have permission to edit records.");
-    }
-    if (!$isEditMode && !$perm->add) {
-        throw new Exception("Unauthorized: You do not have permission to add records.");
-    }
+    $submitAction = $isEditMode ? 'edit' : 'add';
+    $submitError = checkPermissionError($submitAction, $perm, '标签');
+    
+    if ($submitError) {
+        $message = $submitError;
+        $msgType = "danger";
+    } else {
         $tagName = trim($_POST['tag_name'] ?? '');
         $postedTagId = isset($_POST['tag_id']) ? (int) $_POST['tag_id'] : null;
         
@@ -236,11 +231,11 @@ try {
                     exit();
                 } else {
                     throw new Exception($stmt->error);
+                    }
                 }
             }
-        }
-    } 
-
+        } 
+    }
 } catch (Exception $e) {
     $message = "System Error: " . $e->getMessage(); $msgType = "danger";
 }

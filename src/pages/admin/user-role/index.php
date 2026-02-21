@@ -39,20 +39,16 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
 // 2. Permission Check
 $currentUrl = '/dashboard.php?view=user_role';
 $perm = hasPagePermission($conn, $currentUrl);
-$hasPermission = !empty($perm) && !empty($perm->view);
-
-if (!$hasPermission) {
-    denyAccess("权限不足：您没有访问用户角色管理的权限。");
-}
+// Check View Permission for the list
+checkPermissionError('view', $perm, '用户角色管理');
 
 // 3. POST Handling (Delete Action)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $actionType = $_POST['action_type'] ?? '';
 
     if ($actionType === 'delete') {
-        if (empty($perm->delete)) {
-            denyAccess("权限不足：您没有删除用户角色的权限。");
-        }
+        // Check Delete Permission
+        checkPermissionError('delete', $perm, '用户角色');
 
         $delId = isset($_POST['id']) ? (int)$_POST['id'] : 0;
         if ($delId > 0) {
@@ -267,7 +263,6 @@ if ($isEmbedded):
                                     <button type="button" class="btn btn-sm btn-outline-danger" onclick="confirmDelete(<?php echo (int)$row['id']; ?>)"><i class="fa-solid fa-trash"></i></button>
                                     <?php endif; ?>
                                     <?php if (empty($perm->edit) && empty($perm->delete)): ?>
-                                    <span class="text-muted small">无操作权限</span>
                                     <?php endif; ?>
                                 </td>
                             </tr>

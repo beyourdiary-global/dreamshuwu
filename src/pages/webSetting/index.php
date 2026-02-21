@@ -11,9 +11,7 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
 $currentUrl = '/dashboard.php?view=web_settings';
 $perm = hasPagePermission($conn, $currentUrl);
 
-if (empty($perm) || !$perm->view) {
-    denyAccess("权限不足：您没有访问网站设置页面的权限。");
-}
+checkPermissionError('view', $perm, '网站设置页面');
 
 $auditPage = 'Web Settings';
 $auditUserId = $_SESSION['user_id'] ?? 0;
@@ -94,12 +92,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $logMessage = '';
     $logQuery = '';
 
-    if ($actionType === 'reset_defaults' && empty($perm->delete)) {
-        denyAccess("权限不足：您没有重置网站设置的权限。");
+    if ($actionType === 'reset_defaults') {
+    checkPermissionError('delete', $perm, '网站设置');
     }
-    if (($actionType === 'remove_logo' || $actionType === 'remove_favicon') && empty($perm->edit)) {
-        denyAccess("权限不足：您没有编辑网站设置的权限。");
-    }
+
+    if (($actionType === 'remove_logo' || $actionType === 'remove_favicon')) {
+    checkPermissionError('edit', $perm, '网站设置');
+   }
 
     // [NEW] Sanitize and Validate Website Name length
     $rawWebsiteName = $_POST['website_name'] ?? '';
@@ -203,12 +202,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     else {
         $existingRes = $conn->query("SELECT id FROM $table WHERE id = 1");
         $isEditMode = ($existingRes && $existingRes->num_rows > 0);
-        if ($isEditMode && empty($perm->edit)) {
-            denyAccess("权限不足：您没有编辑网站设置的权限。");
-        }
-        if (!$isEditMode && empty($perm->add)) {
-            denyAccess("权限不足：您没有新增网站设置的权限。");
-        }
+        $submitAction = $isEditMode ? 'edit' : 'add';
+        checkPermissionError($submitAction, $perm, '网站设置');
 
         // Prepare Data
         $newData = [

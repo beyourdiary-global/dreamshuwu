@@ -8,17 +8,7 @@ $currentUrl = '/dashboard.php?view=tags';
 // [ADDED] Fetch the dynamic permission object for this page
 $perm = hasPagePermission($conn, $currentUrl);
 
-// 2. Check if the user has View permission for this view
-if (empty($perm) || !$perm->view) {
-    // Handle AJAX DataTables request
-    if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
-        header('Content-Type: application/json');
-        echo safeJsonEncode(['error' => 'Access Denied']);
-        exit();
-    }
-    // Handle UI load
-    denyAccess("权限不足：您没有访问标签管理页面的权限。");
-}
+checkPermissionError('view', $perm, '标签管理页面');
 
 $tagTable = NOVEL_TAGS;
 $auditPage = 'Tag Management';
@@ -190,8 +180,9 @@ if ($isAjaxRequest) {
 // 4. API: Delete (POST)
 if ($isDeleteRequest) {
     // [ADDED] Secure the Delete API
-    if (!$perm->delete) {
-        sendDeleteError('操作禁止：您没有删除权限。');
+$deleteError = checkPermissionError('delete', $perm, '标签');
+    if ($deleteError) {
+        sendDeleteError($deleteError);
     }
 
     while (ob_get_level()) { ob_end_clean(); }

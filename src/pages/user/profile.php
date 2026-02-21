@@ -10,9 +10,7 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
 $currentUrl = '/dashboard.php?view=profile';
 $perm = hasPagePermission($conn, $currentUrl);
 
-if (empty($perm) || !$perm->view) {
-    denyAccess("权限不足：您没有访问个人资料页面的权限。");
-}
+checkPermissionError('view', $perm, '个人资料页面');
 
 $userId = $_SESSION['user_id'];
 $message = "";
@@ -33,9 +31,7 @@ if (isset($_SESSION['flash_msg'])) {
 
 // --- HANDLE FORM A: UPDATE INFO ---
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['action']) && $_POST['action'] === 'update_info') {
-    if (empty($perm->edit)) {
-        denyAccess("权限不足：您没有编辑个人资料的权限。");
-    }
+    checkPermissionError('edit', $perm, '个人资料');
 
     $name = trim($_POST['display_name']);
     $email = trim($_POST['email']);
@@ -157,9 +153,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['action']) && $_POST['
 // ... (Rest of the file remains unchanged) ...
 // --- HANDLE FORM B: CHANGE PASSWORD ---
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['action']) && $_POST['action'] === 'change_pwd') {
-    if (empty($perm->edit)) {
-        denyAccess("权限不足：您没有修改密码的权限。");
-    }
+    checkPermissionError('edit', $perm, '密码');
 
     // ... existing password logic ...
     $currentPwd = $_POST['current_password'];

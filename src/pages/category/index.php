@@ -8,17 +8,8 @@ $currentUrl = '/dashboard.php?view=categories';
 // [ADDED] Fetch the dynamic permission object for this page
 $perm = hasPagePermission($conn, $currentUrl);
 
-// 2. Check if the user has View permission for this view
-if (empty($perm) || !$perm->view) {
-    // Handle AJAX DataTables request
-    if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
-        header('Content-Type: application/json');
-        echo safeJsonEncode(['error' => 'Access Denied']);
-        exit();
-    }
-    // Handle UI load
-    denyAccess("权限不足：您没有访问分类管理页面的权限。");
-}
+// --- 2. Check View Permission ---
+checkPermissionError('view', $perm, '分类管理页面');
 
 // 1. Auth Check
 if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
@@ -168,9 +159,9 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
 if (isset($_POST['mode']) && $_POST['mode'] === 'delete') {
     header('Content-Type: application/json');
 
-    // [ADDED] Secure the Delete API
-    if (!$perm->delete) {
-        echo safeJsonEncode(['success' => false, 'message' => '操作禁止：您没有删除权限。']);
+$deleteError = checkPermissionError('delete', $perm, '分类');
+    if ($deleteError) {
+        echo safeJsonEncode(['success' => false, 'message' => $deleteError]);
         exit();
     }
 

@@ -8,17 +8,8 @@ $currentUrl = '/dashboard.php?view=cat_form';
 // [ADDED] Fetch dynamic permission object
 $perm = hasPagePermission($conn, $currentUrl);
 
-// 2. Check if the user has View permission for this view
-if (empty($perm) || !$perm->view) {
-    // Handle AJAX DataTables request (if any)
-    if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
-        header('Content-Type: application/json');
-        echo safeJsonEncode(['error' => 'Access Denied']);
-        exit();
-    }
-    // Handle UI load
-    denyAccess("权限不足：您没有访问分类表单的权限。");
-}
+// 1. Check View Permission
+checkPermissionError('view', $perm, '分类表单');
 
 // Auth Check
 if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
@@ -43,12 +34,9 @@ $isEmbeddedCatForm = isset($EMBED_CAT_FORM_PAGE) && $EMBED_CAT_FORM_PAGE === tru
 $id = $_GET['id'] ?? null;
 $isEditMode = !empty($id);
 
-// [ADDED] Specific Action Check
-if ($isEditMode && !$perm->edit) {
-    denyAccess("权限不足：您没有编辑分类的权限。");
-} elseif (!$isEditMode && !$perm->add) {
-    denyAccess("权限不足：您没有新增分类的权限。");
-}
+// 2. Check Add/Edit Permission for initial load
+$actionToCheck = $isEditMode ? 'edit' : 'add';
+checkPermissionError($actionToCheck, $perm, '分类');
 
 if ($isEmbeddedCatForm) {
     $listPageUrl = URL_USER_DASHBOARD . '?view=categories';
@@ -125,12 +113,16 @@ if ($isEditMode) {
 
 // 2. Handle Submit
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
-    if ($isEditMode && !$perm->edit) {
-        throw new Exception("Unauthorized: You do not have permission to edit records.");
-    }
-    if (!$isEditMode && !$perm->add) {
-        throw new Exception("Unauthorized: You do not have permission to add records.");
-    }
+
+// Determine action and check permission using the common function
+    $submitAction = $isEditMode ? 'edit' : 'add';
+    $submitError = checkPermissionError($submitAction, $perm, '标签');
+    
+    if ($submitError) {
+        // Instead of throwing an exception, we set the message to show in the UI
+        $message = $submitError;
+        $msgType = "danger";
+    } else {
     $name = trim($_POST['name'] ?? '');
     $tagIds = $_POST['tags'] ?? []; 
     $uid = $_SESSION['user_id'];
@@ -314,8 +306,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                         $message = "保存失败: " . $e->getMessage();
                     }
                     $msgType = "danger";
-                }
-            } // End if tagsValid
+                    }
+                } // End if tagsValid
+             }
         }
     }
 }

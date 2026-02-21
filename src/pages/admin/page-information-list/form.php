@@ -13,27 +13,22 @@ $formRow = [
 ];
 $boundActions = [];
 
-if (empty($perm) || !$perm->view) {
-    denyAccess("权限不足：您没有访问页面信息表单的权限。");
-}
+// 1. Check View Permission for the form page
+checkPermissionError('view', $perm, '页面信息表单');
 
-if ($isEditMode && empty($perm->edit)) {
-    denyAccess("权限不足：您没有编辑页面信息的权限。");
-} elseif (!$isEditMode && empty($perm->add)) {
-    denyAccess("权限不足：您没有新增页面信息的权限。");
-}
+// 2. Check Add/Edit Permission for loading the form
+$actionToCheck = $isEditMode ? 'edit' : 'add';
+checkPermissionError($actionToCheck, $perm, '页面信息');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['mode'])) {
     $formAction = $_POST['action_type'] ?? '';
     if ($formAction === 'save') {
         $recordId = isset($_POST['id']) ? (int)$_POST['id'] : 0;
         $isEditMode = $recordId > 0;
-        if ($isEditMode && empty($perm->edit)) {
-            denyAccess("权限不足：您没有编辑页面信息的权限。");
-        }
-        if (!$isEditMode && empty($perm->add)) {
-            denyAccess("权限不足：您没有新增页面信息的权限。");
-        }
+
+// 3. Check Add/Edit Permission again for the POST submission
+        $submitActionToCheck = $isEditMode ? 'edit' : 'add';
+    checkPermissionError($submitActionToCheck, $perm, '页面信息');
 
         $name_en = trim($_POST['name_en'] ?? '');
         $name_cn = trim($_POST['name_cn'] ?? '');

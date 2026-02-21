@@ -1075,41 +1075,72 @@ function renderTableActions($htmlString) {
     return '<div style="display: block; height: '.$minHeight.'; width: 100%;">&nbsp;</div>';
 }
 
-/**
- * Handles access denial by showing an error message on the CURRENT page.
- * This stops execution and prevents redirecting to home.
- */
-function denyAccess($message = "权限不足：您没有访问此页面的权限。") {
-    // Bring the database connection into the function scope
-    global $conn; 
-
-    if (session_status() === PHP_SESSION_NONE) {
-        session_start();
-    }
+// Unified permission error handler (with forced redirection to dashboard home)
+// @param string $actionType Operation type ('view', 'add', 'edit', 'delete')
+// @param object $perm Permission object
+// @param string $moduleName Module name for the error message
+// @param bool $redirect Whether to redirect directly when access is denied
+function checkPermissionError($actionType, $perm, $moduleName = '数据', $redirect = true) {
     
-    // Load components so the user still sees the website frame
-    if (defined('BASE_PATH')) {
-        // Because we used 'global $conn' above, the header can now see the connection
-        require_once BASE_PATH . 'include/header.php';
-        require_once BASE_PATH . 'common/menu/header.php';
+    // [FIX 1] Force ABSOLUTE path to the dashboard home page.
+    $dashboardUrl = '/dashboard.php'; 
+    $errorMessage = null;
+
+    // Check if the permission object exists
+    if (empty($perm)) {
+        $errorMessage = "系统错误：无法获取 {$moduleName} 的权限信息。";
+    } else {
+        // Check specific permission based on the action type
+        switch ($actionType) {
+            case 'view':
+                if (empty($perm->view)) $errorMessage = "权限不足：您没有访问 {$moduleName} 的权限。";
+                break;
+            case 'add':
+                if (empty($perm->add)) $errorMessage = "权限不足：您没有新增 {$moduleName} 的权限。";
+                break;
+            case 'edit':
+                if (empty($perm->edit)) $errorMessage = "权限不足：您没有编辑 {$moduleName} 的权限。";
+                break;
+            case 'delete':
+                if (empty($perm->delete)) $errorMessage = "权限不足：您没有删除 {$moduleName} 的权限。";
+                break;
+            default:
+                $errorMessage = "权限不足：未知的操作类型。";
+        }
     }
 
-    echo '<div class="container mt-5">
-            <div class="alert alert-danger shadow-sm d-flex align-items-center" role="alert" style="border-left: 5px solid #dc3545;">
-                <i class="fa-solid fa-circle-exclamation me-3 fs-4"></i>
-                <div>
-                    <h4 class="alert-heading mb-1">访问受限</h4>
-                    <p class="mb-0">' . htmlspecialchars($message) . '</p>
-                </div>
-            </div>
-            <div class="mt-3">
-                <button onclick="window.history.back()" class="btn btn-outline-secondary btn-sm">
-                    <i class="fa-solid fa-arrow-left me-1"></i> 返回上一页
-                </button>
-            </div>
-          </div>';
+    // If an error occurred and redirection is enabled
+    if ($errorMessage && $redirect) {
+        
+        // If it's an AJAX request (e.g., DataTables), return JSON
+        if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => $errorMessage]);
+            exit();
+        }
 
-    exit();
+        // Set Flash Message in session
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $_SESSION['flash_msg'] = $errorMessage;
+        $_SESSION['flash_type'] = 'danger';
+        
+        // Prevent infinite loop: if they lack Dashboard Home access, kick them to frontend home
+        $currentView = $_GET['view'] ?? 'home';
+        if ($currentView === 'home' && $moduleName === '仪表盘首页') {
+            $dashboardUrl = URL_USER_DASHBOARD; 
+        }
+
+        // Execute Redirect
+        if (!headers_sent()) {
+            header("Location: " . $dashboardUrl);
+        } else {
+            // Use replace() so users cannot click 'Back' into the forbidden page
+            echo "<script>window.location.replace('" . $dashboardUrl . "');</script>";
+        }
+        exit();
+    }
+
+    return $errorMessage;
 }
 
 /**

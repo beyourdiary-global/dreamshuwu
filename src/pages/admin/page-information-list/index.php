@@ -34,19 +34,16 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
 
 $currentUrl = '/dashboard.php?view=page_info';
 $perm = hasPagePermission($conn, $currentUrl);
-$hasPermission = !empty($perm) && !empty($perm->view);
 
-if (!$hasPermission) {
-    denyAccess("权限不足：您没有访问页面信息列表的权限。");
-}
+// 1. Check View Permission for the list
+checkPermissionError('view', $perm, '页面信息列表');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $actionType = $_POST['action_type'] ?? '';
 
     if ($actionType === 'delete') {
-        if (empty($perm->delete)) {
-            denyAccess("权限不足：您没有删除页面信息的权限。");
-        }
+        // 2. Check Delete Permission
+        checkPermissionError('delete', $perm, '页面信息');
 
         $delId = isset($_POST['id']) ? (int)$_POST['id'] : 0;
         if ($delId > 0) {
@@ -247,7 +244,6 @@ if ($isEmbedded):
                                     <button type="button" class="btn btn-sm btn-outline-danger" onclick="confirmDelete(<?php echo (int)$row['id']; ?>)"><i class="fa-solid fa-trash"></i></button>
                                     <?php endif; ?>
                                     <?php if (empty($perm->edit) && empty($perm->delete)): ?>
-                                    <span class="text-muted small">无操作权限</span>
                                     <?php endif; ?>
                                 </td>
                             </tr>

@@ -30,7 +30,9 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
 
 $currentUrl = '/dashboard.php?view=page_action';
 $perm = hasPagePermission($conn, $currentUrl);
-$hasPermission = !empty($perm) && !empty($perm->view);
+
+// 1. Check View Permission
+checkPermissionError('view', $perm, '页面操作列表');
 
 $baseListUrl = defined('URL_PAGE_ACTION') ? URL_PAGE_ACTION : (URL_USER_DASHBOARD . '?view=page_action');
 $formBaseUrl = $baseListUrl . '&pa_mode=form';
@@ -136,9 +138,11 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
 
 if (isset($_POST['mode']) && $_POST['mode'] === 'delete_api') {
     header('Content-Type: application/json');
-    if (!$hasPermission || empty($perm->delete)) {
+    // 2. Check Delete Permission for API
+    $deleteError = checkPermissionError('delete', $perm, '页面操作');
+    if ($deleteError) {
         http_response_code(403);
-        echo safeJsonEncode(['success' => false, 'message' => 'Access Denied: You do not have permission to delete page actions.']);
+        echo safeJsonEncode(['success' => false, 'message' => $deleteError]);
         exit();
     }
 
@@ -304,9 +308,7 @@ $queryForPager = [
 if ($isEmbeddedPageAction):
 ?>
 
-<?php if (!$hasPermission): ?>
-<?php denyAccess("权限不足：您没有访问页面操作管理的权限。"); ?>
-<?php elseif ($pageActionMode === 'form'): ?>
+<?php if ($pageActionMode === 'form'): ?>
     <?php require __DIR__ . '/form.php'; ?>
 <?php else: ?>
 <div class="container-fluid px-0" id="pageActionApp" data-delete-api-url="<?php echo htmlspecialchars($apiEndpoint); ?>">
@@ -379,7 +381,6 @@ if ($isEmbeddedPageAction):
                                     </button>
                                     <?php endif; ?>
                                     <?php if (empty($perm->edit) && empty($perm->delete)): ?>
-                                    <span class="text-muted small">无操作权限</span>
                                     <?php endif; ?>
                                 </td>
                             </tr>

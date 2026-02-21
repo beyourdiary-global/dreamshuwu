@@ -3,15 +3,12 @@ $recordId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 $isEditMode = $recordId > 0;
 $formRow = ['id' => 0, 'name' => '', 'status' => 'A'];
 
-if (empty($perm) || !$perm->view) {
-    denyAccess("权限不足：您没有访问页面操作表单的权限。");
-}
+// 1. Check Base View Permission
+checkPermissionError('view', $perm, '页面操作表单');
 
-if ($isEditMode && empty($perm->edit)) {
-    denyAccess("权限不足：您没有编辑页面操作的权限。");
-} elseif (!$isEditMode && empty($perm->add)) {
-    denyAccess("权限不足：您没有新增页面操作的权限。");
-}
+// 2. Check Add/Edit Permission for initial load
+$actionToCheck = $isEditMode ? 'edit' : 'add';
+checkPermissionError($actionToCheck, $perm, '页面操作');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['mode'])) {
     $formAction = $_POST['form_action'] ?? '';
@@ -19,12 +16,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['mode'])) {
         $recordId = isset($_POST['id']) ? (int)$_POST['id'] : 0;
         $isEditMode = $recordId > 0;
 
-        if ($isEditMode && empty($perm->edit)) {
-            denyAccess("权限不足：您没有编辑页面操作的权限。");
-        }
-        if (!$isEditMode && empty($perm->add)) {
-            denyAccess("权限不足：您没有新增页面操作的权限。");
-        }
+        // 3. Check Add/Edit Permission for form submission
+        $submitAction = $isEditMode ? 'edit' : 'add';
+        checkPermissionError($submitAction, $perm, '页面操作');
 
         $name = trim($_POST['name'] ?? '');
         $redirectTo = $recordId > 0 ? ($formBaseUrl . '&id=' . $recordId) : $formBaseUrl;

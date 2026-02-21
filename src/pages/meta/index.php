@@ -8,10 +8,8 @@ $currentUrl = '/dashboard.php?view=meta_settings';
 // [ADDED] Fetch the dynamic permission object for this page
 $perm = hasPagePermission($conn, $currentUrl);
 
-// 2. Check if the user has View permission for this view
-if (empty($perm) || !$perm->view) {
-    denyAccess("权限不足：您没有访问 Meta 设置页面的权限。");
-}
+// Use centralized function to check View permission
+checkPermissionError('view', $perm, 'Meta 设置页面');
 
 // Auth Check
 if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
@@ -110,10 +108,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     // 1. GLOBAL POST
     if (isset($_POST['form_type']) && $_POST['form_type'] === 'global') {
-        // [ADDED] Re-verify Edit Permission
-        if (!$perm->edit) {
-            denyAccess("权限不足：您没有修改全局 Meta 设置的权限。");
-        }
+        checkPermissionError('edit', $perm, '全局 Meta 设置');
 
         $oldGlobal = null;
         $hasGlobal = false;
@@ -202,10 +197,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // 2. PAGE POST
     if (isset($_POST['form_type']) && $_POST['form_type'] === 'page') {
-        // [ADDED] Re-verify Edit Permission
-        if (!$perm->edit) {
-            denyAccess("权限不足：您没有修改页面 Meta 设置的权限。");
-        }
+        checkPermissionError('edit', $perm, '页面 Meta 设置');
 
         $pKey = $_POST['page_key'] ?? '';
         if (!empty($pKey) && array_key_exists($pKey, $PAGE_META_REGISTRY)) {
@@ -303,10 +295,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // 3. DELETE PAGE POST
     if (isset($_POST['form_type']) && $_POST['form_type'] === 'delete_page') {
-        // [ADDED] Re-verify Delete Permission
-        if (!$perm->delete) {
-            denyAccess("权限不足：您没有删除(重置)页面 Meta 设置的权限。");
-        }
+        checkPermissionError('delete', $perm, '页面 Meta 设置');
 
         $delKey = $_POST['page_key'] ?? '';
         if (!empty($delKey) && array_key_exists($delKey, $PAGE_META_REGISTRY)) {

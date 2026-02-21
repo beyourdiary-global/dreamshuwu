@@ -16,15 +16,12 @@ $formRow = [
 // Initialize permissions array (used for checkboxes)
 $assignedPerms = [];
 
-if (empty($perm) || !$perm->view) {
-    denyAccess("权限不足：您没有访问用户角色表单的权限。");
-}
+// 1. Check View Permission for the form page
+checkPermissionError('view', $perm, '用户角色表单');
 
-if ($isEditMode && empty($perm->edit)) {
-    denyAccess("权限不足：您没有编辑用户角色的权限。");
-} elseif (!$isEditMode && empty($perm->add)) {
-    denyAccess("权限不足：您没有新增用户角色的权限。");
-}
+// 2. Check Add/Edit Permission for loading the form
+$actionToCheck = $isEditMode ? 'edit' : 'add';
+checkPermissionError($actionToCheck, $perm, '用户角色');
 
 // 2. Form Submission Handling (POST)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['mode'])) {
@@ -35,12 +32,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['mode'])) {
         // Collect and sanitize input
         $recordId = isset($_POST['id']) ? (int)$_POST['id'] : 0;
         $isEditMode = $recordId > 0;
-        if ($isEditMode && empty($perm->edit)) {
-            denyAccess("权限不足：您没有编辑用户角色的权限。");
-        }
-        if (!$isEditMode && empty($perm->add)) {
-            denyAccess("权限不足：您没有新增用户角色的权限。");
-        }
+        // 3. Check Add/Edit Permission for form submission
+        $submitAction = $isEditMode ? 'edit' : 'add';
+        checkPermissionError($submitAction, $perm, '用户角色');
 
         $name_cn = trim($_POST['name_cn'] ?? '');
         $name_en = trim($_POST['name_en'] ?? '');

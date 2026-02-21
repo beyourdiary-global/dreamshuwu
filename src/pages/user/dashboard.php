@@ -35,32 +35,24 @@ $isPageInfoView   = ($currentView === 'page_info'); // [NEW]
 $isUserRoleView   = ($currentView === 'user_role'); // [NEW]
 $isAdminSection   = ($isAdminHome || $isPageActionView || $isPageInfoView || $isUserRoleView);
 
-$permDashboard  = hasPagePermission($conn, '/dashboard.php');
-$permProfile    = hasPagePermission($conn, '/dashboard.php?view=profile');
-$permTags       = hasPagePermission($conn, '/dashboard.php?view=tags');
-$permTagForm    = hasPagePermission($conn, '/dashboard.php?view=tag_form');
-$permCategories = hasPagePermission($conn, '/dashboard.php?view=categories');
-$permCatForm    = hasPagePermission($conn, '/dashboard.php?view=cat_form');
-$permMeta       = hasPagePermission($conn, '/dashboard.php?view=meta_settings');
-$permWeb        = hasPagePermission($conn, '/dashboard.php?view=web_settings');
-$permAdmin      = hasPagePermission($conn, '/dashboard.php?view=admin');
-$permPageAction = hasPagePermission($conn, '/dashboard.php?view=page_action');
-$permPageInfo   = hasPagePermission($conn, '/dashboard.php?view=page_info');
-$permUserRole   = hasPagePermission($conn, '/dashboard.php?view=user_role');
+// Define the base path to prevent redundant hardcoding
+$baseViewPath = '/dashboard.php?view=';
 
-if ($isTagListView && (empty($permTags) || empty($permTags->view))) denyAccess("权限不足：您没有访问小说标签页面的权限。");
-if ($isTagFormView && (empty($permTagForm) || empty($permTagForm->view))) denyAccess("权限不足：您没有访问标签表单页面的权限。");
-if ($isCatListView && (empty($permCategories) || empty($permCategories->view))) denyAccess("权限不足：您没有访问小说分类页面的权限。");
-if ($isCatFormView && (empty($permCatForm) || empty($permCatForm->view))) denyAccess("权限不足：您没有访问分类表单页面的权限。");
-if ($isProfileView && (empty($permProfile) || empty($permProfile->view))) denyAccess("权限不足：您没有访问账号中心页面的权限。");
-if ($isMetaView && (empty($permMeta) || empty($permMeta->view))) denyAccess("权限不足：您没有访问 Meta 设置页面的权限。");
-if ($isWebSettingView && (empty($permWeb) || empty($permWeb->view))) denyAccess("权限不足：您没有访问网站设置页面的权限。");
-if ($isAdminHome && (empty($permAdmin) || empty($permAdmin->view))) denyAccess("权限不足：您没有访问管理员面板的权限。");
-if ($isPageActionView && (empty($permPageAction) || empty($permPageAction->view))) denyAccess("权限不足：您没有访问页面操作管理的权限。");
-if ($isPageInfoView && (empty($permPageInfo) || empty($permPageInfo->view))) denyAccess("权限不足：您没有访问页面信息列表的权限。");
-if ($isUserRoleView && (empty($permUserRole) || empty($permUserRole->view))) denyAccess("权限不足：您没有访问用户角色管理的权限。");
-if (!$isTagSection && !$isCatSection && !$isProfileView && !$isMetaView && !$isWebSettingView && !$isAdminSection && (empty($permDashboard) || empty($permDashboard->view))) {
-    denyAccess("权限不足：您没有访问仪表盘首页的权限。");
+$permDashboard  = hasPagePermission($conn, '/dashboard.php');
+$permProfile    = hasPagePermission($conn, $baseViewPath . 'profile');
+$permTags       = hasPagePermission($conn, $baseViewPath . 'tags');
+$permTagForm    = hasPagePermission($conn, $baseViewPath . 'tag_form');
+$permCategories = hasPagePermission($conn, $baseViewPath . 'categories');
+$permCatForm    = hasPagePermission($conn, $baseViewPath . 'cat_form');
+$permMeta       = hasPagePermission($conn, $baseViewPath . 'meta_settings');
+$permWeb        = hasPagePermission($conn, $baseViewPath . 'web_settings');
+$permAdmin      = hasPagePermission($conn, $baseViewPath . 'admin');
+$permPageAction = hasPagePermission($conn, $baseViewPath . 'page_action');
+$permPageInfo   = hasPagePermission($conn, $baseViewPath . 'page_info');
+$permUserRole   = hasPagePermission($conn, $baseViewPath . 'user_role');
+
+if (!$isTagSection && !$isCatSection && !$isProfileView && !$isMetaView && !$isWebSettingView && !$isAdminSection) {
+    checkPermissionError('view', $permDashboard, '仪表盘首页');
 }
 
 // Data Fetching
@@ -137,20 +129,8 @@ if ($isMetaView) $customCSS[] = 'meta.css';
 $customCSS[] = 'dashboard.css';
 
 // Page Meta Key Setting
-switch ($currentView) {
-    case 'categories': $pageMetaKey = '/dashboard.php?view=categories'; break;
-    case 'cat_form':   $pageMetaKey = '/dashboard.php?view=cat_form'; break;
-    case 'tags':       $pageMetaKey = '/dashboard.php?view=tags'; break;
-    case 'tag_form':   $pageMetaKey = 'dashboard.php?view=tag_form'; break;
-    case 'profile':    $pageMetaKey = '/dashboard.php?view=profile'; break;
-    case 'meta_settings': $pageMetaKey = '/dashboard.php?view=meta_settings'; break;
-    case 'web_settings':  $pageMetaKey = '/dashboard.php?view=web_settings'; break;
-    case 'admin':         $pageMetaKey = '/dashboard.php?view=admin'; break;
-    case 'page_action':   $pageMetaKey = '/dashboard.php?view=page_action'; break; // [NEW]
-    case 'page_info':     $pageMetaKey = '/dashboard.php?view=page_info'; break; // [NEW]
-    case 'user_role':     $pageMetaKey = '/dashboard.php?view=user_role'; break; // [NEW]
-    default:              $pageMetaKey = '/dashboard.php'; break;
-}
+// Dynamically generate the key based on the current view instead of a switch statement
+$pageMetaKey = ($currentView === 'home' || empty($currentView)) ? '/dashboard.php' : $baseViewPath . $currentView;
 ?>
 
 <!DOCTYPE html>
@@ -183,6 +163,18 @@ switch ($currentView) {
     </aside>
 
     <main class="dashboard-main">
+        <?php 
+        // [NEW] Global error alert block for the dashboard
+        if (isset($_SESSION['flash_msg'])) {
+            $dashFlashMsg = $_SESSION['flash_msg'];
+            $dashFlashType = $_SESSION['flash_type'] ?? 'danger';
+            unset($_SESSION['flash_msg'], $_SESSION['flash_type']);
+        ?>
+            <div class="alert alert-<?php echo $dashFlashType; ?> alert-dismissible fade show m-3 shadow-sm" role="alert">
+                <i class="fa-solid fa-circle-exclamation me-2"></i> <?php echo htmlspecialchars($dashFlashMsg); ?>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        <?php } ?>
         <?php if (!$isTagSection && !$isCatSection && !$isProfileView && !$isMetaView && !$isWebSettingView && !$isAdminSection): ?>
         <div class="profile-card">
             <?php foreach ($profileComponents as $component): ?>
