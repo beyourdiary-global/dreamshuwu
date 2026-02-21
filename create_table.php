@@ -20,31 +20,8 @@ if ($conn->query($sql) === TRUE) {
     die("Error creating database: " . $conn->error);
 }
 
-// [FIX]
 $conn->select_db($dbname);
 
-// 2. DROP THE TABLES SAFELY
-// Turn off foreign key checks temporarily so we can drop tables that are linked to each other
-$conn->query("SET FOREIGN_KEY_CHECKS = 0");
-
-$tablesToDrop = [
-    'user_role_permission',
-    'action_master',
-    'page_information_list',
-    'page_action',
-    'user_role' // Added user_role to the drop list
-];
-
-foreach ($tablesToDrop as $table) {
-    if ($conn->query("DROP TABLE IF EXISTS $table") === TRUE) {
-        echo "Dropped table: <strong>$table</strong><br>";
-    } else {
-        echo "Error dropping <strong>$table</strong>: " . $conn->error . "<br>";
-    }
-}
-
-// Turn foreign key checks back on
-$conn->query("SET FOREIGN_KEY_CHECKS = 1");
 echo "<hr>";
 
 // 3. Define Table SQL (Order matters for Foreign Keys!)
@@ -296,6 +273,35 @@ CREATE TABLE IF NOT EXISTS user_role_permission (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ";
 
+$tables["author_profile"] = "
+CREATE TABLE IF NOT EXISTS author_profile (
+  id BIGINT NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
+  user_id INT NOT NULL COMMENT 'FK to users table',
+  real_name VARCHAR(255) NOT NULL COMMENT 'Required',
+  id_number VARCHAR(50) NOT NULL COMMENT 'Required',
+  id_photo_front VARCHAR(255) NOT NULL COMMENT 'Required',
+  id_photo_back VARCHAR(255) NOT NULL COMMENT 'Required',
+  contact_phone VARCHAR(50) NOT NULL COMMENT 'Required',
+  contact_email VARCHAR(255) NOT NULL COMMENT 'Required',
+  bank_account_name VARCHAR(255) DEFAULT NULL COMMENT 'Optional',
+  bank_name VARCHAR(255) DEFAULT NULL COMMENT 'Optional',
+  bank_country VARCHAR(100) DEFAULT NULL COMMENT 'Optional',
+  bank_swift_code VARCHAR(100) DEFAULT NULL COMMENT 'Optional',
+  bank_account_number VARCHAR(100) DEFAULT NULL COMMENT 'Optional',
+  pen_name VARCHAR(255) NOT NULL COMMENT 'Unique nickname',
+  avatar VARCHAR(255) DEFAULT NULL COMMENT 'Avatar image',
+  bio TEXT DEFAULT NULL COMMENT 'Author bio',
+  verification_status VARCHAR(20) NOT NULL DEFAULT 'pending' COMMENT 'pending / approved / rejected',
+  status CHAR(1) NOT NULL DEFAULT 'A' COMMENT 'A = Active, D = Deleted',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT 'Created timestamp',
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Updated timestamp',
+  PRIMARY KEY (id),
+  UNIQUE KEY unique_author_user (user_id),
+  UNIQUE KEY unique_pen_name (pen_name),
+  CONSTRAINT fk_author_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+ ";
+
 // 4. Run Queries
 
 foreach ($tables as $name => $sql) {
@@ -304,126 +310,6 @@ foreach ($tables as $name => $sql) {
     } else {
         echo "Error table '<strong>$name</strong>': " . $conn->error . "<br>";
     }
-}
-
-// 5. INSERT THE FRESH DATA
-$insertQueries = [];
-
-// Insert default roles
-$insertQueries['user_role'] = "
-INSERT INTO user_role (id, name_en, name_cn, description, status) VALUES
-(1, 'Admin', '管理员', 'System Administrator', 'A'),
-(2, 'Member', '会员', 'Default Registered User', 'A');
-";
-
-// Insert page actions
-$insertQueries['page_action'] = "
-INSERT INTO page_action (id, name, status) VALUES
-(1, 'View', 'A'),
-(2, 'Add', 'A'),
-(3, 'Edit', 'A'),
-(4, 'Delete', 'A');
-";
-
-// Insert ALL Pages perfectly matched to your PHP code and URL list
-$insertQueries['page_information_list'] = "
-INSERT INTO page_information_list (id, name_en, name_cn, description, public_url, file_path, status) VALUES
-(1, 'Dashboard', '仪表盘', 'Main Dashboard', '/dashboard.php', 'dashboard.php', 'A'),
-(2, 'Profile', '个人主页', 'User Profile', '/dashboard.php?view=profile', 'dashboard.php', 'A'),
-(3, 'Novel Tags', '小说标签', 'Manage Novel Tags', '/dashboard.php?view=tags', 'dashboard.php', 'A'),
-(4, 'Tag Form', '标签表单', 'Tag Create/Edit Form', '/dashboard.php?view=tag_form', 'dashboard.php', 'A'),
-(5, 'Novel Categories', '小说分类', 'Manage Categories', '/dashboard.php?view=categories', 'dashboard.php', 'A'),
-(6, 'Category Form', '分类表单', 'Category Create/Edit Form', '/dashboard.php?view=cat_form', 'dashboard.php', 'A'),
-(7, 'Meta Settings', 'SEO设置', 'SEO Meta Settings', '/dashboard.php?view=meta_settings', 'dashboard.php', 'A'),
-(8, 'Web Settings', '网站设置', 'Global Web Settings', '/dashboard.php?view=web_settings', 'dashboard.php', 'A'),
-(9, 'Admin Management', '管理员管理', 'Manage Admin Users', '/dashboard.php?view=admin', 'dashboard.php', 'A'),
-(10, 'Page Actions', '页面动作', 'Manage Page Actions', '/dashboard.php?view=page_action', 'dashboard.php', 'A'),
-(11, 'Page Information', '页面信息', 'Manage Page URLs', '/dashboard.php?view=page_info', 'dashboard.php', 'A'),
-(12, 'User Roles', '用户角色', 'Manage Roles', '/dashboard.php?view=user_role', 'dashboard.php', 'A'),
-(13, 'Login', '登录', 'User Login Page', '/login.php', 'login.php', 'A'),
-(14, 'Register', '注册', 'User Registration', '/register.php', 'register.php', 'A'),
-(15, 'Forgot Password', '忘记密码', 'Forgot Password', '/forgot-password.php', 'forgot-password.php', 'A'),
-(16, 'Reset Password', '重置密码', 'Reset Password', '/reset-password.php', 'reset-password.php', 'A'),
-(17, 'Home', '首页', 'Public Homepage', '/Home.php', 'Home.php', 'A'),
-(18, 'Audit Log', '审计日志', 'System Audit Log', '/audit-log.php', 'audit-log.php', 'A');
-";
-
-// Bind Actions to Pages
-$insertQueries['action_master'] = "
-INSERT INTO action_master (page_id, action_id) VALUES
-(1, 1), 
-(2, 1), (2, 3), 
-(3, 1), (3, 2), (3, 3), (3, 4), 
-(4, 1), 
-(5, 1), (5, 2), (5, 3), (5, 4), 
-(6, 1), 
-(7, 1), (7, 3), 
-(8, 1), (8, 3), 
-(9, 1), (9, 2), (9, 3), (9, 4), 
-(10, 1), (10, 2), (10, 3), (10, 4), 
-(11, 1), (11, 2), (11, 3), (11, 4), 
-(12, 1), (12, 2), (12, 3), (12, 4), 
-(13, 1), 
-(14, 1), 
-(15, 1), 
-(16, 1), 
-(17, 1), 
-(18, 1);
-";
-
-// Grant Admin (Role ID 1) access to EVERY defined page and action above
-$insertQueries['user_role_permission'] = "
-INSERT INTO user_role_permission (user_role_id, page_id, action_id) VALUES
-(1, 1, 1),
-(1, 2, 1), (1, 2, 3),
-(1, 3, 1), (1, 3, 2), (1, 3, 3), (1, 3, 4),
-(1, 4, 1),
-(1, 5, 1), (1, 5, 2), (1, 5, 3), (1, 5, 4),
-(1, 6, 1),
-(1, 7, 1), (1, 7, 3),
-(1, 8, 1), (1, 8, 3),
-(1, 9, 1), (1, 9, 2), (1, 9, 3), (1, 9, 4),
-(1, 10, 1), (1, 10, 2), (1, 10, 3), (1, 10, 4),
-(1, 11, 1), (1, 11, 2), (1, 11, 3), (1, 11, 4),
-(1, 12, 1), (1, 12, 2), (1, 12, 3), (1, 12, 4),
-(1, 13, 1),
-(1, 14, 1),
-(1, 15, 1),
-(1, 16, 1),
-(1, 17, 1),
-(1, 18, 1);
-";
-
-// Execute the queries
-foreach ($insertQueries as $tableName => $sql) {
-    if ($conn->query($sql) === TRUE) {
-        echo "Fresh data for '<strong>$tableName</strong>' inserted successfully.<br>";
-    } else {
-        echo "Error inserting data for '<strong>$tableName</strong>': " . $conn->error . "<br>";
-    }
-}
-
-echo "<hr><strong>Tables Reset and Seeded Successfully!</strong>";
-
-// 5. Apply Schema Updates (ALTER TABLE)
-
-// --- UPDATE 1: users table (user_role_id) ---
-$checkColUsers = $conn->query("SHOW COLUMNS FROM users LIKE 'user_role_id'");
-if ($checkColUsers && $checkColUsers->num_rows === 0) {
-    $alterSql = "ALTER TABLE users ADD COLUMN user_role_id BIGINT DEFAULT NULL COMMENT 'Foreign Key to user_role', ADD CONSTRAINT fk_users_role FOREIGN KEY (user_role_id) REFERENCES user_role(id) ON DELETE SET NULL";
-    if ($conn->query($alterSql) === TRUE) {
-        echo "Table '<strong>users</strong>' altered successfully (added user_role_id).<br>";
-    } else {
-        echo "Error altering table '<strong>users</strong>': " . $conn->error . "<br>";
-    }
-}
-
-// Update all current users to be Admins (Role ID = 1)
-$updateUsersSql = "UPDATE users SET user_role_id = 1";
-if ($conn->query($updateUsersSql) === TRUE) {
-    echo "Successfully updated all existing users to Admin (Role ID 1).<br>";
-} else {
-    echo "Error updating existing users: " . $conn->error . "<br>";
 }
 
 $conn->close();

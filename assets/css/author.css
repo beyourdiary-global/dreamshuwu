@@ -1,0 +1,87 @@
+/* Path: src/assets/css/author.css */
+
+.author-reg-container {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.author-section-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #233dd2;
+  border-bottom: 2px solid #e9ecef;
+  padding-bottom: 8px;
+  margin-bottom: 20px;
+}
+
+/* ID Upload Boxes */
+.id-photo-box {
+  border: 2px dashed #d1d5db;
+  border-radius: 12px;
+  height: 180px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: #f9fafb;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.3s ease;
+}
+
+.id-photo-box:hover {
+  border-color: #233dd2;
+  background-color: #f0f3ff;
+}
+
+.id-photo-box .placeholder {
+  color: #6b7280;
+  text-align: center;
+  z-index: 1;
+}
+
+.id-photo-box img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 2;
+}
+
+/* Avatar Upload Box */
+.avatar-upload-box {
+  width: 150px;
+  height: 150px;
+  border: 2px dashed #d1d5db;
+  border-radius: 50%;
+  background-color: #f9fafb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.avatar-upload-box:hover {
+  border-color: #233dd2;
+}
+
+.avatar-upload-box .placeholder {
+  color: #9ca3af;
+  z-index: 1;
+}
+
+.avatar-upload-box img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 2;
+}

@@ -43,6 +43,18 @@ body {
 .nav-link.active {
   color: var(--btn-color) !important;
 }
+.author-link.active::after {
+  background-color: var(--btn-color) !important;
+}
+.author-link.active {
+  color: var(--btn-color) !important;
+}
+.user-name-link.active::after {
+  background-color: var(--btn-color) !important;
+}
+.user-name-link.active {
+  color: var(--btn-color) !important;
+}
 
 /* --- Sidebar Overrides --- */
 .sidebar-menu a {
