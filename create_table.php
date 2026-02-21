@@ -20,6 +20,9 @@ if ($conn->query($sql) === TRUE) {
     die("Error creating database: " . $conn->error);
 }
 
+// [FIX]
+$conn->select_db($dbname);
+
 // 2. DROP THE TABLES SAFELY
 // Turn off foreign key checks temporarily so we can drop tables that are linked to each other
 $conn->query("SET FOREIGN_KEY_CHECKS = 0");
