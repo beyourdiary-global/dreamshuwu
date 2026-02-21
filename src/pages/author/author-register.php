@@ -237,27 +237,43 @@ $pageMetaKey = $currentUrl;
             </div>
         <?php endif; ?>
 
+        <?php
+        // Define Identity Fields (Text Inputs Only)
+        $identityFields = [
+            ['name' => 'real_name',     'label' => '真实姓名',   'type' => 'text',  'width' => 'col-md-6', 'required' => true],
+            ['name' => 'id_number',     'label' => '身份证号码', 'type' => 'text',  'width' => 'col-md-6', 'required' => true],
+            ['name' => 'contact_phone', 'label' => '手机号码',   'type' => 'tel',   'width' => 'col-md-6', 'required' => true],
+            ['name' => 'contact_email', 'label' => '联系邮箱',   'type' => 'email', 'width' => 'col-md-6', 'required' => true],
+        ];
+
+        // Define Bank Fields
+        $bankFields = [
+            ['name' => 'bank_account_name',   'label' => '收款人姓名', 'type' => 'text', 'width' => 'col-md-6',  'required' => false],
+            ['name' => 'bank_name',           'label' => '银行名称',   'type' => 'text', 'width' => 'col-md-6',  'required' => false],
+            ['name' => 'bank_account_number', 'label' => '银行账号',   'type' => 'text', 'width' => 'col-md-12', 'required' => false],
+            ['name' => 'bank_country',        'label' => '开户国家',   'type' => 'text', 'width' => 'col-md-6',  'required' => false],
+            ['name' => 'bank_swift_code',     'label' => 'SWIFT Code', 'type' => 'text', 'width' => 'col-md-6',  'required' => false],
+        ];
+        ?>
+
         <form id="authorRegForm" method="POST" enctype="multipart/form-data">
             
             <h4 class="author-section-title mt-2">真实身份信息 (必填)</h4>
             <div class="row mb-4">
-                <div class="col-md-6 mb-3">
-                    <label class="form-label">真实姓名 <span class="text-danger">*</span></label>
-                    <input type="text" name="real_name" class="form-control" value="<?php echo htmlspecialchars($authorData['real_name'] ?? ''); ?>" required>
-                </div>
-                <div class="col-md-6 mb-3">
-                    <label class="form-label">身份证号码 <span class="text-danger">*</span></label>
-                    <input type="text" name="id_number" class="form-control" value="<?php echo htmlspecialchars($authorData['id_number'] ?? ''); ?>" required>
-                </div>
                 
-                <div class="col-md-6 mb-3">
-                    <label class="form-label">手机号码 <span class="text-danger">*</span></label>
-                    <input type="tel" name="contact_phone" class="form-control" value="<?php echo htmlspecialchars($authorData['contact_phone'] ?? ''); ?>" required>
+                <?php foreach ($identityFields as $field): ?>
+                <div class="<?php echo $field['width']; ?> mb-3">
+                    <label class="form-label">
+                        <?php echo $field['label']; ?> 
+                        <?php if ($field['required']): ?><span class="text-danger">*</span><?php endif; ?>
+                    </label>
+                    <input type="<?php echo $field['type']; ?>" 
+                           name="<?php echo $field['name']; ?>" 
+                           class="form-control" 
+                           value="<?php echo htmlspecialchars($authorData[$field['name']] ?? ''); ?>" 
+                           <?php echo $field['required'] ? 'required' : ''; ?>>
                 </div>
-                <div class="col-md-6 mb-3">
-                    <label class="form-label">联系邮箱 <span class="text-danger">*</span></label>
-                    <input type="email" name="contact_email" class="form-control" value="<?php echo htmlspecialchars($authorData['contact_email'] ?? ''); ?>" required>
-                </div>
+                <?php endforeach; ?>
 
                 <div class="col-md-6 mb-3">
                     <label class="form-label">身份证正面照片 <span class="text-danger">*</span></label>
@@ -311,26 +327,17 @@ $pageMetaKey = $currentUrl;
 
             <h4 class="author-section-title mt-5">收款账户信息 (选填 - 用于稿费结算)</h4>
             <div class="row mb-4">
-                <div class="col-md-6 mb-3">
-                    <label class="form-label">收款人姓名</label>
-                    <input type="text" name="bank_account_name" class="form-control" value="<?php echo htmlspecialchars($authorData['bank_account_name'] ?? ''); ?>">
+                
+                <?php foreach ($bankFields as $field): ?>
+                <div class="<?php echo $field['width']; ?> mb-3">
+                    <label class="form-label"><?php echo $field['label']; ?></label>
+                    <input type="<?php echo $field['type']; ?>" 
+                           name="<?php echo $field['name']; ?>" 
+                           class="form-control" 
+                           value="<?php echo htmlspecialchars($authorData[$field['name']] ?? ''); ?>">
                 </div>
-                <div class="col-md-6 mb-3">
-                    <label class="form-label">银行名称</label>
-                    <input type="text" name="bank_name" class="form-control" value="<?php echo htmlspecialchars($authorData['bank_name'] ?? ''); ?>">
-                </div>
-                <div class="col-md-12 mb-3">
-                    <label class="form-label">银行账号</label>
-                    <input type="text" name="bank_account_number" class="form-control" value="<?php echo htmlspecialchars($authorData['bank_account_number'] ?? ''); ?>">
-                </div>
-                <div class="col-md-6 mb-3">
-                    <label class="form-label">开户国家</label>
-                    <input type="text" name="bank_country" class="form-control" value="<?php echo htmlspecialchars($authorData['bank_country'] ?? ''); ?>">
-                </div>
-                <div class="col-md-6 mb-3">
-                    <label class="form-label">SWIFT Code</label>
-                    <input type="text" name="bank_swift_code" class="form-control" value="<?php echo htmlspecialchars($authorData['bank_swift_code'] ?? ''); ?>">
-                </div>
+                <?php endforeach; ?>
+
             </div>
 
             <div class="text-center mt-5 pt-3 border-top">
