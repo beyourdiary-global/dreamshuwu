@@ -99,5 +99,41 @@ $finalOgUrl     = !empty($specificSeo['og_url']) ? $specificSeo['og_url'] : ($gl
             );
         ?>")
     };
+    // Global Interceptor: Prevent form submission and page reload if no changes were made
+    document.addEventListener("DOMContentLoaded", function() {
+        // Automatically find all forms with the 'check-changes' class
+        document.querySelectorAll('form.check-changes').forEach(form => {
+            // 1. On page load, record the initial state
+            form.dataset.originalData = new URLSearchParams(new FormData(form)).toString();
+
+            form.addEventListener('submit', function(e) {
+                // 2. Check if there are newly uploaded files
+                const fileInputs = form.querySelectorAll('input[type="file"]');
+                let hasFile = false;
+                fileInputs.forEach(input => { if (input.files.length > 0) hasFile = true; });
+
+                // 3. Get current form data
+                const currentData = new URLSearchParams(new FormData(form)).toString();
+
+                // 4. If no new file is uploaded and the text content is identical -> intercept submission!
+                if (!hasFile && form.dataset.originalData === currentData) {
+                    e.preventDefault(); // Stop page refresh entirely
+
+                    // Use SweetAlert2 for a nice popup if available, otherwise fallback to standard alert
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: '没有修改',
+                            text: '无需保存',
+                            timer: 2000,
+                            showConfirmButton: false
+                        });
+                    } else {
+                        alert("没有修改，无需保存");
+                    }
+                }
+            });
+        });
+    });
     </script>
 </head>

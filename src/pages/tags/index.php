@@ -164,7 +164,8 @@ if ($isAjaxRequest) {
         // 2. Use the global helper to wrap buttons and fix CSS alignment
         $outputActions = renderTableActions($actionsHtml);
         
-        $data[] = [htmlspecialchars($name), $outputActions];
+        // [MODIFIED] Added $id to the beginning of the array
+        $data[] = [$id, htmlspecialchars($name), $outputActions];
     }
     $stmt->close();
 
@@ -180,7 +181,7 @@ if ($isAjaxRequest) {
 // 4. API: Delete (POST)
 if ($isDeleteRequest) {
     // [ADDED] Secure the Delete API
-$deleteError = checkPermissionError('delete', $perm, '标签');
+    $deleteError = checkPermissionError('delete', $perm, '标签');
     if ($deleteError) {
         sendDeleteError($deleteError);
     }
@@ -294,7 +295,10 @@ if ($isEmbeddedInDashboard): ?>
     <div class="tag-container">
         <div class="card tag-card">
             <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
-                <h4 class="m-0 text-primary"><i class="fa-solid fa-tags"></i> 标签管理</h4>
+                <div>
+                    <?php echo generateBreadcrumb($conn, $currentUrl); ?>
+                    <h4 class="m-0 text-primary"><i class="fa-solid fa-tags"></i> 标签管理</h4>
+                </div>
                 <?php if ($perm->add): ?>
                 <a href="<?php echo URL_USER_DASHBOARD; ?>?view=tag_form" class="btn btn-primary desktop-add-btn">
                     <i class="fa-solid fa-plus"></i> 新增标签
@@ -316,6 +320,7 @@ if ($isEmbeddedInDashboard): ?>
                 >
                     <thead>
                     <tr>
+                        <th style="width:80px;">ID</th>
                         <th>标签名称</th>
                         <th style="width:100px;">操作</th>
                     </tr>
@@ -338,7 +343,10 @@ if ($isEmbeddedInDashboard): ?>
 <div class="tag-container">
     <div class="card tag-card">
         <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
-            <h4 class="m-0 text-primary"><i class="fa-solid fa-tags"></i> 标签管理</h4>
+            <div>
+                <?php echo generateBreadcrumb($conn, $currentUrl); ?>
+                <h4 class="m-0 text-primary"><i class="fa-solid fa-tags"></i> 标签管理</h4>
+            </div>
             <?php if ($perm->add): ?>
             <a href="<?php echo URL_USER_DASHBOARD; ?>?view=tag_form" class="btn btn-primary desktop-add-btn">
                 <i class="fa-solid fa-plus"></i> 新增标签
@@ -360,6 +368,7 @@ if ($isEmbeddedInDashboard): ?>
             >
                 <thead>
                 <tr>
+                        <th style="width:80px;">ID</th>
                         <th>标签名称</th>
                         <th style="width:100px;">操作</th>
                 </tr>

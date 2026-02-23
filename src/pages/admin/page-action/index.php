@@ -315,7 +315,7 @@ if ($isEmbeddedPageAction):
     <div class="card page-action-card">
         <div class="card-header bg-white d-flex justify-content-between align-items-center py-3 flex-wrap gap-2">
             <div>
-                <div class="page-action-breadcrumb text-muted mb-1">Admin / Page Action</div>
+                <?php echo generateBreadcrumb($conn, $currentUrl); ?>
                 <h4 class="m-0 text-primary"><i class="fa-solid fa-gears me-2"></i>页面操作管理</h4>
             </div>
             <?php if (!empty($perm->add)): ?>

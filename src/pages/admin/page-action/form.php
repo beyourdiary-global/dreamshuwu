@@ -37,7 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['mode'])) {
                 pageActionRedirect($baseListUrl);
             }
 
-            checkNoChangesAndRedirect(['name' => $name], $oldValue, null, $redirectTo);
+            checkNoChangesAndRedirect(['name' => $name], $oldValue, null);
 
             $dupSql = "SELECT id FROM {$table} WHERE name = ? AND status = 'A' AND id != ? LIMIT 1";
             $dupStmt = $conn->prepare($dupSql);
@@ -147,7 +147,7 @@ if ($isEditMode) {
     <div class="card page-action-card">
         <div class="card-header bg-white d-flex justify-content-between align-items-center py-3 flex-wrap gap-2">
             <div>
-                <div class="page-action-breadcrumb text-muted mb-1">Admin / Page Action</div>
+                <?php echo generateBreadcrumb($conn, $currentUrl); ?>
                 <h4 class="m-0 text-primary"><i class="fa-solid fa-gears me-2"></i><?php echo $isEditMode ? '编辑页面操作' : '新增页面操作'; ?></h4>
             </div>
             <a href="<?php echo $baseListUrl; ?>" class="btn btn-outline-secondary">返回列表</a>
@@ -161,7 +161,7 @@ if ($isEditMode) {
                 </div>
             <?php endif; ?>
 
-            <form method="POST" action="<?php echo htmlspecialchars($formBaseUrl . ($isEditMode ? '&id=' . (int)$formRow['id'] : '')); ?>" autocomplete="off">
+            <form method="POST" action="<?php echo htmlspecialchars($formBaseUrl . ($isEditMode ? '&id=' . (int)$formRow['id'] : '')); ?>" autocomplete="off" class="<?php echo $isEditMode ? 'check-changes' : ''; ?>">
                 <input type="hidden" name="form_action" value="save">
                 <?php if ($isEditMode): ?>
                     <input type="hidden" name="id" value="<?php echo (int)$formRow['id']; ?>">

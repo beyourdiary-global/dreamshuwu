@@ -226,7 +226,7 @@ if ($res) {
     <div class="card page-action-card">
         <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
             <div>
-                <div class="page-action-breadcrumb text-muted mb-1">Admin / Page Info</div>
+                <?php echo generateBreadcrumb($conn, $currentUrl); ?>
                 <h4 class="m-0 text-primary"><i class="fa-solid fa-file-pen me-2"></i><?php echo $isEditMode ? '编辑页面信息' : '新增页面信息'; ?></h4>
             </div>
             <a href="<?php echo $baseListUrl; ?>" class="btn btn-outline-secondary">返回列表</a>
@@ -241,7 +241,7 @@ if ($res) {
                 <?php unset($_SESSION['flash_msg'], $_SESSION['flash_type']); ?>
             <?php endif; ?>
 
-            <form method="POST" action="<?php echo htmlspecialchars($formBaseUrl . ($isEditMode ? '&id=' . $recordId : '')); ?>">
+            <form method="POST" action="<?php echo htmlspecialchars($formBaseUrl . ($isEditMode ? '&id=' . $recordId : '')); ?>" class="<?php echo $isEditMode ? 'check-changes' : ''; ?>">
                 <input type="hidden" name="action_type" value="save">
                 <?php if ($isEditMode): ?><input type="hidden" name="id" value="<?php echo (int)$recordId; ?>"><?php endif; ?>
 

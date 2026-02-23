@@ -227,14 +227,24 @@ if ($actRes) {
         $allActions[] = $row;
     }
 }
+
+// [NEW LOGIC FIX] Fetch all allowed actions per page from ACTION_MASTER
+$pageActionMaster = [];
+$masterSql = "SELECT page_id, action_id FROM " . ACTION_MASTER;
+$masterRes = $conn->query($masterSql);
+if ($masterRes) {
+    while ($row = $masterRes->fetch_assoc()) {
+        $pageActionMaster[(int)$row['page_id']][] = (int)$row['action_id'];
+    }
+}
 ?>
 
 <div class="container-fluid px-0">
     <div class="card page-action-card">
         <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
             <div>
-                <div class="page-action-breadcrumb text-muted mb-1">Admin / User Role</div>
-                <h4 class="m-0 text-primary"><i class="fa-solid fa-shield-pen me-2"></i><?php echo $isEditMode ? '编辑用户角色' : '新增用户角色'; ?></h4>
+                <?php echo generateBreadcrumb($conn, $currentUrl); ?>
+                <h4 class="m-0 text-primary"><i class="fa-solid fa-shield me-2"></i><?php echo $isEditMode ? '编辑用户角色' : '新增用户角色'; ?></h4>
             </div>
             <a href="<?php echo $baseListUrl; ?>" class="btn btn-outline-secondary">返回列表</a>
         </div>
@@ -248,7 +258,7 @@ if ($actRes) {
                 <?php unset($_SESSION['flash_msg'], $_SESSION['flash_type']); ?>
             <?php endif; ?>
 
-            <form method="POST" action="<?php echo htmlspecialchars($formBaseUrl . ($isEditMode ? '&id=' . $recordId : '')); ?>">
+            <form method="POST" action="<?php echo htmlspecialchars($formBaseUrl . ($isEditMode ? '&id=' . $recordId : '')); ?>" class="<?php echo $isEditMode ? 'check-changes' : ''; ?>">
                 <input type="hidden" name="action_type" value="save">
                 <?php if ($isEditMode): ?><input type="hidden" name="id" value="<?php echo (int)$recordId; ?>"><?php endif; ?>
 
@@ -308,6 +318,11 @@ if ($actRes) {
                                             <div class="d-flex flex-wrap gap-2">
                                                 <?php foreach ($allActions as $action): ?>
                                                     <?php
+                                                    // [LOGIC FIX] Skip rendering this action if it is not bound to this page in ACTION_MASTER
+                                                    if (!isset($pageActionMaster[$page['id']]) || !in_array($action['id'], $pageActionMaster[$page['id']])) {
+                                                        continue;
+                                                    }
+
                                                     // Determine check status
                                                     $permKey = "{$page['id']}_{$action['id']}";
                                                     $isChecked = false;

@@ -16,8 +16,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function showError(message) {
     if (alertBox) {
+      // Clear any ongoing fadeOut animation and inline styles
+      $(alertBox).stop(true, true).css("display", "");
       alertBox.textContent = message;
-      alertBox.classList.remove("d-none");
+      alertBox.className = "alert alert-danger"; // Force danger styling for actual errors
       // Scroll to top so user sees the error
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
@@ -25,30 +27,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function hideError() {
     if (alertBox) {
-      alertBox.classList.add("d-none");
+      // Clear any ongoing fadeOut animation and reset to default hidden state
+      $(alertBox).stop(true, true).css("display", "");
+      alertBox.className = "alert alert-danger d-none";
     }
-  }
-
-  // --- 1. Form A Validation (Info) ---
-  const infoForm = document.getElementById("infoForm");
-  if (infoForm) {
-    infoForm.addEventListener("submit", function (e) {
-      hideError(); // Clear previous errors
-
-      const name = this.querySelector('[name="display_name"]').value.trim();
-      const email = this.querySelector('[name="email"]').value.trim();
-
-      if (!name) {
-        e.preventDefault();
-        showError("昵称不能为空");
-        return;
-      }
-      if (!email) {
-        e.preventDefault();
-        showError("电子邮箱不能为空");
-        return;
-      }
-    });
   }
 
   // --- 2. Form B Validation (Password) ---
@@ -87,7 +69,7 @@ document.addEventListener("DOMContentLoaded", () => {
     avatarInput.addEventListener("change", function (e) {
       const file = e.target.files[0];
       if (file) {
-        // [UPDATED] Read limit from the HTML attribute data-max-size
+        // Read limit from the HTML attribute data-max-size
         const maxSize = this.dataset.maxSize;
 
         if (file.size > maxSize) {

@@ -18,7 +18,10 @@ $permUserRole   = hasPagePermission($conn, $baseViewPath . 'user_role');
 ?>
 <div class="container-fluid">
     <div class="d-flex align-items-center justify-content-between mb-4">
-        <h3 class="text-dark mb-0">管理员面板</h3>
+        <div>
+            <?php echo generateBreadcrumb($conn, $currentUrl); ?>
+            <h3 class="text-dark mb-0">管理员面板</h3>
+        </div>
     </div>
 
     <div class="row">

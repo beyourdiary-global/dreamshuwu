@@ -1,6 +1,5 @@
 <?php
 require_once dirname(__DIR__, 3) . '/common.php';
-
 // 1. Auth Check
 if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
     header("Location: " . URL_LOGIN);
@@ -164,17 +163,17 @@ $pageMetaKey = ($currentView === 'home' || empty($currentView)) ? '/dashboard.ph
 
     <main class="dashboard-main">
         <?php 
-        // [NEW] Global error alert block for the dashboard
         if (isset($_SESSION['flash_msg'])) {
             $dashFlashMsg = $_SESSION['flash_msg'];
             $dashFlashType = $_SESSION['flash_type'] ?? 'danger';
             unset($_SESSION['flash_msg'], $_SESSION['flash_type']);
         ?>
-            <div class="alert alert-<?php echo $dashFlashType; ?> alert-dismissible fade show m-3 shadow-sm" role="alert">
-                <i class="fa-solid fa-circle-exclamation me-2"></i> <?php echo htmlspecialchars($dashFlashMsg); ?>
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-        <?php } ?>
+        <div class="alert alert-<?php echo $dashFlashType; ?> alert-dismissible fade show shadow-sm" role="alert">
+            <i class="fa-solid fa-circle-exclamation me-2"></i> 
+            <?php echo htmlspecialchars($dashFlashMsg); ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    <?php } ?>
         <?php if (!$isTagSection && !$isCatSection && !$isProfileView && !$isMetaView && !$isWebSettingView && !$isAdminSection): ?>
         <div class="profile-card">
             <?php foreach ($profileComponents as $component): ?>

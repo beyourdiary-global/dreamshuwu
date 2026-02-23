@@ -137,8 +137,9 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
             $btns .= '<button class="btn btn-sm btn-outline-danger btn-action delete-btn" data-id="'.$cat['id'].'" data-name="'.htmlspecialchars($cat['name']).'" title="删除"><i class="fa-solid fa-trash"></i></button>';
         }
 
-        // [ADDED] Apply global helper for CSS alignment fix
+        // [MODIFIED] Added $cat['id'] to the beginning of the array
         $data[] = [
+            $cat['id'], // ID Column
             htmlspecialchars($cat['name']), 
             $tagHtml, 
             renderTableActions($btns)
@@ -168,14 +169,13 @@ $deleteError = checkPermissionError('delete', $perm, '分类');
     $id = intval($_POST['id']);
     $name = $_POST['name'] ?? 'Unknown';
 
-    // [ADDED] 1. Fetch Old Data BEFORE Deleting
     // 1. Fetch Old Data BEFORE Deleting
     $oldData = null;
     $fetchOld = $conn->prepare("SELECT id, name, created_at, updated_at, created_by, updated_by FROM " . $catTable . " WHERE id = ?");
     if ($fetchOld) {
         $fetchOld->bind_param("i", $id);
         if ($fetchOld->execute()) {
-            $fetchOld->store_result(); // [CRITICAL FIX] Buffer the result
+            $fetchOld->store_result(); // Buffer the result
             if ($fetchOld->num_rows > 0) {
                 $fetchOld->bind_result($oId, $oName, $oCr, $oUp, $oCb, $oUb);
                 $fetchOld->fetch();
@@ -211,7 +211,7 @@ $deleteError = checkPermissionError('delete', $perm, '分类');
                 'user_id'        => $_SESSION['user_id'],
                 'record_id'      => $id,
                 'record_name'    => $name,
-                'old_value'      => $oldData // [ADDED] Pass the old data here
+                'old_value'      => $oldData // Pass the old data here
             ]);
         }
         echo safeJsonEncode(['success' => true]);
@@ -224,7 +224,7 @@ $deleteError = checkPermissionError('delete', $perm, '分类');
 // API URL for DataTables
 $fullApiUrl = URL_NOVEL_CATS_API;
 
-// [NEW] Log that user viewed this page
+// Log that user viewed this page
 if (function_exists('logAudit')) {
     logAudit([
         'page'           => $auditPage,
@@ -249,7 +249,10 @@ if ($isEmbeddedInDashboard): ?>
 <div class="category-container">
     <div class="card category-card">
         <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
-            <h4 class="m-0 text-primary"><i class="fa-solid fa-layer-group"></i> 分类管理</h4>
+            <div>
+                <?php echo generateBreadcrumb($conn, $currentUrl); ?>
+                <h4 class="m-0 text-primary"><i class="fa-solid fa-layer-group"></i> 分类管理</h4>
+            </div>
             <?php if ($perm->add): ?>
             <a href="<?php echo URL_USER_DASHBOARD; ?>?view=cat_form" class="btn btn-primary desktop-add-btn"><i class="fa-solid fa-plus"></i> 新增分类</a>
             <?php endif; ?>
@@ -263,7 +266,14 @@ if ($isEmbeddedInDashboard): ?>
             <table id="categoryTable" class="table table-hover w-100" 
                    data-api-url="<?php echo $fullApiUrl; ?>?mode=data"
                    data-delete-url="<?php echo $fullApiUrl; ?>">
-                <thead><tr><th>分类名称</th><th>关联标签</th><th style="width:100px;">操作</th></tr></thead>
+                <thead>
+                    <tr>
+                        <th style="width:80px;">ID</th>
+                        <th>分类名称</th>
+                        <th>关联标签</th>
+                        <th style="width:100px;">操作</th>
+                    </tr>
+                </thead>
             </table>
         </div>
     </div>

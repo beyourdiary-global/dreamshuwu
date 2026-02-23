@@ -55,107 +55,108 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['action']) && $_POST['
         }
         $preStmt->close();
 
-        // [NEW] Use global helper to Check for Changes and Redirect
-        // This will exit script if no changes found
-        checkNoChangesAndRedirect(
+        // Use helper to detect changes
+        $result = checkNoChangesAndRedirect(
             ['name' => $name, 'email' => $email, 'gender' => $gender, 'birthday' => $birthday], 
             $oldUserData, 
-            'avatar', 
-            $profileRedirectUrl
+            'avatar'
         );
+        if (is_array($result)) {
+            // No changes found: set the warning message and skip database update
+            $message = $result['message']; 
+            $msgType = $result['type'];
+        } else {
+            // --- CHANGES DETECTED - PROCEED ---
 
-        // --- CHANGES DETECTED - PROCEED ---
-        
-        // --- IMAGE UPLOAD LOGIC ---
-        $newAvatarName = null;
-        // Check manually for upload logic
-        $hasAvatarUpload = (isset($_FILES['avatar']) && $_FILES['avatar']['size'] > 0);
+            // --- IMAGE UPLOAD LOGIC ---
+            $newAvatarName = null;
+            // Check manually for upload logic
+            $hasAvatarUpload = (isset($_FILES['avatar']) && $_FILES['avatar']['size'] > 0);
 
-        if ($hasAvatarUpload) {
-            $uploadDir = BASE_PATH . 'assets/uploads/avatars/';
-            
-            // Find Old Avatar
-            $oldAvSql = "SELECT avatar FROM " . USR_DASHBOARD . " WHERE user_id = ? LIMIT 1";
-            $oldStmt = $conn->prepare($oldAvSql);
-            $oldStmt->bind_param("i", $userId);
-            $oldStmt->execute();
-            
-            $oldRow = [];
-            $meta = $oldStmt->result_metadata();
-            $row = []; $params = [];
-            while ($field = $meta->fetch_field()) { $params[] = &$row[$field->name]; }
-            call_user_func_array(array($oldStmt, 'bind_result'), $params);
-            if ($oldStmt->fetch()) { foreach($row as $k=>$v){ $oldRow[$k]=$v; } }
-            $oldStmt->close();
-
-            // Delete Old File
-            if (!empty($oldRow['avatar'])) {
-                $oldFilePath = $uploadDir . $oldRow['avatar'];
-                if (file_exists($oldFilePath)) {
-                    @unlink($oldFilePath); 
-                }
-                $oldUserData['avatar'] = $oldRow['avatar'];
-            }
-
-            // Upload New
-            $result = uploadImage($_FILES['avatar'], $uploadDir); 
-
-            if ($result['success']) {
-                $newAvatarName = $result['filename'];
-                $avSql = "INSERT INTO " . USR_DASHBOARD . " (user_id, avatar) VALUES (?, ?) ON DUPLICATE KEY UPDATE avatar = VALUES(avatar)";
-                $avStmt = $conn->prepare($avSql);
-                $avStmt->bind_param("is", $userId, $result['filename']);
-                $avStmt->execute();
-            } else {
-                $message = $result['message']; $msgType = "danger";
-            }
-        }
-
-        // Update Text Data (Only if no upload error)
-        if (empty($message) || $msgType !== 'danger') {
-            $upSql = "UPDATE " . USR_LOGIN . " SET name = ?, email = ?, gender = ?, birthday = ? WHERE id = ?";
-            $upStmt = $conn->prepare($upSql);
-            $upStmt->bind_param("ssssi", $name, $email, $gender, $birthday, $userId);
-            if ($upStmt->execute()) {
+            if ($hasAvatarUpload) {
+                $uploadDir = BASE_PATH . 'assets/uploads/avatars/';
                 
-                // [AUDIT] Log Update Action
-                if (function_exists('logAudit')) {
-                    $newUserData = ['name' => $name, 'email' => $email, 'gender' => $gender, 'birthday' => $birthday];
-                    if ($newAvatarName) { $newUserData['avatar'] = $newAvatarName; }
-                    
-                    logAudit([
-                        'page'           => $auditPage,
-                        'action'         => 'E',
-                        'action_message' => 'Updated Profile Info',
-                        'query'          => $upSql,
-                        'query_table'    => USR_LOGIN,
-                        'user_id'        => $userId,
-                        'record_id'      => $userId,
-                        'old_value'      => $oldUserData,
-                        'new_value'      => $newUserData
-                    ]);
+                // Find Old Avatar
+                $oldAvSql = "SELECT avatar FROM " . USR_DASHBOARD . " WHERE user_id = ? LIMIT 1";
+                $oldStmt = $conn->prepare($oldAvSql);
+                $oldStmt->bind_param("i", $userId);
+                $oldStmt->execute();
+                
+                $oldRow = [];
+                $meta = $oldStmt->result_metadata();
+                $row = []; $params = [];
+                while ($field = $meta->fetch_field()) { $params[] = &$row[$field->name]; }
+                call_user_func_array(array($oldStmt, 'bind_result'), $params);
+                if ($oldStmt->fetch()) { foreach($row as $k=>$v){ $oldRow[$k]=$v; } }
+                $oldStmt->close();
+
+                // Delete Old File
+                if (!empty($oldRow['avatar'])) {
+                    $oldFilePath = $uploadDir . $oldRow['avatar'];
+                    if (file_exists($oldFilePath)) {
+                        @unlink($oldFilePath); 
+                    }
+                    $oldUserData['avatar'] = $oldRow['avatar'];
                 }
 
-                $_SESSION['user_name'] = $name; 
-                $_SESSION['flash_msg'] = "资料已更新";
-                $_SESSION['flash_type'] = "success";
-                if (!headers_sent()) {
-                    header("Location: " . $profileRedirectUrl);
+                // Upload New
+                $result = uploadImage($_FILES['avatar'], $uploadDir); 
+
+                if ($result['success']) {
+                    $newAvatarName = $result['filename'];
+                    $avSql = "INSERT INTO " . USR_DASHBOARD . " (user_id, avatar) VALUES (?, ?) ON DUPLICATE KEY UPDATE avatar = VALUES(avatar)";
+                    $avStmt = $conn->prepare($avSql);
+                    $avStmt->bind_param("is", $userId, $result['filename']);
+                    $avStmt->execute();
                 } else {
-                    echo "<script>window.location.href='" . $profileRedirectUrl . "';</script>";
+                    $message = $result['message']; $msgType = "danger";
                 }
-                exit(); 
+            }
+
+            // Update Text Data (Only if no upload error)
+            if (empty($message) || $msgType !== 'danger') {
+                $upSql = "UPDATE " . USR_LOGIN . " SET name = ?, email = ?, gender = ?, birthday = ? WHERE id = ?";
+                $upStmt = $conn->prepare($upSql);
+                $upStmt->bind_param("ssssi", $name, $email, $gender, $birthday, $userId);
+                if ($upStmt->execute()) {
+                    
+                    // [AUDIT] Log Update Action
+                    if (function_exists('logAudit')) {
+                        $newUserData = ['name' => $name, 'email' => $email, 'gender' => $gender, 'birthday' => $birthday];
+                        if ($newAvatarName) { $newUserData['avatar'] = $newAvatarName; }
+                        
+                        logAudit([
+                            'page'           => $auditPage,
+                            'action'         => 'E',
+                            'action_message' => 'Updated Profile Info',
+                            'query'          => $upSql,
+                            'query_table'    => USR_LOGIN,
+                            'user_id'        => $userId,
+                            'record_id'      => $userId,
+                            'old_value'      => $oldUserData,
+                            'new_value'      => $newUserData
+                        ]);
+                    }
+
+                    $_SESSION['user_name'] = $name; 
+                    $_SESSION['flash_msg'] = "资料已更新";
+                    $_SESSION['flash_type'] = "success";
+                    if (!headers_sent()) {
+                        header("Location: " . $profileRedirectUrl);
+                    } else {
+                        echo "<script>window.location.href='" . $profileRedirectUrl . "';</script>";
+                    }
+                    exit(); 
+                }
             }
         }
     }
 }
 
-// ... (Rest of the file remains unchanged) ...
 // --- HANDLE FORM B: CHANGE PASSWORD ---
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['action']) && $_POST['action'] === 'change_pwd') {
     checkPermissionError('edit', $perm, '密码');
 
-    // ... existing password logic ...
     $currentPwd = $_POST['current_password'];
     $newPwd = $_POST['new_password'];
     $confirmPwd = $_POST['confirm_password'];
@@ -237,7 +238,7 @@ $dashStmt->close();
 $currentUser = array_merge($userRow, $dashRow ?? ['avatar' => null]);
 $avatarUrl = !empty($currentUser['avatar']) ? URL_ASSETS . '/uploads/avatars/' . $currentUser['avatar'] : URL_ASSETS . '/images/default-avatar.png';
 
-// [AUDIT] Log View Action (Only for GET requests)
+// [AUDIT] Log View Action
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && function_exists('logAudit') && !defined('PROFILE_VIEW_LOGGED')) {
     define('PROFILE_VIEW_LOGGED', true);
     logAudit([
@@ -251,17 +252,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && function_exists('logAudit') && !defi
 }
 ?>
 
-    <div class="profile-container">
+<div class="profile-container">
     <div class="section-header">
         <div class="header-text-content">
+            <?php echo generateBreadcrumb($conn, $currentUrl); ?>
             <h2>个人资料设置</h2>
             <small class="text-muted">User ID: <?php echo $userId; ?></small>
         </div>
     </div>
 
     <?php if ($message): ?>
-        <div class="alert alert-<?php echo $msgType; ?>">
+        <div class="alert alert-<?php echo $msgType; ?> alert-dismissible fade show">
             <?php echo htmlspecialchars($message); ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     <?php endif; ?>
 
@@ -274,29 +277,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && function_exists('logAudit') && !defi
         </div>
     <?php endif; ?>
 
-    <div id="js-alert-box" class="alert alert-danger d-none"></div>
-
     <?php if (!$passwordChangeSuccess): ?>
     <div class="profile-form-card">
         <div class="form-title"><i class="fa-solid fa-user-pen"></i> 编辑个人资料</div>
-        <form method="POST" enctype="multipart/form-data" id="infoForm" novalidate>
+        
+        <form method="POST" enctype="multipart/form-data" id="infoForm" class="check-changes">
             <input type="hidden" name="action" value="update_info">
             <div class="avatar-upload-wrapper">
                 <img src="<?php echo $avatarUrl; ?>" alt="Avatar" class="avatar-preview" id="avatarPreview">
                 <div class="upload-btn-wrapper">
                     <button type="button" class="btn-upload">更换头像</button>
-                    <input type="file" name="avatar" id="avatarInput" accept="image/png, image/jpeg, image/jpg" data-max-size="<?php echo AVATAR_UPLOAD_SIZE; ?>">
+                    <input type="file" name="avatar" id="avatarInput" accept="image/png, image/jpeg, image/jpg" data-max-size="<?php echo AVATAR_UPLOAD_SIZE ?? 2097152; ?>">
                 </div>
                 <small class="text-muted mt-2">支持 JPG/PNG, 最大 2MB</small>
             </div>
             <div class="form-row">
                 <div class="col-half form-group">
                     <label>昵称 <span class="text-danger">*</span></label>
-                    <input type="text" name="display_name" class="form-control" value="<?php echo htmlspecialchars($currentUser['name'] ?? ''); ?>">
+                    <input type="text" name="display_name" class="form-control" value="<?php echo htmlspecialchars($currentUser['name'] ?? ''); ?>" required>
                 </div>
                 <div class="col-half form-group">
                     <label>电子邮箱 <span class="text-danger">*</span></label>
-                    <input type="email" name="email" class="form-control" value="<?php echo htmlspecialchars($currentUser['email'] ?? ''); ?>">
+                    <input type="email" name="email" class="form-control" value="<?php echo htmlspecialchars($currentUser['email'] ?? ''); ?>" required>
                 </div>
             </div>
             <div class="form-row">
@@ -325,20 +327,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && function_exists('logAudit') && !defi
 
     <div class="profile-form-card">
         <div class="form-title"><i class="fa-solid fa-lock"></i> 修改密码</div>
-        <form method="POST" id="passwordForm" novalidate>
+        
+        <form method="POST" id="passwordForm">
             <input type="hidden" name="action" value="change_pwd">
             <div class="form-group">
                 <label>当前密码 <span class="text-danger">*</span></label>
-                <input type="password" name="current_password" class="form-control">
+                <input type="password" name="current_password" class="form-control" required>
             </div>
             <div class="form-row">
                 <div class="col-half form-group">
                     <label>新密码 <span class="text-danger">*</span></label>
-                    <input type="password" name="new_password" id="new_password" class="form-control">
+                    <input type="password" name="new_password" id="new_password" class="form-control" required>
                 </div>
                 <div class="col-half form-group">
                     <label>确认新密码 <span class="text-danger">*</span></label>
-                    <input type="password" name="confirm_password" id="confirm_password" class="form-control">
+                    <input type="password" name="confirm_password" id="confirm_password" class="form-control" required>
                 </div>
             </div>
             <div class="mt-3">

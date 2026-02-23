@@ -212,7 +212,10 @@ $pageMetaKey = $currentUrl;
 <div class="container-fluid mt-4" style="max-width: 1400px;">
     <div class="card shadow-sm">
         <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-            <h4 class="m-0 text-primary"><i class="fa-solid fa-file-shield"></i> System Audit Log</h4>
+            <div>
+                <?php echo generateBreadcrumb($conn, $currentUrl); ?>
+                <h4 class="m-0 text-primary"><i class="fa-solid fa-file-shield"></i> System Audit Log</h4>
+            </div>
             <div class="d-flex align-items-center gap-2">
                 <label class="text-muted small m-0">Filter:</label>
                 <select id="actionFilter" class="form-select form-select-sm" style="width: 150px;">

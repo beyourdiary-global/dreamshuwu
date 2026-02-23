@@ -145,8 +145,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'og_url' => $_POST['og_url'] ?? '',
                 ],
                 $oldGlobal,
-                null,
-                $redirectUrl
+                null
             );
         }
 
@@ -241,8 +240,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         'og_url' => $_POST['page_og_url'] ?? '',
                     ],
                     $oldPage,
-                    null,
-                    $redirectUrl
+                    null
                 );
             }
 
@@ -382,6 +380,8 @@ while ($cpRes && $row = $cpRes->fetch_assoc()) $customizedPages[] = $row['page_k
 if ($isEmbeddedMeta): ?>
     <div class="meta-settings-container" style="max-width: 1000px; margin: 0 auto;">
 
+        <?php echo generateBreadcrumb($conn, $currentUrl); ?>
+
         <div class="d-flex justify-content-center">
             <div class="nav nav-pills nav-pills-container mb-4">
                 <a class="nav-link <?php echo $activeSection === 'global' ? 'active' : ''; ?>" 
@@ -415,6 +415,7 @@ if ($isEmbeddedMeta): ?>
     <?php require_once BASE_PATH . 'common/menu/header.php'; ?>
 
     <div class="container mt-4" style="max-width: 1000px;">
+        <?php echo generateBreadcrumb($conn, $currentUrl); ?>
         
         <div class="d-flex justify-content-center">
             <div class="nav nav-pills nav-pills-container mb-4">
