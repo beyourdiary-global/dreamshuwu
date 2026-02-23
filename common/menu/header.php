@@ -14,10 +14,63 @@ $siteName = !empty($webSettings['website_name']) ? $webSettings['website_name'] 
 $siteLogo = !empty($webSettings['website_logo']) ? $webSettings['website_logo'] : '';
 
 $currentPage = basename($_SERVER['PHP_SELF']);
+$requestPath = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH);
 $isLoggedIn = (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true);
 $dashboardPath = parse_url(URL_USER_DASHBOARD, PHP_URL_PATH);
 $dashboardPage = basename($dashboardPath ?: 'dashboard.php');
 $isUserDashboardPage = ($currentPage === $dashboardPage);
+
+$authorZoneUrl = URL_LOGIN;
+$isAuthorPage = false;
+if ($isLoggedIn) {
+    $authorZoneUrl = URL_AUTHOR_REGISTER;
+    $currentUserId = isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : 0;
+    $roleName = strtolower(trim((string)($_SESSION['role_name'] ?? '')));
+    $isAdminRole = ($roleName !== '' && (strpos($roleName, 'admin') !== false || strpos($roleName, '管理员') !== false));
+
+    if (!$isAdminRole && !empty($_SESSION['role_id']) && isset($conn) && $conn) {
+        $roleId = (int)$_SESSION['role_id'];
+        $stmtRole = $conn->prepare("SELECT name_en, name_cn FROM " . USER_ROLE . " WHERE id = ? AND status = 'A' LIMIT 1");
+        if ($stmtRole) {
+            $stmtRole->bind_param('i', $roleId);
+            $stmtRole->execute();
+            $stmtRole->bind_result($roleNameEn, $roleNameCn);
+            if ($stmtRole->fetch()) {
+                $roleText = strtolower(trim((string)$roleNameEn . ' ' . (string)$roleNameCn));
+                $isAdminRole = (strpos($roleText, 'admin') !== false || strpos($roleText, '管理员') !== false);
+            }
+            $stmtRole->close();
+        }
+    }
+
+    if ($isAdminRole) {
+        $authorZoneUrl = URL_AUTHOR_VERIFICATION;
+    } elseif ($currentUserId > 0 && isset($conn) && $conn) {
+        $stmtAuthor = $conn->prepare("SELECT verification_status FROM " . AUTHOR_PROFILE . " WHERE user_id = ? AND status = 'A' LIMIT 1");
+        if ($stmtAuthor) {
+            $stmtAuthor->bind_param('i', $currentUserId);
+            $stmtAuthor->execute();
+            $stmtAuthor->bind_result($verificationStatus);
+            if ($stmtAuthor->fetch() && strtolower((string)$verificationStatus) === 'approved') {
+                $authorZoneUrl = URL_AUTHOR_DASHBOARD;
+            }
+            $stmtAuthor->close();
+        }
+    }
+
+    $authorVerificationPath = parse_url(URL_AUTHOR_VERIFICATION, PHP_URL_PATH);
+    $emailTemplatePath = parse_url(URL_EMAIL_TEMPLATE, PHP_URL_PATH);
+    $authorRegisterPath = parse_url(URL_AUTHOR_REGISTER, PHP_URL_PATH);
+    $authorDashboardPath = parse_url(URL_AUTHOR_DASHBOARD, PHP_URL_PATH);
+
+    $isAuthorPage = (
+        ($authorRegisterPath && $requestPath === $authorRegisterPath) ||
+        ($authorDashboardPath && $requestPath === $authorDashboardPath) ||
+        ($authorVerificationPath && $requestPath === $authorVerificationPath) ||
+        ($emailTemplatePath && $requestPath === $emailTemplatePath) ||
+        (isset($isAuthorDashboard) && $isAuthorDashboard === true)
+    );
+}
 
 // Helper to create navigation items with login logic
 function createNavItem($title, $url, $mobile = false, $icon = null) {
@@ -70,10 +123,7 @@ $navLinks = [
                 <button type="submit"><i class="fa-solid fa-search"></i></button>
             </form>
 
-            <?php 
-            $isAuthorPage = ($currentPage === 'author-register.php' || (isset($isAuthorDashboard) && $isAuthorDashboard === true));
-            ?>
-            <a href="<?php echo $isLoggedIn ? URL_AUTHOR_REGISTER : URL_LOGIN; ?>" 
+            <a href="<?php echo $authorZoneUrl; ?>" 
             class="author-link <?php echo $isAuthorPage ? 'active' : ''; ?>">
             作者专区
             </a>

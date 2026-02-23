@@ -299,6 +299,189 @@ function sendPasswordResetEmail($email, $resetLink) {
 }
 
 /**
+ * Check whether a table has a specific column.
+ */
+function columnExists($conn, $tableName, $columnName) {
+    if (!$conn || empty($tableName) || empty($columnName)) return false;
+
+    // Strictly sanitize inputs to prevent injection
+    $safeTable = preg_replace('/[^a-zA-Z0-9_]/', '', (string)$tableName);
+    $safeColumn = preg_replace('/[^a-zA-Z0-9_]/', '', (string)$columnName);
+    if ($safeTable === '' || $safeColumn === '') return false;
+
+    // [CRITICAL FIX] Do not use prepare() with '?' for SHOW commands. 
+    // Inject the safe, sanitized string directly.
+    $sql = "SHOW COLUMNS FROM `{$safeTable}` LIKE '{$safeColumn}'";
+    $result = $conn->query($sql);
+    
+    if ($result) {
+        $exists = ($result->num_rows > 0);
+        $result->free();
+        return $exists;
+    }
+
+    return false;
+}
+
+/**
+ * Author verification notification engine.
+ * Replaces placeholders in email templates and records send logs.
+ */
+function processAuthorVerificationEmail($conn, $userId, $actionType, $rejectReason = '') {
+    if (!$conn) {
+        return ['success' => false, 'message' => '数据库连接失败'];
+    }
+
+    $safeUserId = (int)$userId;
+    if ($safeUserId <= 0) {
+        return ['success' => false, 'message' => '无效用户ID'];
+    }
+
+    $safeAction = strtolower(trim((string)$actionType));
+    $templateCode = '';
+
+    // [FIX 1] Define tables safely to prevent undefined constant crashes
+    $authorProfileTable = defined('AUTHOR_PROFILE') ? AUTHOR_PROFILE : 'author_profile';
+    $usersTable = defined('USR_LOGIN') ? USR_LOGIN : 'users';
+    $emailTemplateTable = defined('EMAIL_TEMPLATE') ? EMAIL_TEMPLATE : 'email_template';
+    $emailLogTable = defined('EMAIL_LOG') ? EMAIL_LOG : 'email_log';
+
+    $hasRejectReasonCol = columnExists($conn, $authorProfileTable, 'reject_reason');
+    $hasEmailNotifiedAtCol = columnExists($conn, $authorProfileTable, 'email_notified_at');
+    $hasEmailNotifyCountCol = columnExists($conn, $authorProfileTable, 'email_notify_count');
+
+    $rejectReasonExpr = $hasRejectReasonCol ? 'ap.reject_reason' : "'' AS reject_reason";
+    
+    // [FIX 2] Bypass placeholder bugs by injecting integers directly
+    $profileSql = "SELECT ap.id, ap.user_id, ap.real_name, ap.pen_name, ap.contact_email, {$rejectReasonExpr}, ap.verification_status, u.email AS login_email\n"
+        . "FROM {$authorProfileTable} ap\n"
+        . "LEFT JOIN {$usersTable} u ON u.id = ap.user_id\n"
+        . "WHERE ap.user_id = {$safeUserId} AND ap.status = 'A' LIMIT 1";
+        
+    $profileRes = $conn->query($profileSql);
+    if (!$profileRes) {
+        return ['success' => false, 'message' => '读取作者信息失败: ' . $conn->error];
+    }
+    $authorProfile = $profileRes->fetch_assoc();
+    $profileRes->free();
+
+    if (empty($authorProfile)) {
+        return ['success' => false, 'message' => '作者资料不存在'];
+    }
+
+    // Determine Template Code
+    if ($safeAction === 'approved' || $safeAction === 'approve') {
+        $templateCode = 'AUTHOR_APPROVED';
+    } elseif ($safeAction === 'rejected' || $safeAction === 'reject') {
+        $templateCode = 'AUTHOR_REJECTED';
+    } elseif ($safeAction === 'resend') {
+        $currentStatus = strtolower((string)($authorProfile['verification_status'] ?? ''));
+        if ($currentStatus === 'approved') {
+            $templateCode = 'AUTHOR_APPROVED';
+        } elseif ($currentStatus === 'rejected') {
+            $templateCode = 'AUTHOR_REJECTED';
+        }
+    }
+
+    if ($templateCode === '') {
+        return ['success' => false, 'message' => '无法匹配邮件模板类型'];
+    }
+
+    // Load Email Template from DB
+    $escTemplateCode = $conn->real_escape_string($templateCode);
+    $templateSql = "SELECT template_code, subject, content FROM {$emailTemplateTable} WHERE template_code = '{$escTemplateCode}' AND status = 'A' LIMIT 1";
+    
+    $templateRes = $conn->query($templateSql);
+    if (!$templateRes) {
+        return ['success' => false, 'message' => '读取邮件模板失败: ' . $conn->error];
+    }
+    $templateRow = $templateRes->fetch_assoc();
+    $templateRes->free();
+
+    // If template is not found in database, return error
+    if (empty($templateRow)) {
+        return ['success' => false, 'message' => "系统必备模板 [{$templateCode}] 未创建或已禁用！"];
+    }
+
+    // Determine Recipient
+    $recipientEmail = trim((string)($authorProfile['contact_email'] ?? ''));
+    if ($recipientEmail === '') {
+        $recipientEmail = trim((string)($authorProfile['login_email'] ?? ''));
+    }
+
+    if ($recipientEmail === '' || !isValidEmail($recipientEmail)) {
+        return ['success' => false, 'message' => '收件人邮箱无效'];
+    }
+
+    $resolvedRejectReason = trim((string)$rejectReason);
+    if ($resolvedRejectReason === '') {
+        $resolvedRejectReason = trim((string)($authorProfile['reject_reason'] ?? ''));
+    }
+    if ($resolvedRejectReason === '') {
+        $resolvedRejectReason = '无';
+    }
+
+    // Replace Variables logic
+    $replacements = [
+        '{{real_name}}' => (string)($authorProfile['real_name'] ?? ''),
+        '{{pen_name}}' => (string)($authorProfile['pen_name'] ?? ''),
+        '{{reject_reason}}' => $resolvedRejectReason,
+        '{{dashboard_url}}' => (string)(defined('URL_USER_DASHBOARD') ? URL_USER_DASHBOARD : '/dashboard.php')
+    ];
+
+    $mailSubject = strtr((string)$templateRow['subject'], $replacements);
+    $mailBody = strtr((string)$templateRow['content'], $replacements);
+
+    $headers = "MIME-Version: 1.0\r\n";
+    $headers .= "Content-type: text/html; charset=UTF-8\r\n";
+    $headers .= "From: " . (defined('MAIL_FROM_NAME') ? MAIL_FROM_NAME : 'System') . " <" . (defined('MAIL_FROM') ? MAIL_FROM : 'admin@localhost') . ">\r\n";
+
+    $sentStatus = 'failed';
+    $errorMessage = '';
+    
+    // Trigger Send Email
+    $sendResult = @mail($recipientEmail, $mailSubject, $mailBody, $headers);
+    if ($sendResult) {
+        $sentStatus = 'success';
+    } else {
+        $errorMessage = '本地mail()服务发送失败 (请检查SMTP配置)';
+    }
+
+    // Insert Email Log
+    $escSentStatus = $conn->real_escape_string($sentStatus);
+    $escErrMsg = $conn->real_escape_string($errorMessage);
+    $logSql = "INSERT INTO {$emailLogTable} (user_id, template_code, sent_status, error_message, created_at) VALUES ({$safeUserId}, '{$escTemplateCode}', '{$escSentStatus}', '{$escErrMsg}', NOW())";
+    $conn->query($logSql); 
+
+    // Update Notification Data in author_profile
+    $setClauses = [];
+    if ($hasEmailNotifiedAtCol) {
+        $setClauses[] = 'email_notified_at = NOW()';
+    }
+    if ($hasEmailNotifyCountCol) {
+        $setClauses[] = 'email_notify_count = COALESCE(email_notify_count, 0) + 1';
+    }
+
+    if (!empty($setClauses)) {
+        $updateAuthorSql = "UPDATE {$authorProfileTable} SET " . implode(', ', $setClauses) . " WHERE user_id = {$safeUserId}";
+        $conn->query($updateAuthorSql);
+    }
+
+    if ($sentStatus !== 'success') {
+        return [
+            'success' => false,
+            'message' => $errorMessage,
+            'template_code' => $templateCode
+        ];
+    }
+
+    return [
+        'success' => true,
+        'message' => '邮件发送成功',
+        'template_code' => $templateCode
+    ];
+}
+/**
  * Check if the form has any modifications. (Backend fallback)
  */
 function checkNoChangesAndRedirect($newData, $oldData, $fileInputName = null, $redirectUrl = null) {
@@ -307,7 +490,6 @@ function checkNoChangesAndRedirect($newData, $oldData, $fileInputName = null, $r
         return false; 
     }
 
-    // 2. Compare text fields
     foreach ($newData as $key => $newVal) {
         if (!array_key_exists($key, $oldData)) continue;
         if ($newVal != $oldData[$key]) return false; 
@@ -1204,4 +1386,5 @@ function getDynamicPageRegistry($conn) {
     
     return $registry;
 }
+
 

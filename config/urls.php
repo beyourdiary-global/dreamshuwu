@@ -29,6 +29,14 @@ defined('URL_USER_MESSAGES')  || define('URL_USER_MESSAGES', SITEURL . '/src/pag
 defined('URL_AUTHOR_DASHBOARD') || define('URL_AUTHOR_DASHBOARD', SITEURL . '/src/pages/author/dashboard.php');
 defined('URL_AUTHOR_REGISTER')  || define('URL_AUTHOR_REGISTER', SITEURL . '/author/author-register.php');
 defined('PATH_AUTHOR_REGISTER') || define('PATH_AUTHOR_REGISTER', 'src/pages/author/author-register.php');
+defined('PATH_AUTHOR_VERIFICATION_INDEX') || define('PATH_AUTHOR_VERIFICATION_INDEX', 'src/pages/author/author-verification/index.php');
+defined('PATH_EMAIL_TEMPLATE_INDEX') || define('PATH_EMAIL_TEMPLATE_INDEX', 'src/pages/author/email-template/index.php');
+defined('PATH_AUTHOR_VERIFICATION_API') || define('PATH_AUTHOR_VERIFICATION_API', 'src/pages/author/author-verification/api.php');
+defined('PATH_EMAIL_TEMPLATE_API') || define('PATH_EMAIL_TEMPLATE_API', 'src/pages/author/email-template/api.php');
+defined('URL_AUTHOR_VERIFICATION') || define('URL_AUTHOR_VERIFICATION', SITEURL . '/author/author-verification.php');
+defined('URL_AUTHOR_VERIFICATION_API') || define('URL_AUTHOR_VERIFICATION_API', SITEURL . '/' . PATH_AUTHOR_VERIFICATION_API);
+defined('URL_EMAIL_TEMPLATE') || define('URL_EMAIL_TEMPLATE', SITEURL . '/author/email-template.php');
+defined('URL_EMAIL_TEMPLATE_API') || define('URL_EMAIL_TEMPLATE_API', SITEURL . '/' . PATH_EMAIL_TEMPLATE_API);
 
 // --- 6. Novel Management (Tags) ---
 defined('URL_NOVEL_TAGS')        || define('URL_NOVEL_TAGS', URL_USER_DASHBOARD . '?view=tags');

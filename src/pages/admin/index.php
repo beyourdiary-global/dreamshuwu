@@ -15,6 +15,22 @@ checkPermissionError('view', $perm, '管理员面板');
 $permPageAction = hasPagePermission($conn, $baseViewPath . 'page_action');
 $permPageInfo   = hasPagePermission($conn, $baseViewPath . 'page_info');
 $permUserRole   = hasPagePermission($conn, $baseViewPath . 'user_role');
+
+$permAuthorVerification = hasPagePermission($conn, '/author/author-verification.php');
+if (empty($permAuthorVerification) || (isset($permAuthorVerification->view) && empty($permAuthorVerification->view))) {
+    $permAuthorVerification = hasPagePermission($conn, '/src/pages/author/author-verification/index.php');
+}
+if (empty($permAuthorVerification) || (isset($permAuthorVerification->view) && empty($permAuthorVerification->view))) {
+    $permAuthorVerification = hasPagePermission($conn, '/dashboard.php?view=author_verification');
+}
+
+$permEmailTemplate = hasPagePermission($conn, '/author/email-template.php');
+if (empty($permEmailTemplate) || (isset($permEmailTemplate->view) && empty($permEmailTemplate->view))) {
+    $permEmailTemplate = hasPagePermission($conn, '/src/pages/author/email-template/index.php');
+}
+if (empty($permEmailTemplate) || (isset($permEmailTemplate->view) && empty($permEmailTemplate->view))) {
+    $permEmailTemplate = hasPagePermission($conn, '/dashboard.php?view=email_template');
+}
 ?>
 <div class="container-fluid">
     <div class="d-flex align-items-center justify-content-between mb-4">
@@ -73,6 +89,42 @@ $permUserRole   = hasPagePermission($conn, $baseViewPath . 'user_role');
                         </div>
                         <h5 class="card-title text-dark fw-bold">用户角色管理</h5>
                         <p class="card-text text-muted small">(User Roles)</p>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <?php endif; ?>
+
+        <?php if (!empty($permAuthorVerification) && $permAuthorVerification->view): ?>
+        <div class="col-md-6 col-lg-4 col-xl-3 mb-4">
+            <a href="<?php echo URL_AUTHOR_VERIFICATION; ?>" class="text-decoration-none">
+                <div class="card h-100 border-0 shadow-sm action-card hover-lift">
+                    <div class="card-body text-center p-4">
+                        <div class="mb-3">
+                            <span class="d-inline-flex align-items-center justify-content-center bg-warning bg-opacity-10 text-warning rounded-circle" style="width: 60px; height: 60px;">
+                                <i class="fa-solid fa-user-check fa-xl"></i>
+                            </span>
+                        </div>
+                        <h5 class="card-title text-dark fw-bold">作者审核管理</h5>
+                        <p class="card-text text-muted small">(Author Verification)</p>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <?php endif; ?>
+
+        <?php if (!empty($permEmailTemplate) && $permEmailTemplate->view): ?>
+        <div class="col-md-6 col-lg-4 col-xl-3 mb-4">
+            <a href="<?php echo URL_EMAIL_TEMPLATE; ?>" class="text-decoration-none">
+                <div class="card h-100 border-0 shadow-sm action-card hover-lift">
+                    <div class="card-body text-center p-4">
+                        <div class="mb-3">
+                            <span class="d-inline-flex align-items-center justify-content-center bg-secondary bg-opacity-10 text-secondary rounded-circle" style="width: 60px; height: 60px;">
+                                <i class="fa-solid fa-envelope-open-text fa-xl"></i>
+                            </span>
+                        </div>
+                        <h5 class="card-title text-dark fw-bold">邮件模板管理</h5>
+                        <p class="card-text text-muted small">(Email Templates)</p>
                     </div>
                 </div>
             </a>
