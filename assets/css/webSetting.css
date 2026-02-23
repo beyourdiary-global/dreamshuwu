@@ -1,5 +1,9 @@
 /* assets/css/webSetting.css */
 
+:root {
+  --header-default-hover-color: #80aaff;
+}
+
 /* --- Global Overrides --- */
 body {
   background-color: var(--page-bg-color) !important;
@@ -27,13 +31,14 @@ body {
   color: var(--theme-text-color) !important;
 }
 
-/* Hover State for Header Links */
-.site-header a:hover,
-.site-header .nav-link:hover,
-.site-header .author-link:hover,
-.site-header .auth-buttons a:hover,
+/* Hover State for Header Links (must be different from selected color) */
+.site-header .nav-link:not(.active):hover,
+.site-header .author-link:not(.active):hover,
+.site-header .auth-buttons a:not(.active):hover,
+.site-header .user-name-link:not(.active):hover,
+.site-header .user-name-link:not(.active):hover i,
 .mobile-top-bar .user-trigger:hover {
-  color: var(--btn-color) !important;
+  color: var(--header-default-hover-color) !important;
 }
 
 /* Active Link State */

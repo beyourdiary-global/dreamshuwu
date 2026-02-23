@@ -492,6 +492,28 @@ input[type="password"]::-ms-clear {
   justify-content: flex-end;
 }
 
+/* Tag/Category DataTables bootstrap row gutter reset (prevents visual misalignment) */
+.tag-container .dataTables_wrapper .row,
+.category-container .dataTables_wrapper .row {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+.tag-container .dataTables_wrapper .row > [class*="col-"],
+.category-container .dataTables_wrapper .row > [class*="col-"] {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+/* Keep action header/cells centered and stable */
+.tag-container #tagTable thead th:last-child,
+.tag-container #tagTable tbody td:last-child,
+.category-container #categoryTable thead th:last-child,
+.category-container #categoryTable tbody td:last-child {
+  text-align: center;
+  vertical-align: middle;
+}
+
 /* 6. Desktop View (Min Width 768px) */
 @media screen and (min-width: 768px) {
   /* Search Bar - Right Align */

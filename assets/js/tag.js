@@ -1,4 +1,5 @@
 $(document).ready(function () {
+  // --- Existing Alert and Table Logic ---
   $(".alert-success")
     .delay(3000)
     .fadeOut("slow", function () {
@@ -9,19 +10,21 @@ $(document).ready(function () {
   const apiUrl = $table.data("api-url") || "index.php?mode=data";
   const deleteUrl = $table.data("delete-url") || "index.php";
 
-  // Initialize DataTable with server-side processing
   const table = $("#tagTable").DataTable({
     processing: true,
     serverSide: true,
     ajax: { url: apiUrl, type: "GET" },
-    columns: [{ data: 0 }, { data: 1, orderable: false }],
+    columns: [
+      { data: 0 },
+      { data: 1, orderable: false },
+      { data: 2, orderable: false, className: "text-center" },
+    ],
     order: [],
     dom:
-      "<'row'<'col-sm-12 d-flex justify-content-end'f>>" +
+      "<'row mb-3 align-items-center'<'col-sm-12 col-md-6 d-flex justify-content-start'l><'col-sm-12 col-md-6 d-flex justify-content-end'f>>" +
       "<'row'<'col-sm-12'tr>>" +
-      "<'row'<'col-sm-12 d-flex justify-content-between align-items-center'ip>>",
+      "<'row mt-3 align-items-center'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7 d-flex justify-content-end'p>>",
 
-    // Chinese language configuration
     language: {
       sProcessing: "处理中...",
       sLengthMenu: "显示 _MENU_ 项结果",
@@ -29,24 +32,18 @@ $(document).ready(function () {
       sInfo: "显示第 _START_ 至 _END_ 项结果，共 _TOTAL_ 项",
       sInfoEmpty: "显示第 0 至 0 项结果，共 0 项",
       sInfoFiltered: "(由 _MAX_ 项结果过滤)",
-      sInfoPostFix: "",
       sSearch: "",
-      sUrl: "",
-      sEmptyTable: "表中数据为空",
-      sLoadingRecords: "载入中...",
-      sInfoThousands: ",",
+      searchPlaceholder: "搜索标签...",
       oPaginate: {
         sFirst: "首页",
         sPrevious: "上页",
         sNext: "下页",
         sLast: "末页",
       },
-      search: "",
-      searchPlaceholder: "搜索标签...",
     },
   });
 
-  // Handle delete button click
+  // --- Existing Delete Handler ---
   $(document).on("click", ".delete-btn", function () {
     const id = $(this).data("id");
     const name = $(this).data("name");
@@ -67,13 +64,10 @@ $(document).ready(function () {
           data: { mode: "delete", id: id, name: name },
           dataType: "json",
           success: function (res) {
-            // Add a check to ensure res is not null or undefined
             if (res && res.success) {
               Swal.fire("删除成功！", "", "success");
               table.ajax.reload();
             } else {
-              // Provide a default error message if res or res.success is missing
-              // or use res.message if it exists and res is not null
               Swal.fire(
                 "错误",
                 res ? res.message || "未知错误" : "服务器返回空响应",

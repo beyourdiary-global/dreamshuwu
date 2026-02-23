@@ -299,46 +299,25 @@ function sendPasswordResetEmail($email, $resetLink) {
 }
 
 /**
- * [NEW] Helper: Check for Changes and Redirect
- * Automatically checks if new form data matches old DB data.
- * If NO changes are found (and no file uploaded), sets a flash message and redirects.
- *
- * @param array  $newData       New data from form (key => value)
- * @param array  $oldData       Old data from DB (key => value)
- * @param string $fileInputName (Optional) The name attribute of a file input to check
- * @param string $redirectUrl   (Optional) Custom redirect URL. Defaults to current page.
+ * Check if the form has any modifications. (Backend fallback)
  */
 function checkNoChangesAndRedirect($newData, $oldData, $fileInputName = null, $redirectUrl = null) {
-    // 1. Check for File Upload
+    // 1. Check for new file uploads
     if ($fileInputName && isset($_FILES[$fileInputName]) && $_FILES[$fileInputName]['size'] > 0) {
-        return; // File detected, proceed to save
+        return false; 
     }
 
-    // 2. Check for Text Changes
+    // 2. Compare text fields
     foreach ($newData as $key => $newVal) {
-        // Skip keys that don't exist in old data (or you can choose to treat them as changes)
         if (!array_key_exists($key, $oldData)) continue;
-
-        // Use loose comparison (!=) to handle string vs int (e.g. "1" vs 1), and null vs ""
-        if ($newVal != $oldData[$key]) {
-            return; // Change detected, proceed to save
-        }
+        if ($newVal != $oldData[$key]) return false; 
     }
 
-    // 3. No Changes Found -> Redirect
-    if (session_status() === PHP_SESSION_NONE) session_start();
-
-    $_SESSION['flash_msg'] = "没有修改，无需保存"; 
-    $_SESSION['flash_type'] = "warning";
-
-    $url = $redirectUrl ?? $_SERVER['REQUEST_URI'];
-
-    if (!headers_sent()) {
-        header("Location: " . $url);
-    } else {
-        echo "<script>window.location.href = '" . $url . "';</script>";
-    }
-    exit();
+    // 3. No changes detected
+    return [
+        'message' => "没有修改，无需保存",
+        'type'    => "warning"
+    ];
 }
 
 
@@ -1127,7 +1106,7 @@ function checkPermissionError($actionType, $perm, $moduleName = '数据', $redir
         // If the user lacks permission for the Dashboard Home itself, redirecting them TO the Dashboard Home causes a loop.
         if ($isDashboardHome || $moduleName === '仪表盘首页') {
             // Halt completely and show the static error UI instead of redirecting
-            denyAccess($errorMessage);
+            $errorMessage;
         }
 
         // For all other sub-pages, it is safe to redirect back to the Dashboard Home
@@ -1151,6 +1130,46 @@ function checkPermissionError($actionType, $perm, $moduleName = '数据', $redir
     }
 
     return $errorMessage;
+}
+
+/**
+ * Helper: Generate Dynamic Clickable Breadcrumb
+ * Fetches the page name from PAGE_INFO_LIST based on the current URL.
+ * * @param mysqli $conn         Database connection
+ * @param string $currentUrl   The registered public_url of the page
+ * @param string $fallbackName Fallback name if the URL is not found in the DB
+ * @return string              HTML string for the clickable breadcrumb
+ */
+function generateBreadcrumb($conn, $currentUrl, $fallbackName = '') {
+    $homeText = '首页';
+    // Fallback to /dashboard.php if constant is not defined
+    $homeUrl = defined('URL_USER_DASHBOARD') ? URL_USER_DASHBOARD : '/dashboard.php'; 
+    $pageName = $fallbackName;
+
+    if ($conn && !empty($currentUrl)) {
+        $stmt = $conn->prepare("SELECT name_cn FROM " . PAGE_INFO_LIST . " WHERE public_url = ? AND status = 'A' LIMIT 1");
+        if ($stmt) {
+            $stmt->bind_param("s", $currentUrl);
+            $stmt->execute();
+            
+            $dbName = null; 
+            $stmt->bind_result($dbName);
+            
+            if ($stmt->fetch() && !empty($dbName)) {
+                $pageName = $dbName;
+            }
+            $stmt->close();
+        }
+    }
+
+    // Build the clickable HTML using Bootstrap classes for styling
+    $html = '<a href="' . htmlspecialchars($homeUrl) . '" class="text-muted text-decoration-none hover-primary">' . htmlspecialchars($homeText) . '</a>';
+    
+    if (!empty($pageName)) {
+        $html .= ' / <a href="' . htmlspecialchars($currentUrl) . '" class="text-muted text-decoration-none hover-primary">' . htmlspecialchars($pageName) . '</a>';
+    }
+
+    return '<div class="page-action-breadcrumb text-muted mb-1" style="font-size: 13px;">' . $html . '</div>';
 }
 
 /**
@@ -1185,3 +1204,4 @@ function getDynamicPageRegistry($conn) {
     
     return $registry;
 }
+

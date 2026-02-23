@@ -325,6 +325,7 @@ if ($isEmbeddedCatForm): ?>
 <div class="category-container">
     <div class="card category-card">
         <div class="card-header bg-white py-3">
+            <?php echo generateBreadcrumb($conn, $currentUrl); ?>
             <h4 class="m-0 text-primary"><i class="fa-solid fa-layer-group me-2"></i> <?php echo $isEditMode ? "编辑分类" : "新增分类"; ?></h4>
         </div>
         <div class="card-body">
@@ -334,7 +335,7 @@ if ($isEmbeddedCatForm): ?>
                 </div>
             <?php endif; ?>
             
-            <form method="POST" action="<?php echo htmlspecialchars($formActionUrl); ?>" autocomplete="off">
+            <form method="POST" action="<?php echo htmlspecialchars($formActionUrl); ?>" autocomplete="off" class="<?php echo $isEditMode ? 'check-changes' : ''; ?>">
                 <div class="mb-4">
                     <label class="form-label text-muted">分类名称 <span class="text-danger">*</span></label>
                     <input type="text" class="form-control form-control-lg" name="name" 

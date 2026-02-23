@@ -6,6 +6,7 @@
     <div class="col-12">
         <div class="card meta-card">
             <div class="card-header meta-card-header">
+                <?php echo generateBreadcrumb($conn, $currentUrl); ?>
                 <h4 class="header-title">Global Meta Settings</h4>
                 <p class="header-subtitle">These settings apply to every page on your site unless overridden.</p>
             </div>
@@ -17,17 +18,27 @@
                     </div>
                 <?php endif; ?>
 
-                <form method="POST">
+                <form method="POST" class="check-changes">
                     <input type="hidden" name="form_type" value="global">
 
-                    <?php foreach ($seoFields as $key => $config): ?>
+                    <?php foreach ($seoFields as $key => $config): 
+                        // Create a unique placeholder based on the label
+                        $placeholderText = "Enter " . $config['label'];
+                    ?>
                         <div class="mb-4 row">
                             <label class="col-md-3 col-form-label text-md-end form-label"><?php echo htmlspecialchars($config['label']); ?></label>
                             <div class="col-md-9">
                                 <?php if ($config['type'] === 'textarea'): ?>
-                                    <textarea name="<?php echo $key; ?>" class="form-control" rows="3"><?php echo htmlspecialchars($current[$key]); ?></textarea>
+                                    <textarea name="<?php echo $key; ?>" 
+                                              class="form-control" 
+                                              rows="3" 
+                                              placeholder="<?php echo $placeholderText; ?>"><?php echo htmlspecialchars($current[$key]); ?></textarea>
                                 <?php else: ?>
-                                    <input type="text" name="<?php echo $key; ?>" class="form-control" value="<?php echo htmlspecialchars($current[$key]); ?>">
+                                    <input type="text" 
+                                           name="<?php echo $key; ?>" 
+                                           class="form-control" 
+                                           value="<?php echo htmlspecialchars($current[$key]); ?>" 
+                                           placeholder="<?php echo $placeholderText; ?>">
                                 <?php endif; ?>
                             </div>
                         </div>

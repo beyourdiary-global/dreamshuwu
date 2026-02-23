@@ -219,7 +219,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $hasFile = (!empty($_FILES['website_logo']['name']) || !empty($_FILES['website_favicon']['name']));
         
         if (!$hasFile) {
-            checkNoChangesAndRedirect($newData, $current, null, $webBaseUrl);
+            checkNoChangesAndRedirect($newData, $current, null);
         }
 
         // Handle File Uploads
@@ -328,6 +328,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // ========== RENDER ==========
 if ($isEmbeddedWebSetting): ?>
+ <?php echo generateBreadcrumb($conn, $currentUrl); ?>
     <div class="web-settings-container" style="max-width: 1000px; margin: 0 auto;">
         <div class="row justify-content-center">
             <div class="col-12">
@@ -365,6 +366,7 @@ if ($isEmbeddedWebSetting): ?>
             <div class="col-12">
                 <div class="card meta-card">
                     <div class="card-header meta-card-header">
+                        <?php echo generateBreadcrumb($conn, $currentUrl); ?>
                         <h4 class="header-title"><i class="fa-solid fa-paintbrush"></i> Website Settings</h4>
                         <p class="header-subtitle">Customize the global appearance and branding of your site.</p>
                     </div>

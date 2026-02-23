@@ -14,15 +14,16 @@ $(document).ready(function () {
     // [FIX] Use the dynamic URL
     ajax: { url: apiUrl, type: "GET" },
     columns: [
-      { data: 0 }, // Category Name
-      { data: 1, orderable: false }, // Tags
-      { data: 2, orderable: false, className: "text-center" }, // Actions
+      { data: 0 }, // ID [NEW]
+      { data: 1 }, // Category Name
+      { data: 2, orderable: false }, // Tags
+      { data: 3, orderable: false, className: "text-center" }, // Actions
     ],
     order: [],
     dom:
-      "<'row'<'col-sm-12 d-flex justify-content-end'f>>" +
+      "<'row mb-3 align-items-center'<'col-sm-12 col-md-6 d-flex justify-content-start'l><'col-sm-12 col-md-6 d-flex justify-content-end'f>>" +
       "<'row'<'col-sm-12'tr>>" +
-      "<'row'<'col-sm-12 d-flex justify-content-between align-items-center'ip>>",
+      "<'row mt-3 align-items-center'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7 d-flex justify-content-end'p>>",
     language: {
       sProcessing: "处理中...",
       sLengthMenu: "显示 _MENU_ 项",

@@ -177,6 +177,32 @@
   font-weight: 600;
 }
 
+/* Target the alert within the dashboard main area */
+.dashboard-main > .alert {
+  width: 100%;
+  max-width: 100%;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  margin-top: 0;
+  border-radius: 12px !important;
+  box-sizing: border-box;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
+
+  /* [FIX] Add right padding to prevent text from going under the 'X' button */
+  padding-right: 3.5rem !important;
+  position: relative;
+}
+
+/* Ensure the close button is always vertically centered and on the right */
+.dashboard-main > .alert .btn-close {
+  position: absolute;
+  top: 50%;
+  right: 15px;
+  transform: translateY(-50%);
+  margin: 0;
+  padding: 0.5rem; /* Makes it easier to tap on mobile */
+}
+
 /* --- Icon Visibility Defaults (Desktop First) --- */
 .mobile-icon {
   display: none;
@@ -225,5 +251,16 @@
     right: 15px;
     color: #fff;
     opacity: 0.8;
+  }
+}
+
+@media (max-width: 480px) {
+  .dashboard-main > .alert {
+    font-size: 13px; /* Slightly smaller font for tight screens */
+    padding: 15px 45px 15px 15px !important; /* Proper spacing for all sides */
+  }
+
+  .dashboard-main > .alert .btn-close {
+    right: 8px; /* Move closer to edge on very small screens */
   }
 }

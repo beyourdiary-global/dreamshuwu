@@ -213,7 +213,7 @@ if ($isEmbedded):
     <div class="card page-action-card">
         <div class="card-header bg-white d-flex justify-content-between align-items-center py-3 flex-wrap gap-2">
             <div>
-                <div class="page-action-breadcrumb text-muted mb-1">Admin / User Role</div>
+                <?php echo generateBreadcrumb($conn, $currentUrl); ?>
                 <h4 class="m-0 text-primary"><i class="fa-solid fa-shield me-2"></i>用户角色管理</h4>
             </div>
             <?php if (!empty($perm->add)): ?>

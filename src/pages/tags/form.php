@@ -127,110 +127,116 @@ try {
         if (empty($tagName)) {
             $message = "标签名称不能为空"; $msgType = "danger";
         } else {
-            // [NEW] Use global helper to check changes and redirect
+            // [UPDATED] Use global helper to check changes and display warning without redirect
+            $changeResult = false;
             if ($isEditMode && !empty($existingTagRow)) {
-                checkNoChangesAndRedirect(['name' => $tagName], $existingTagRow);
+                $changeResult = checkNoChangesAndRedirect(['name' => $tagName], $existingTagRow);
             }
 
-            // Check for duplicates
-            $sql = $isEditMode ? "SELECT id FROM $tagTable WHERE name = ? AND id != ?" : "SELECT id FROM $tagTable WHERE name = ?";
-            $chk = $conn->prepare($sql);
-            if (!$chk) {
-                throw new Exception($conn->error ?: 'Failed to prepare duplicate check.');
-            }
-            if ($isEditMode) $chk->bind_param("si", $tagName, $tagId); else $chk->bind_param("s", $tagName);
-            $chk->execute();
-            $chk->store_result();
-            
-            if ($chk->num_rows > 0) {
-                $message = "标签 '<strong>" . htmlspecialchars($tagName) . "</strong>' 已存在"; $msgType = "danger";
-                $chk->close();
+            if (is_array($changeResult)) {
+                $message = $changeResult['message']; 
+                $msgType = $changeResult['type'];
             } else {
-                $chk->close(); // Close duplicate check statement immediately
-
-                // [CRITICAL] If Edit Mode, ensure we have Old Data for Audit Log BEFORE updating
-                if ($isEditMode && empty($existingTagRow)) {
-                    $fetchOld = $conn->prepare("SELECT id, name, created_at, updated_at, created_by, updated_by FROM " . $tagTable . " WHERE id = ?");
-                    $fetchOld->bind_param("i", $tagId);
-                    $fetchOld->execute();
-                    $fetchOld->bind_result($oId, $oName, $oCr, $oUp, $oCb, $oUb);
-                    if ($fetchOld->fetch()) {
-                        $existingTagRow = ['id' => $oId, 'name' => $oName, 'created_at' => $oCr, 'updated_at' => $oUp, 'created_by' => $oCb, 'updated_by' => $oUb];
-                    }
-                    $fetchOld->close();
+                // Check for duplicatesz
+                $sql = $isEditMode ? "SELECT id FROM $tagTable WHERE name = ? AND id != ?" : "SELECT id FROM $tagTable WHERE name = ?";
+                $chk = $conn->prepare($sql);
+                if (!$chk) {
+                    throw new Exception($conn->error ?: 'Failed to prepare duplicate check.');
                 }
-
-                // Prepare Insert/Update
-                if ($isEditMode) {
-                    $stmt = $conn->prepare($updateQuery);
-                    $stmt->bind_param("sii", $tagName, $currentUserId, $tagId);
-                    $action = 'E'; $logMsg = "Updated Tag";
+                if ($isEditMode) $chk->bind_param("si", $tagName, $tagId); else $chk->bind_param("s", $tagName);
+                $chk->execute();
+                $chk->store_result();
+                
+                if ($chk->num_rows > 0) {
+                    $message = "标签 '<strong>" . htmlspecialchars($tagName) . "</strong>' 已存在"; $msgType = "danger";
+                    $chk->close();
                 } else {
-                    $stmt = $conn->prepare($insertQuery);
-                    $stmt->bind_param("sii", $tagName, $currentUserId, $currentUserId);
-                    $action = 'A'; $logMsg = "Added New Tag";
-                }
+                    $chk->close(); // Close duplicate check statement immediately
 
-                if ($stmt->execute()) {
-                    // [CRITICAL FIX] Capture ID and Close Statement immediately
-                    $targetId = $isEditMode ? $tagId : $conn->insert_id;
-                    $stmt->close(); 
-
-                    // 1. [NEW] Prepare Data for Audit Log (Fetch fresh data)
-                    $newData = null;
-                    $reload = $conn->prepare("SELECT id, name, created_at, updated_at, created_by, updated_by FROM " . $tagTable . " WHERE id = ?");
-                    if ($reload) {
-                        $reload->bind_param("i", $targetId);
-                        $reload->execute();
-                        $reload->bind_result($nId, $nName, $nCreatedAt, $nUpdatedAt, $nCreatedBy, $nUpdatedBy);
-                        if ($reload->fetch()) {
-                            $newData = [
-                                'id' => $nId, 
-                                'name' => $nName, 
-                                'created_at' => $nCreatedAt, 
-                                'updated_at' => $nUpdatedAt, 
-                                'created_by' => $nCreatedBy, 
-                                'updated_by' => $nUpdatedBy
-                            ];
-                        }
-                        $reload->close();
-                    }
-
-                    // Fallback if fetch failed
-                    if (empty($newData)) {
-                        $now = date('Y-m-d H:i:s');
-                        $newData = ['id' => $targetId, 'name' => $tagName, 'updated_at' => $now];
-                    }
-
-                    // Ensure Old Value exists for Edit Mode
+                    // [CRITICAL] If Edit Mode, ensure we have Old Data for Audit Log BEFORE updating
                     if ($isEditMode && empty($existingTagRow)) {
-                        $existingTagRow = ['id' => $targetId, 'name' => $tagName];
+                        $fetchOld = $conn->prepare("SELECT id, name, created_at, updated_at, created_by, updated_by FROM " . $tagTable . " WHERE id = ?");
+                        $fetchOld->bind_param("i", $tagId);
+                        $fetchOld->execute();
+                        $fetchOld->bind_result($oId, $oName, $oCr, $oUp, $oCb, $oUb);
+                        if ($fetchOld->fetch()) {
+                            $existingTagRow = ['id' => $oId, 'name' => $oName, 'created_at' => $oCr, 'updated_at' => $oUp, 'created_by' => $oCb, 'updated_by' => $oUb];
+                        }
+                        $fetchOld->close();
                     }
 
-                    // 2. [AUDIT] Log the Action (ONLY ONCE)
-                    if (function_exists('logAudit')) {
-                        logAudit([
-                            'page'           => $auditPage,
-                            'action'         => $action,
-                            'action_message' => "$logMsg: $tagName",
-                            'query'          => $isEditMode ? $updateQuery : $insertQuery,
-                            'query_table'    => $tagTable,
-                            'user_id'        => $currentUserId,
-                            'record_id'      => $targetId,
-                            'record_name'    => $tagName,
-                            'old_value'      => $existingTagRow,
-                            'new_value'      => $newData
-                        ]);
+                    // Prepare Insert/Update
+                    if ($isEditMode) {
+                        $stmt = $conn->prepare($updateQuery);
+                        $stmt->bind_param("sii", $tagName, $currentUserId, $tagId);
+                        $action = 'E'; $logMsg = "Updated Tag";
+                    } else {
+                        $stmt = $conn->prepare($insertQuery);
+                        $stmt->bind_param("sii", $tagName, $currentUserId, $currentUserId);
+                        $action = 'A'; $logMsg = "Added New Tag";
                     }
-                    
-                    $_SESSION['flash_msg'] = '标签保存成功！';
-                    $_SESSION['flash_type'] = 'success';
-                    $redirectUrl = $listPageUrl;
-                    if (!headers_sent()) header("Location: " . $redirectUrl);
-                    else echo "<script>window.location.href = '" . $redirectUrl . "';</script>";
-                    exit();
-                } else {
-                    throw new Exception($stmt->error);
+
+                    if ($stmt->execute()) {
+                        // [CRITICAL FIX] Capture ID and Close Statement immediately
+                        $targetId = $isEditMode ? $tagId : $conn->insert_id;
+                        $stmt->close(); 
+
+                        // 1. [NEW] Prepare Data for Audit Log (Fetch fresh data)
+                        $newData = null;
+                        $reload = $conn->prepare("SELECT id, name, created_at, updated_at, created_by, updated_by FROM " . $tagTable . " WHERE id = ?");
+                        if ($reload) {
+                            $reload->bind_param("i", $targetId);
+                            $reload->execute();
+                            $reload->bind_result($nId, $nName, $nCreatedAt, $nUpdatedAt, $nCreatedBy, $nUpdatedBy);
+                            if ($reload->fetch()) {
+                                $newData = [
+                                    'id' => $nId, 
+                                    'name' => $nName, 
+                                    'created_at' => $nCreatedAt, 
+                                    'updated_at' => $nUpdatedAt, 
+                                    'created_by' => $nCreatedBy, 
+                                    'updated_by' => $nUpdatedBy
+                                ];
+                            }
+                            $reload->close();
+                        }
+
+                        // Fallback if fetch failed
+                        if (empty($newData)) {
+                            $now = date('Y-m-d H:i:s');
+                            $newData = ['id' => $targetId, 'name' => $tagName, 'updated_at' => $now];
+                        }
+
+                        // Ensure Old Value exists for Edit Mode
+                        if ($isEditMode && empty($existingTagRow)) {
+                            $existingTagRow = ['id' => $targetId, 'name' => $tagName];
+                        }
+
+                        // 2. [AUDIT] Log the Action (ONLY ONCE)
+                        if (function_exists('logAudit')) {
+                            logAudit([
+                                'page'           => $auditPage,
+                                'action'         => $action,
+                                'action_message' => "$logMsg: $tagName",
+                                'query'          => $isEditMode ? $updateQuery : $insertQuery,
+                                'query_table'    => $tagTable,
+                                'user_id'        => $currentUserId,
+                                'record_id'      => $targetId,
+                                'record_name'    => $tagName,
+                                'old_value'      => $existingTagRow,
+                                'new_value'      => $newData
+                            ]);
+                        }
+                        
+                        $_SESSION['flash_msg'] = '标签保存成功！';
+                        $_SESSION['flash_type'] = 'success';
+                        $redirectUrl = $listPageUrl;
+                        if (!headers_sent()) header("Location: " . $redirectUrl);
+                        else echo "<script>window.location.href = '" . $redirectUrl . "';</script>";
+                        exit();
+                    } else {
+                        throw new Exception($stmt->error);
+                        }
                     }
                 }
             }
@@ -245,6 +251,7 @@ if ($isEmbeddedTagForm): ?>
     <div class="tag-container">
         <div class="card tag-card">
             <div class="card-header bg-white py-3">
+                <?php echo generateBreadcrumb($conn, $currentUrl); ?>
                 <h4 class="m-0 text-primary">
                     <i class="fa-solid fa-tag me-2"></i> <?php echo $isEditMode ? "编辑标签" : "新增标签"; ?>
                 </h4>
@@ -255,7 +262,7 @@ if ($isEmbeddedTagForm): ?>
                         <?php echo $message; ?> <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                     </div>
                 <?php endif; ?>
-                <form method="POST" action="<?php echo htmlspecialchars($formActionUrl); ?>" autocomplete="off">
+                <form method="POST" action="<?php echo htmlspecialchars($formActionUrl); ?>" autocomplete="off" class="check-changes">
                     <?php if ($isEditMode): ?>
                         <input type="hidden" name="tag_id" value="<?php echo (int) $tagId; ?>">
                     <?php endif; ?>
@@ -287,6 +294,7 @@ if ($isEmbeddedTagForm): ?>
 <div class="tag-container">
     <div class="card tag-card">
         <div class="card-header bg-white py-3">
+            <?php echo generateBreadcrumb($conn, $currentUrl); ?>
             <h4 class="m-0 text-primary">
                 <i class="fa-solid fa-tag me-2"></i> <?php echo $isEditMode ? "编辑标签" : "新增标签"; ?>
             </h4>
@@ -297,7 +305,7 @@ if ($isEmbeddedTagForm): ?>
                     <?php echo $message; ?> <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 </div>
             <?php endif; ?>
-            <form method="POST" autocomplete="off">
+            <form method="POST" autocomplete="off" class="check-changes">
                 <?php if ($isEditMode): ?>
                     <input type="hidden" name="tag_id" value="<?php echo (int) $tagId; ?>">
                 <?php endif; ?>

@@ -1,4 +1,4 @@
-<form method="POST" enctype="multipart/form-data" id="webSettingsForm">
+<form method="POST" enctype="multipart/form-data" id="webSettingsForm" class="check-changes">
     <input type="hidden" name="action_type" id="action_type_input" value="save">
     <?php $canSave = (!empty($perm->edit) || !empty($perm->add)); ?>
     

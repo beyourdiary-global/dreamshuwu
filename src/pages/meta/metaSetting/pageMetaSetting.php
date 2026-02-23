@@ -6,6 +6,7 @@
     <div class="col-12">
         <div class="card meta-card">
             <div class="card-header meta-card-header">
+                <?php echo generateBreadcrumb($conn, $currentUrl); ?>
                 <h4 class="header-title">Page Specific Settings</h4>
                 <p class="header-subtitle">Select a specific page below to override the global defaults.</p>
             </div>
@@ -81,7 +82,7 @@
                         <?php endif; ?>
                     </div>
 
-                    <form method="POST">
+                    <form method="POST" class="check-changes">
                         <input type="hidden" name="form_type" value="page">
                         <input type="hidden" name="page_key" value="<?php echo htmlspecialchars($selectedPageKey, ENT_QUOTES, 'UTF-8'); ?>">
 
@@ -89,20 +90,23 @@
                             $fieldName = 'page_' . $key;
                             $fieldValue = $pageCurrent[$key] ?? '';
                             $globalValue = $current[$key] ?? '';
+    
+                        // Create a specific placeholder label based on the current field
+                            $placeholderLabel = "Enter " . $config['label']; 
                         ?>
                             <div class="mb-4 row">
                                 <label class="col-md-3 col-form-label text-md-end form-label"><?php echo htmlspecialchars($config['label']); ?></label>
                                 <div class="col-md-9">
                                     <?php if ($config['type'] === 'textarea'): ?>
                                         <textarea name="<?php echo $fieldName; ?>" class="form-control" rows="3"
-                                            placeholder="Global: <?php echo htmlspecialchars($globalValue); ?>"><?php echo htmlspecialchars($fieldValue); ?></textarea>
-                                    <?php else: ?>
-                                        <input type="text" name="<?php echo $fieldName; ?>" class="form-control" 
-                                            value="<?php echo htmlspecialchars($fieldValue); ?>"
-                                            placeholder="Global: <?php echo htmlspecialchars($globalValue); ?>">
-                                    <?php endif; ?>
-                                </div>
+                                            placeholder="<?php echo $placeholderLabel; ?><?php echo htmlspecialchars($globalValue); ?>"><?php echo htmlspecialchars($fieldValue); ?></textarea>
+                                <?php else: ?>
+                                <input type="text" name="<?php echo $fieldName; ?>" class="form-control" 
+                                    value="<?php echo htmlspecialchars($fieldValue); ?>"
+                                    placeholder="<?php echo $placeholderLabel; ?><?php echo htmlspecialchars($globalValue); ?>">
+                                <?php endif; ?>
                             </div>
+                        </div>
                         <?php endforeach; ?>
 
                         <div class="row mt-4">
