@@ -124,7 +124,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 <body class="auth-page">
 <?php require_once BASE_PATH . 'common/menu/header.php'; ?>
 
-<main class="dashboard-main">
+<main class="auth-main">
     <div class="auth-layout">
         <div class="login-card">
             <h3>欢迎回来</h3>

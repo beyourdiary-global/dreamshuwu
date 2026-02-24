@@ -7,6 +7,11 @@ body.auth-page {
   background: #ffffff;
 }
 
+.auth-page .auth-main {
+  width: 100%;
+  min-height: calc(100vh - 50px);
+}
+
 /* Keep input backgrounds white (including browser autofill) */
 .auth-layout .form-control,
 .auth-layout input[type="text"],
@@ -60,6 +65,14 @@ body.auth-page {
   width: 100% !important;
   max-width: 420px !important;
   margin: auto !important;
+}
+
+.auth-page .reg-card form,
+.auth-page .login-card form,
+.auth-page .forgot-card form,
+.auth-page .reset-card form {
+  display: block !important;
+  visibility: visible !important;
 }
 
 .auth-page .subtext {

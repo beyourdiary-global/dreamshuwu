@@ -101,7 +101,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 <body class="auth-page">
 <?php require_once BASE_PATH . 'common/menu/header.php'; ?>
 
-<main class="dashboard-main">
+<main class="auth-main">
     <div class="auth-layout">
         <div class="forgot-card">
             <h3>忘记密码？</h3>
