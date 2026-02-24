@@ -240,6 +240,8 @@ defined('USER_ROLE_PERMISSION') || define('USER_ROLE_PERMISSION', 'user_role_per
 
 // --- Author Profile Table Constant ---
 defined('AUTHOR_PROFILE') || define('AUTHOR_PROFILE', 'author_profile');
+defined('EMAIL_TEMPLATE') || define('EMAIL_TEMPLATE', 'email_template');
+defined('EMAIL_LOG') || define('EMAIL_LOG', 'email_log');
 
 // --- Application Constants ---
 defined('MIN_AGE_REQUIREMENT') || define('MIN_AGE_REQUIREMENT', 13);

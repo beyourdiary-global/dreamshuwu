@@ -227,7 +227,6 @@ CREATE TABLE IF NOT EXISTS page_information_list (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ";
 
-
 $tables['action_master'] = "
 CREATE TABLE IF NOT EXISTS action_master (
   id BIGINT NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
@@ -246,7 +245,6 @@ CREATE TABLE IF NOT EXISTS action_master (
         ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ";
-
 
 $tables['user_role_permission'] = "
 CREATE TABLE IF NOT EXISTS user_role_permission (
@@ -292,6 +290,9 @@ CREATE TABLE IF NOT EXISTS author_profile (
   avatar VARCHAR(255) DEFAULT NULL COMMENT 'Avatar image',
   bio TEXT DEFAULT NULL COMMENT 'Author bio',
   verification_status VARCHAR(20) NOT NULL DEFAULT 'pending' COMMENT 'pending / approved / rejected',
+  reject_reason TEXT DEFAULT NULL COMMENT 'Mandatory when status is rejected',
+  email_notified_at DATETIME DEFAULT NULL COMMENT 'Last notification timestamp',
+  email_notify_count INT DEFAULT 0 COMMENT 'Total number of notifications sent',
   status CHAR(1) NOT NULL DEFAULT 'A' COMMENT 'A = Active, D = Deleted',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT 'Created timestamp',
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Updated timestamp',
@@ -300,7 +301,38 @@ CREATE TABLE IF NOT EXISTS author_profile (
   UNIQUE KEY unique_pen_name (pen_name),
   CONSTRAINT fk_author_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
- ";
+";
+
+$tables['email_template'] = "
+CREATE TABLE IF NOT EXISTS email_template (
+  id INT NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
+  template_code VARCHAR(50) NOT NULL COMMENT 'Unique identifier (e.g., AUTHOR_APPROVED)',
+  template_name VARCHAR(100) NOT NULL COMMENT 'Descriptive name for admin view',
+  subject VARCHAR(255) NOT NULL COMMENT 'Email subject line',
+  content TEXT NOT NULL COMMENT 'Email body content with {{variables}}',
+  status CHAR(1) NOT NULL DEFAULT 'A' COMMENT 'A = Active, D = Disabled',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT 'Created timestamp',
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Updated timestamp',
+  created_by INT DEFAULT 0 COMMENT 'Admin user ID who created the record',
+  updated_by INT DEFAULT 0 COMMENT 'Admin user ID who last updated the record',
+  PRIMARY KEY (id),
+  UNIQUE KEY unique_template_code (template_code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+";
+
+$tables['email_log'] = "
+CREATE TABLE IF NOT EXISTS email_log (
+  id BIGINT NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
+  user_id INT NOT NULL COMMENT 'Recipient user ID',
+  template_code VARCHAR(50) NOT NULL COMMENT 'Template used for this email',
+  sent_status VARCHAR(20) NOT NULL COMMENT 'success / failed',
+  error_message TEXT DEFAULT NULL COMMENT 'Stores SMTP or system errors if failed',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT 'Sent timestamp',
+  PRIMARY KEY (id),
+  KEY idx_email_log_user (user_id),
+  KEY idx_email_log_template (template_code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+";
 
 // 4. Run Queries
 
@@ -312,6 +344,84 @@ foreach ($tables as $name => $sql) {
     }
 }
 
-$conn->close();
+// 5. Alter Table for author_profile (Adds new fields if they don't exist, idempotently)
+// Helper to add a column if it does not already exist
+$authorProfileColumns = [
+    'reject_reason' => "ALTER TABLE author_profile 
+        ADD COLUMN reject_reason TEXT DEFAULT NULL COMMENT 'Mandatory when status is rejected' AFTER verification_status",
+    'email_notified_at' => "ALTER TABLE author_profile 
+        ADD COLUMN email_notified_at DATETIME DEFAULT NULL COMMENT 'Last notification timestamp' AFTER reject_reason",
+    'email_notify_count' => "ALTER TABLE author_profile 
+        ADD COLUMN email_notify_count INT DEFAULT 0 COMMENT 'Total number of notifications sent' AFTER email_notified_at",
+];
+foreach ($authorProfileColumns as $columnName => $alterSql) {
+    // Check if the column already exists
+    $checkSql = "SHOW COLUMNS FROM author_profile LIKE '" . $conn->real_escape_string($columnName) . "'";
+    if ($result = $conn->query($checkSql)) {
+        if ($result->num_rows > 0) {
+            // Column already exists; skip adding it
+            echo "Column '<strong>" . htmlspecialchars($columnName, ENT_QUOTES, 'UTF-8') . "</strong>' in 'author_profile' already exists.<br>";
+            $result->free();
+            continue;
+        }
+        $result->free();
+    } else {
+        echo "Error checking column '<strong>" . htmlspecialchars($columnName, ENT_QUOTES, 'UTF-8') . "</strong>' in 'author_profile': " . $conn->error . "<br>";
+        continue;
+    }
+    // Column does not exist; attempt to add it
+    if ($conn->query($alterSql) === TRUE) {
+        echo "Column '<strong>" . htmlspecialchars($columnName, ENT_QUOTES, 'UTF-8') . "</strong>' added to 'author_profile'.<br>";
+    } else {
+        // Error code 1060 means "Duplicate column name" (possible race condition)
+        if ($conn->errno == 1060) {
+            echo "Column '<strong>" . htmlspecialchars($columnName, ENT_QUOTES, 'UTF-8') . "</strong>' in 'author_profile' already up to date.<br>";
+        } else {
+            echo "Error altering table '<strong>author_profile</strong>' when adding column '<strong>" . htmlspecialchars($columnName, ENT_QUOTES, 'UTF-8') . "</strong>': " . $conn->error . "<br>";
+        }
+    }
+}
+
+// 6. Insert Default Email Templates (Secured with Prepared Statements)
+$defaultTemplates = [
+    [
+        'code' => 'AUTHOR_APPROVED',
+        'name' => '作者通过审核通知',
+        'subject' => '恭喜！您的作者认证已通过审核',
+        'content' => "尊敬的 {{real_name}}（笔名：{{pen_name}}），您好！\n\n我们非常高兴地通知您，您的作者实名认证申请已成功通过审核！\n\n欢迎加入我们的创作者平台。从现在起，您可以登录您的作者后台，开始创作并发布您的优秀作品了。\n\n点击下方链接进入作者后台：\n{{dashboard_url}}\n\n期待您的精彩创作！\n网站运营团队 敬上"
+    ],
+    [
+        'code' => 'AUTHOR_REJECTED',
+        'name' => '作者审核驳回通知',
+        'subject' => '关于您的作者认证申请结果通知',
+        'content' => "尊敬的 {{real_name}}，您好！\n\n感谢您申请成为我们的认证作者。非常遗憾地通知您，经过我们的初步审核，您的申请暂未通过。\n\n驳回原因如下：\n{{reject_reason}}\n\n您可以登录您的账号，根据上述驳回原因修改您的申请资料，并重新提交审核。\n\n修改资料链接：\n{{dashboard_url}}\n\n如果您有任何疑问，请随时联系我们的客服团队。\n网站运营团队 敬上"
+    ]
+];
+
+// PREPARE the existence check statement ONCE outside the loop for efficiency
+$checkStmt = $conn->prepare("SELECT id FROM email_template WHERE template_code = ? LIMIT 1");
+
+foreach ($defaultTemplates as $tpl) {
+    // REFACTORED: Use the prepared statement for the existence check
+    $checkStmt->bind_param("s", $tpl['code']);
+    $checkStmt->execute();
+    $checkStmt->store_result();
+    $exists = ($checkStmt->num_rows > 0);
+    
+    if (!$exists) {
+        $stmt = $conn->prepare("INSERT INTO email_template (template_code, template_name, subject, content, status, created_at, updated_at) VALUES (?, ?, ?, ?, 'A', NOW(), NOW())");
+        $stmt->bind_param("ssss", $tpl['code'], $tpl['name'], $tpl['subject'], $tpl['content']);
+        
+        if ($stmt->execute()) {
+            echo "Default template '<strong>" . $tpl['code'] . "</strong>' inserted successfully.<br>";
+        } else {
+            echo "Error inserting template '" . $tpl['code'] . "': " . $conn->error . "<br>";
+        }
+        $stmt->close();
+    } else {
+        echo "Template '<strong>" . $tpl['code'] . "</strong>' already exists, skipping insert.<br>";
+    }
+}
+$checkStmt->close();
 echo "<hr><strong>Environment Build Complete!</strong>";
 ?>

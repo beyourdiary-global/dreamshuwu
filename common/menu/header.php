@@ -14,10 +14,110 @@ $siteName = !empty($webSettings['website_name']) ? $webSettings['website_name'] 
 $siteLogo = !empty($webSettings['website_logo']) ? $webSettings['website_logo'] : '';
 
 $currentPage = basename($_SERVER['PHP_SELF']);
+$requestPath = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH);
 $isLoggedIn = (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true);
 $dashboardPath = parse_url(URL_USER_DASHBOARD, PHP_URL_PATH);
 $dashboardPage = basename($dashboardPath ?: 'dashboard.php');
 $isUserDashboardPage = ($currentPage === $dashboardPage);
+
+$authorZoneUrl = URL_LOGIN;
+$isAuthorPage = false;
+if ($isLoggedIn) {
+    $authorZoneUrl = URL_USER_DASHBOARD;
+    $currentUserId = isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : 0;
+
+    $pathFromUrl = static function ($url) {
+        $path = parse_url((string)$url, PHP_URL_PATH);
+        return is_string($path) ? $path : '';
+    };
+
+    $pathFromConst = static function ($constName) {
+        if (!defined($constName)) return '';
+        $raw = trim((string)constant($constName));
+        if ($raw === '') return '';
+        return '/' . ltrim($raw, '/');
+    };
+
+    $authorVerificationKeys = [
+        $pathFromUrl(URL_AUTHOR_VERIFICATION),
+        $pathFromConst('PATH_AUTHOR_VERIFICATION_INDEX')
+    ];
+    $authorDashboardKeys = [
+        $pathFromUrl(URL_AUTHOR_DASHBOARD),
+        $pathFromConst('PATH_AUTHOR_DASHBOARD')
+    ];
+    $authorRegisterKeys = [
+        $pathFromUrl(URL_AUTHOR_REGISTER),
+        $pathFromConst('PATH_AUTHOR_REGISTER')
+    ];
+
+    $sessionRoleId = isset($_SESSION['role_id']) ? (int)$_SESSION['role_id'] : 0;
+    $cacheTtlSeconds = 300;
+    $permCache = isset($_SESSION['header_permission_cache']) && is_array($_SESSION['header_permission_cache'])
+        ? $_SESSION['header_permission_cache']
+        : [];
+
+    $cacheValid = (
+        isset($permCache['user_id'], $permCache['role_id'], $permCache['expires_at'], $permCache['view']) &&
+        (int)$permCache['user_id'] === $currentUserId &&
+        (int)$permCache['role_id'] === $sessionRoleId &&
+        (int)$permCache['expires_at'] > time() &&
+        is_array($permCache['view'])
+    );
+
+    if (!$cacheValid) {
+        $permCache = [
+            'user_id' => $currentUserId,
+            'role_id' => $sessionRoleId,
+            'expires_at' => time() + $cacheTtlSeconds,
+            'view' => []
+        ];
+    }
+
+    $canViewAny = function ($keys) use (&$permCache, $conn) {
+        if (empty($keys) || !isset($conn) || !$conn) return false;
+
+        foreach ($keys as $key) {
+            $routeKey = trim((string)$key);
+            if ($routeKey === '') continue;
+
+            if (!array_key_exists($routeKey, $permCache['view'])) {
+                $perm = hasPagePermission($conn, $routeKey);
+                $permCache['view'][$routeKey] = (!empty($perm) && isset($perm->view) && !empty($perm->view));
+            }
+
+            if (!empty($permCache['view'][$routeKey])) {
+                return true;
+            }
+        }
+
+        return false;
+    };
+
+    if ($canViewAny($authorVerificationKeys)) {
+        $authorZoneUrl = URL_AUTHOR_VERIFICATION;
+    } elseif ($canViewAny($authorDashboardKeys)) {
+        $authorZoneUrl = URL_AUTHOR_DASHBOARD;
+    } elseif ($canViewAny($authorRegisterKeys)) {
+        $authorZoneUrl = URL_AUTHOR_REGISTER;
+    }
+
+    $permCache['expires_at'] = time() + $cacheTtlSeconds;
+    $_SESSION['header_permission_cache'] = $permCache;
+
+    $authorVerificationPath = parse_url(URL_AUTHOR_VERIFICATION, PHP_URL_PATH);
+    $emailTemplatePath = parse_url(URL_EMAIL_TEMPLATE, PHP_URL_PATH);
+    $authorRegisterPath = parse_url(URL_AUTHOR_REGISTER, PHP_URL_PATH);
+    $authorDashboardPath = parse_url(URL_AUTHOR_DASHBOARD, PHP_URL_PATH);
+
+    $isAuthorPage = (
+        ($authorRegisterPath && $requestPath === $authorRegisterPath) ||
+        ($authorDashboardPath && $requestPath === $authorDashboardPath) ||
+        ($authorVerificationPath && $requestPath === $authorVerificationPath) ||
+        ($emailTemplatePath && $requestPath === $emailTemplatePath) ||
+        (isset($isAuthorDashboard) && $isAuthorDashboard === true)
+    );
+}
 
 // Helper to create navigation items with login logic
 function createNavItem($title, $url, $mobile = false, $icon = null) {
@@ -70,10 +170,7 @@ $navLinks = [
                 <button type="submit"><i class="fa-solid fa-search"></i></button>
             </form>
 
-            <?php 
-            $isAuthorPage = ($currentPage === 'author-register.php' || (isset($isAuthorDashboard) && $isAuthorDashboard === true));
-            ?>
-            <a href="<?php echo $isLoggedIn ? URL_AUTHOR_REGISTER : URL_LOGIN; ?>" 
+            <a href="<?php echo $authorZoneUrl; ?>" 
             class="author-link <?php echo $isAuthorPage ? 'active' : ''; ?>">
             作者专区
             </a>

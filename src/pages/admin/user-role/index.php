@@ -130,8 +130,10 @@ if (function_exists('logAudit') && !defined('USER_ROLE_VIEW_LOGGED')) {
 
 // 5. Data Fetching (List Mode)
 $search = trim($_GET['search'] ?? '');
-$page = max(1, (int)($_GET['page'] ?? 1));
-$perPage = 10;
+$page = 1;
+$perPage = (int)($_GET['per_page'] ?? 10);
+$allowedSizes = [10, 20, 50, 100];
+if (!in_array($perPage, $allowedSizes, true)) $perPage = 10;
 
 if ($isEmbedded):
     // Flash Messages
@@ -170,26 +172,18 @@ if ($isEmbedded):
             $stmtCount->close();
         }
 
-        // Pagination Logic
-        $totalPages = max(1, (int)ceil($totalRecords / $perPage));
-        $currentPage = min($page, $totalPages);
-        $offset = ($currentPage - 1) * $perPage;
-
         // Fetch Data Rows
         $rows = [];
-        $sql = "SELECT id, name_en, name_cn, description, status FROM {$tableRole} {$where} ORDER BY id DESC LIMIT ?, ?";
+        $sql = "SELECT id, name_en, name_cn, description, status FROM {$tableRole} {$where} ORDER BY id DESC";
         $stmtList = $conn->prepare($sql);
         if ($stmtList) {
-            $listParams = $params;
-            $listParams[] = $offset;
-            $listParams[] = $perPage;
-            $listTypes = $types . 'ii';
-
-            $bindRef = [$listTypes];
-            foreach ($listParams as $k => $v) {
-                $bindRef[] = &$listParams[$k];
+            if (!empty($params)) {
+                $bindRef = [$types];
+                foreach ($params as $k => $v) {
+                    $bindRef[] = &$params[$k];
+                }
+                call_user_func_array([$stmtList, 'bind_param'], $bindRef);
             }
-            call_user_func_array([$stmtList, 'bind_param'], $bindRef);
 
             $stmtList->execute();
             $stmtList->store_result();
@@ -222,18 +216,24 @@ if ($isEmbedded):
         </div>
 
         <div class="card-body">
-            <form method="GET" class="row g-2 align-items-end mb-3">
+            <form id="userRoleFilterForm" method="GET" class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
                 <input type="hidden" name="view" value="user_role">
-                <div class="col-md-4 ms-auto">
-                    <div class="input-group">
-                        <input type="text" name="search" class="form-control" value="<?php echo htmlspecialchars($search); ?>" placeholder="搜索角色名称...">
-                        <button type="submit" class="btn btn-primary"><i class="fa-solid fa-search"></i></button>
-                    </div>
+                <div class="d-flex align-items-center gap-2">
+                    <span>显示</span>
+                    <select name="per_page" class="form-select" style="width: 90px;">
+                        <?php foreach ($allowedSizes as $size): ?>
+                            <option value="<?php echo $size; ?>" <?php echo $perPage === $size ? 'selected' : ''; ?>><?php echo $size; ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <span>项结果</span>
+                </div>
+                <div style="width: 380px; max-width: 100%;">
+                    <input type="text" name="search" class="form-control" value="<?php echo htmlspecialchars($search); ?>" placeholder="搜索角色名称...">
                 </div>
             </form>
 
             <div class="table-responsive page-action-desktop-table">
-                <table class="table table-hover align-middle">
+                <table id="userRoleTable" class="table table-hover align-middle">
                     <thead class="table-light">
                         <tr>
                             <th>ID</th>
@@ -302,35 +302,6 @@ if ($isEmbedded):
                 <?php endif; ?>
             </div>
 
-            <?php if ($totalPages >= 1): ?>
-                <?php
-                $startItem = $totalRecords > 0 ? (($currentPage - 1) * $perPage + 1) : 0;
-                $endItem = $totalRecords > 0 ? min($currentPage * $perPage, $totalRecords) : 0;
-
-                $pagerQuery = [
-                    'view' => 'user_role',
-                    'search' => $search,
-                ];
-                $prevQuery = http_build_query(array_merge($pagerQuery, ['page' => max(1, $currentPage - 1)]));
-                $nextQuery = http_build_query(array_merge($pagerQuery, ['page' => min($totalPages, $currentPage + 1)]));
-                ?>
-                <div class="dataTables_wrapper">
-                    <div class="row mt-3 align-items-center">
-                        <div class="col-sm-12 col-md-5">
-                            <div class="dataTables_info" role="status" aria-live="polite">
-                                显示 <?php echo $startItem; ?> 至 <?php echo $endItem; ?> 项，共 <?php echo (int)$totalRecords; ?> 项
-                            </div>
-                        </div>
-                        <div class="col-sm-12 col-md-7">
-                            <div class="dataTables_paginate paging_simple_numbers">
-                                <a href="<?php echo $currentPage <= 1 ? 'javascript:void(0);' : ($baseListUrl . '&' . $prevQuery); ?>" class="paginate_button previous <?php echo $currentPage <= 1 ? 'disabled' : ''; ?>">上页</a>
-                                <span class="paginate_button current"><?php echo $currentPage; ?></span>
-                                <a href="<?php echo $currentPage >= $totalPages ? 'javascript:void(0);' : ($baseListUrl . '&' . $nextQuery); ?>" class="paginate_button next <?php echo $currentPage >= $totalPages ? 'disabled' : ''; ?>">下页</a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            <?php endif; ?>
         </div>
     </div>
 </div>

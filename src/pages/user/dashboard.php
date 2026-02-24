@@ -123,7 +123,7 @@ $quickActions = [
     ['label' => '写小说',   'url' => URL_AUTHOR_DASHBOARD, 'icon' => 'fa-solid fa-feather-pointed',      'style' => '']
 ];
 
-if ($isTagListView || $isCatListView) $customCSS[] = 'dataTables.bootstrap.min.css';
+if ($isTagListView || $isCatListView || $isPageActionView || $isPageInfoView || $isUserRoleView) $customCSS[] = 'dataTables.bootstrap.min.css';
 if ($isMetaView) $customCSS[] = 'meta.css';
 $customCSS[] = 'dashboard.css';
 
@@ -253,7 +253,7 @@ $pageMetaKey = ($currentView === 'home' || empty($currentView)) ? '/dashboard.ph
         elseif ($isUserRoleView):
             $EMBED_USER_ROLE = true;
             require BASE_PATH . PATH_USER_ROLE_INDEX;
-        
+
         else: ?>
             <div class="quick-actions-grid">
                 <?php foreach ($quickActions as $action): ?>
@@ -288,6 +288,10 @@ $pageMetaKey = ($currentView === 'home' || empty($currentView)) ? '/dashboard.ph
 <?php elseif ($isMetaView): ?>
     <script src="<?php echo URL_ASSETS; ?>/js/meta.js"></script>
 <?php elseif ($isAdminHome || $isPageActionView || $isPageInfoView || $isUserRoleView): ?>
+    <?php if ($isPageActionView || $isPageInfoView || $isUserRoleView): ?>
+    <script src="<?php echo URL_ASSETS; ?>/js/jquery.dataTables.min.js"></script>
+    <script src="<?php echo URL_ASSETS; ?>/js/dataTables.bootstrap.min.js"></script>
+    <?php endif; ?>
     <script src="<?php echo URL_ASSETS; ?>/js/admin.js"></script>
 <?php endif; ?>
 <script src="<?php echo URL_ASSETS; ?>/js/auth.js"></script>

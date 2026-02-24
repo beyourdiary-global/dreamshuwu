@@ -221,7 +221,7 @@ if (function_exists('logAudit') && !defined('PAGE_ACTION_VIEW_LOGGED')) {
 }
 
 $searchName = trim($_GET['search_name'] ?? '');
-$currentPage = max(1, (int)($_GET['page'] ?? 1));
+$currentPage = 1;
 $perPage = (int)($_GET['per_page'] ?? 10);
 $allowedSizes = [10, 20, 50, 100];
 if (!in_array($perPage, $allowedSizes, true)) $perPage = 10;
@@ -230,80 +230,32 @@ $rows = [];
 $totalRecords = 0;
 $totalPages = 1;
 if ($pageActionMode === 'list') {
-    $whereSql = " WHERE status = 'A' ";
-    $types = '';
-    $params = [];
-    if ($searchName !== '') {
-        $whereSql .= " AND name LIKE ? ";
-        $types .= 's';
-        $params[] = '%' . $searchName . '%';
-    }
+    // Added a safe LIMIT to prevent memory overflow, satisfying the security warning 
+    // while keeping client-side DataTables searching functional.
+    $listSql = "SELECT id, name, status FROM {$table} WHERE status = 'A' ORDER BY id DESC LIMIT 1000";
+    $listStmt = $conn->prepare($listSql);
+    if ($listStmt) {
+        $listStmt->execute();
+        $listStmt->store_result();
 
-    $countSql = "SELECT COUNT(*) FROM {$table}{$whereSql}";
-    $countStmt = $conn->prepare($countSql);
-    if (!$countStmt) {
-        $rows = [];
-        $totalRecords = 0;
-        $totalPages = 1;
-        $flashMsg = '页面操作数据表不可用，请先初始化数据库。';
-        $flashType = 'danger';
+        $rId = $rName = $rStatus = null;
+        $listStmt->bind_result($rId, $rName, $rStatus);
+
+        while ($listStmt->fetch()) {
+            $rows[] = [
+                'id' => $rId,
+                'name' => $rName,
+                'status' => $rStatus
+            ];
+        }
+        $listStmt->close();
+        $totalRecords = count($rows);
     } else {
-        if (!empty($params)) {
-            $bindCount = [$types];
-            foreach ($params as $index => $value) {
-                $bindCount[] = &$params[$index];
-            }
-            call_user_func_array([$countStmt, 'bind_param'], $bindCount);
-        }
-        $countStmt->execute();
-        $countStmt->bind_result($totalRecords);
-        $countStmt->fetch();
-        $countStmt->close();
-
-        $totalPages = max(1, (int)ceil($totalRecords / $perPage));
-        if ($currentPage > $totalPages) $currentPage = $totalPages;
-        $offset = ($currentPage - 1) * $perPage;
-
-        $listSql = "SELECT id, name, status FROM {$table}{$whereSql} ORDER BY id DESC LIMIT ?, ?";
-        $listStmt = $conn->prepare($listSql);
-        if ($listStmt) {
-            $listTypes = $types . 'ii';
-            $listParams = $params;
-            $listParams[] = $offset;
-            $listParams[] = $perPage;
-            $bindList = [$listTypes];
-            foreach ($listParams as $index => $value) {
-                $bindList[] = &$listParams[$index];
-            }
-            call_user_func_array([$listStmt, 'bind_param'], $bindList);
-            
-            $listStmt->execute();
-            $listStmt->store_result();
-            
-            $rId = $rName = $rStatus = null;
-            $listStmt->bind_result($rId, $rName, $rStatus);
-            
-            while ($listStmt->fetch()) {
-                $rows[] = [
-                    'id' => $rId,
-                    'name' => $rName,
-                    'status' => $rStatus
-                ];
-            }
-            $listStmt->close();
-        } else {
-            $rows = [];
-            $flashMsg = '页面操作数据读取失败，请检查数据表结构。';
-            $flashType = 'danger';
-        }
+        $rows = [];
+        $flashMsg = '页面操作数据读取失败，请检查数据表结构。';
+        $flashType = 'danger';
     }
 }
-
-$queryForPager = [
-    'view' => 'page_action',
-    'search_name' => $searchName,
-    'per_page' => $perPage,
-];
 
 if ($isEmbeddedPageAction):
 ?>
@@ -333,27 +285,24 @@ if ($isEmbeddedPageAction):
                 </div>
             <?php endif; ?>
 
-            <form method="GET" class="row g-2 align-items-end mb-3">
+            <form id="pageActionFilterForm" method="GET" class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
                 <input type="hidden" name="view" value="page_action">
-                <div class="col-12 col-md-5">
-                    <label class="form-label">搜索名称</label>
-                    <input type="text" name="search_name" class="form-control" value="<?php echo htmlspecialchars($searchName); ?>" placeholder="按名称搜索...">
-                </div>
-                <div class="col-6 col-md-3">
-                    <label class="form-label">每页</label>
-                    <select name="per_page" class="form-select">
+                <div class="d-flex align-items-center gap-2">
+                    <span>显示</span>
+                    <select name="per_page" class="form-select" style="width: 90px;">
                         <?php foreach ($allowedSizes as $size): ?>
                             <option value="<?php echo $size; ?>" <?php echo $perPage === $size ? 'selected' : ''; ?>><?php echo $size; ?></option>
                         <?php endforeach; ?>
                     </select>
+                    <span>项结果</span>
                 </div>
-                <div class="col-6 col-md-4 d-flex gap-2">
-                    <button type="submit" class="btn btn-primary">搜索</button>
+                <div style="width: 380px; max-width: 100%;">
+                    <input type="text" name="search_name" class="form-control" value="<?php echo htmlspecialchars($searchName); ?>" placeholder="搜索名称...">
                 </div>
             </form>
 
             <div class="table-responsive page-action-desktop-table">
-                <table class="table table-hover align-middle">
+                <table id="pageActionTable" class="table table-hover align-middle">
                     <thead>
                         <tr>
                             <th style="width: 100px;">ID</th>
@@ -425,42 +374,6 @@ if ($isEmbeddedPageAction):
                 <?php else: ?>
                     <div class="text-muted">暂无数据</div>
                 <?php endif; ?>
-            </div>
-
-            <?php
-                $startItem = $totalRecords > 0 ? (($currentPage - 1) * $perPage + 1) : 0;
-                $endItem = $totalRecords > 0 ? min($currentPage * $perPage, $totalRecords) : 0;
-
-                $prevPage = max(1, $currentPage - 1);
-                $nextPage = min($totalPages, $currentPage + 1);
-
-                $prevQuery = http_build_query(array_merge($queryForPager, ['page' => $prevPage]));
-                $nextQuery = http_build_query(array_merge($queryForPager, ['page' => $nextPage]));
-            ?>
-            
-            <div class="dataTables_wrapper">
-                <div class="row mt-3 align-items-center">
-                    <div class="col-sm-12 col-md-5">
-                        <div class="dataTables_info" role="status" aria-live="polite">
-                            显示 <?php echo $startItem; ?> 至 <?php echo $endItem; ?> 项，共 <?php echo (int)$totalRecords; ?> 项
-                        </div>
-                    </div>
-                    <div class="col-sm-12 col-md-7">
-                        <div class="dataTables_paginate paging_simple_numbers">
-                            <a href="<?php echo $currentPage <= 1 ? 'javascript:void(0);' : ($baseListUrl . '&' . $prevQuery); ?>" 
-                               class="paginate_button previous <?php echo $currentPage <= 1 ? 'disabled' : ''; ?>">
-                               上页
-                            </a>
-                            
-                            <span class="paginate_button current"><?php echo $currentPage; ?></span>
-                            
-                            <a href="<?php echo $currentPage >= $totalPages ? 'javascript:void(0);' : ($baseListUrl . '&' . $nextQuery); ?>" 
-                               class="paginate_button next <?php echo $currentPage >= $totalPages ? 'disabled' : ''; ?>">
-                               下页
-                            </a>
-                        </div>
-                    </div>
-                </div>
             </div>
 
         </div>

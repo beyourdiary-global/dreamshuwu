@@ -221,32 +221,17 @@ function formatDate($date, $format = 'Y-m-d') {
 }
 
 /**
- * Get website name from database settings
- * Falls back to WEBSITE_NAME constant if not found
+ * Get website name from database settings helper.
  */
 function getWebsiteName() {
     global $conn;
     
-    if (!$conn) {
-        return defined('WEBSITE_NAME') ? WEBSITE_NAME : 'StarAdmin';
-    }
+    // Fetch settings from the new helper
+    $settings = getWebSettings($conn);
     
-    // Query the correct column name from web_settings table
-    $stmt = $conn->prepare("SELECT website_name FROM " . WEB_SETTINGS . " WHERE id = 1 LIMIT 1");
-    if (!$stmt) {
-        return defined('WEBSITE_NAME') ? WEBSITE_NAME : 'StarAdmin';
-    }
-    
-    $stmt->execute();
-    $stmt->bind_result($siteNameValue);
-    
-    if ($stmt->fetch()) {
-        $stmt->close();
-        return $siteNameValue ?: (defined('WEBSITE_NAME') ? WEBSITE_NAME : 'StarAdmin');
-    }
-    $stmt->close();
-    
-    return defined('WEBSITE_NAME') ? WEBSITE_NAME : 'StarAdmin';
+    // Return the name from the database if available, 
+    // otherwise fallback to the hardcoded default provided by getWebSettings()
+    return isset($settings['website_name']) ? $settings['website_name'] : 'Website Name';
 }
 
 /**
@@ -299,6 +284,267 @@ function sendPasswordResetEmail($email, $resetLink) {
 }
 
 /**
+ * Check whether a table has a specific column.
+ */
+function columnExists($conn, $tableName, $columnName) {
+    if (!$conn || empty($tableName) || empty($columnName)) return false;
+
+    // Strictly sanitize inputs to prevent injection
+    $safeTable = preg_replace('/[^a-zA-Z0-9_]/', '', (string)$tableName);
+    $safeColumn = preg_replace('/[^a-zA-Z0-9_]/', '', (string)$columnName);
+    if ($safeTable === '' || $safeColumn === '') return false;
+
+    // [CRITICAL FIX] Do not use prepare() with '?' for SHOW commands. 
+    // Inject the safe, sanitized string directly.
+    $sql = "SHOW COLUMNS FROM `{$safeTable}` LIKE '{$safeColumn}'";
+    $result = $conn->query($sql);
+    
+    if ($result) {
+        $exists = ($result->num_rows > 0);
+        $result->free();
+        return $exists;
+    }
+
+    return false;
+}
+
+/**
+ * Author verification notification engine.
+ * Replaces placeholders in email templates and records send logs.
+ * Includes rate limiting to prevent spam/abuse (Max 3 emails per hour per user).
+ */
+function processAuthorVerificationEmail($conn, $userId, $actionType, $rejectReason = '') {
+    if (!$conn) {
+        return ['success' => false, 'message' => '数据库连接失败'];
+    }
+
+    $safeUserId = (int)$userId;
+    if ($safeUserId <= 0) {
+        return ['success' => false, 'message' => '无效用户ID'];
+    }
+
+    $safeAction = strtolower(trim((string)$actionType));
+    $templateCode = '';
+
+    // Table names from constants
+    $authorProfileTable = defined('AUTHOR_PROFILE') ? AUTHOR_PROFILE : 'author_profile';
+    $usersTable = defined('USR_LOGIN') ? USR_LOGIN : 'users';
+    $emailTemplateTable = defined('EMAIL_TEMPLATE') ? EMAIL_TEMPLATE : 'email_template';
+    $emailLogTable = defined('EMAIL_LOG') ? EMAIL_LOG : 'email_log';
+
+    // --- [NEW] Rate Limiting Check (Max 3 emails per hour per author) ---
+    $rateLimitSql = "SELECT COUNT(*) FROM {$emailLogTable} WHERE user_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 1 HOUR)";
+    if ($rlStmt = $conn->prepare($rateLimitSql)) {
+        $rlStmt->bind_param('i', $safeUserId);
+        $rlStmt->execute();
+        $recentCount = 0;
+        $rlStmt->bind_result($recentCount);
+        $rlStmt->fetch();
+        $rlStmt->close();
+
+        if ($recentCount >= 3) {
+            return ['success' => false, 'message' => '操作过于频繁，该作者1小时内已发送过多通知邮件，请稍后再试。'];
+        }
+    }
+    // --------------------------------------------------------------------
+
+    $hasRejectReasonCol = columnExists($conn, $authorProfileTable, 'reject_reason');
+    $hasEmailNotifiedAtCol = columnExists($conn, $authorProfileTable, 'email_notified_at');
+    $hasEmailNotifyCountCol = columnExists($conn, $authorProfileTable, 'email_notify_count');
+
+    // [FIX] Removed 'ap.' alias since there is no join anymore
+    $rejectReasonExpr = $hasRejectReasonCol ? 'reject_reason' : "'' AS reject_reason";
+    
+    // 1. Fetch author profile info (Query 1: No JOIN)
+    $profileSql = "SELECT id, user_id, real_name, pen_name, contact_email, {$rejectReasonExpr}, verification_status "
+        . "FROM {$authorProfileTable} "
+        . "WHERE user_id = ? AND status = 'A' LIMIT 1";
+        
+    $stmt = $conn->prepare($profileSql);
+    if (!$stmt) {
+        return ['success' => false, 'message' => '读取作者信息失败: ' . $conn->error];
+    }
+    if (!$stmt->bind_param('i', $safeUserId)) {
+        $stmt->close();
+        return ['success' => false, 'message' => '读取作者信息失败: 绑定参数错误'];
+    }
+    if (!$stmt->execute()) {
+        $stmt->close();
+        return ['success' => false, 'message' => '读取作者信息失败: ' . $stmt->error];
+    }
+    $profileRes = $stmt->get_result();
+    if (!$profileRes) {
+        $stmt->close();
+        return ['success' => false, 'message' => '读取作者信息失败: ' . $stmt->error];
+    }
+    $authorProfile = $profileRes->fetch_assoc();
+    $profileRes->free();
+    $stmt->close();
+
+    if (empty($authorProfile)) {
+        return ['success' => false, 'message' => '作者资料不存在'];
+    }
+
+    // 2. Fetch login email separately (Query 2)
+    $authorProfile['login_email'] = '';
+    if (!empty($authorProfile['user_id'])) {
+        $userSql = "SELECT email AS login_email FROM {$usersTable} WHERE id = ? LIMIT 1";
+        if ($uStmt = $conn->prepare($userSql)) {
+            $uStmt->bind_param('i', $authorProfile['user_id']);
+            if ($uStmt->execute()) {
+                $uRes = $uStmt->get_result();
+                if ($uRes && $uRow = $uRes->fetch_assoc()) {
+                    $authorProfile['login_email'] = $uRow['login_email'] ?? '';
+                }
+                if ($uRes) $uRes->free();
+            }
+            $uStmt->close();
+        }
+    }
+
+    // Determine Template Code
+    if ($safeAction === 'approved' || $safeAction === 'approve') {
+        $templateCode = 'AUTHOR_APPROVED';
+    } elseif ($safeAction === 'rejected' || $safeAction === 'reject') {
+        $templateCode = 'AUTHOR_REJECTED';
+    } elseif ($safeAction === 'resend') {
+        $currentStatus = strtolower((string)($authorProfile['verification_status'] ?? ''));
+        if ($currentStatus === 'approved') {
+            $templateCode = 'AUTHOR_APPROVED';
+        } elseif ($currentStatus === 'rejected') {
+            $templateCode = 'AUTHOR_REJECTED';
+        }
+    }
+
+    if ($templateCode === '') {
+        return ['success' => false, 'message' => '无法匹配邮件模板类型'];
+    }
+
+    // Load Email Template using Prepared Statements
+    $templateSql = "SELECT template_code, subject, content FROM {$emailTemplateTable} WHERE template_code = ? AND status = 'A' LIMIT 1";
+    $stmt = $conn->prepare($templateSql);
+    
+    if (!$stmt) {
+        return ['success' => false, 'message' => '读取邮件模板失败: ' . $conn->error];
+    }
+    
+    $stmt->bind_param('s', $templateCode);
+    
+    if (!$stmt->execute()) {
+        $stmt->close();
+        return ['success' => false, 'message' => '读取邮件模板失败: ' . $stmt->error];
+    }
+    
+    $templateRes = $stmt->get_result();
+    
+    if (!$templateRes) {
+        $stmt->close();
+        return ['success' => false, 'message' => '读取邮件模板失败: ' . $conn->error];
+    }
+    
+    $templateRow = $templateRes->fetch_assoc();
+    $templateRes->free();
+    $stmt->close();
+
+    if (empty($templateRow)) {
+        return ['success' => false, 'message' => "系统必备模板 [{$templateCode}] 未创建或已禁用！"];
+    }
+
+    // Determine Recipient
+    $recipientEmail = trim((string)($authorProfile['contact_email'] ?? ''));
+    if ($recipientEmail === '') {
+        $recipientEmail = trim((string)($authorProfile['login_email'] ?? ''));
+    }
+
+    if ($recipientEmail === '' || !isValidEmail($recipientEmail)) {
+        return ['success' => false, 'message' => '收件人邮箱无效'];
+    }
+
+    $resolvedRejectReason = trim((string)$rejectReason);
+    if ($resolvedRejectReason === '') {
+        $resolvedRejectReason = trim((string)($authorProfile['reject_reason'] ?? ''));
+    }
+    if ($resolvedRejectReason === '') {
+        $resolvedRejectReason = '无';
+    }
+
+    // Variable replacement
+    $replacements = [
+        '{{real_name}}' => (string)($authorProfile['real_name'] ?? ''),
+        '{{pen_name}}' => (string)($authorProfile['pen_name'] ?? ''),
+        '{{reject_reason}}' => $resolvedRejectReason,
+        '{{dashboard_url}}' => (string)(defined('URL_USER_DASHBOARD') ? URL_USER_DASHBOARD : '/dashboard.php')
+    ];
+
+    $mailSubject = strtr((string)$templateRow['subject'], $replacements);
+    $mailBody = strtr((string)$templateRow['content'], $replacements);
+
+    // Using pre-defined MAIL_FROM and MAIL_FROM_NAME constants
+    $headers = "MIME-Version: 1.0\r\n";
+    $headers .= "Content-type: text/html; charset=UTF-8\r\n";
+    $headers .= "From: " . MAIL_FROM_NAME . " <" . MAIL_FROM . ">\r\n";
+
+    $sentStatus = 'failed';
+    $errorMessage = '';
+    
+    // Trigger Send Email (sanitize recipient to prevent header injection)
+    $safeRecipientEmail = filter_var((string)$recipientEmail, FILTER_VALIDATE_EMAIL);
+    if ($safeRecipientEmail === false || preg_match('/[\r\n]/', $safeRecipientEmail)) {
+        $sendResult = false;
+        $errorMessage = '收件人邮箱地址无效，邮件未发送';
+    } else {
+        $sendResult = @mail($safeRecipientEmail, $mailSubject, $mailBody, $headers);
+    }
+    if ($sendResult) {
+        $sentStatus = 'success';
+    } else {
+        if ($errorMessage === '') {
+            $errorMessage = '本地mail()服务发送失败 (请检查SMTP配置)';
+        }
+    }
+
+    // Insert Email Log
+    $logSql = "INSERT INTO {$emailLogTable} (user_id, template_code, sent_status, error_message, created_at) VALUES (?, ?, ?, ?, NOW())";
+    if ($logStmt = $conn->prepare($logSql)) {
+        $logStmt->bind_param('isss', $safeUserId, $templateCode, $sentStatus, $errorMessage);
+        $logStmt->execute();
+        $logStmt->close();
+    }
+
+    // Update notification metadata in author_profile
+    $setClauses = [];
+    if ($hasEmailNotifiedAtCol) {
+        $setClauses[] = 'email_notified_at = NOW()';
+    }
+    if ($hasEmailNotifyCountCol) {
+        $setClauses[] = 'email_notify_count = COALESCE(email_notify_count, 0) + 1';
+    }
+
+    if (!empty($setClauses)) {
+        $updateAuthorSql = "UPDATE {$authorProfileTable} SET " . implode(', ', $setClauses) . " WHERE user_id = ?";
+        if ($stmt = $conn->prepare($updateAuthorSql)) {
+            $stmt->bind_param('i', $safeUserId);
+            $stmt->execute();
+            $stmt->close();
+        }
+    }
+
+    if ($sentStatus !== 'success') {
+        return [
+            'success' => false,
+            'message' => $errorMessage,
+            'template_code' => $templateCode
+        ];
+    }
+
+    return [
+        'success' => true,
+        'message' => '邮件发送成功',
+        'template_code' => $templateCode
+    ];
+}
+
+/**
  * Check if the form has any modifications. (Backend fallback)
  */
 function checkNoChangesAndRedirect($newData, $oldData, $fileInputName = null, $redirectUrl = null) {
@@ -307,7 +553,6 @@ function checkNoChangesAndRedirect($newData, $oldData, $fileInputName = null, $r
         return false; 
     }
 
-    // 2. Compare text fields
     foreach ($newData as $key => $newVal) {
         if (!array_key_exists($key, $oldData)) continue;
         if ($newVal != $oldData[$key]) return false; 
@@ -657,16 +902,6 @@ function getWebSettings($conn) {
 }
 
 /**
- * Normalize user-group keys for permission checks.
- * Example: "Super Admin" => "super_admin"
- */
-function normalizeGroupKey($groupValue) {
-    $text = strtolower(trim((string)$groupValue));
-    if ($text === '') return '';
-    return str_replace([' ', '-', '.'], '_', $text);
-}
-
-/**
  * Fetch a single page_action row by id.
  */
 function fetchPageActionRowById($conn, $table, $id) {
@@ -957,7 +1192,7 @@ function getAdministratorRoleId($conn) {
 }
 
 /**
- * Fully Dynamic Gatekeeper (Optimized: No JOINs)
+ * Fully Dynamic Gatekeeper
  * 1. Fetches all possible actions from PAGE_ACTION.
  * 2. Fetches assigned actions from USER_ROLE_PERMISSION.
  * 3. Fetches enabled actions from ACTION_MASTER.
@@ -1204,4 +1439,5 @@ function getDynamicPageRegistry($conn) {
     
     return $registry;
 }
+
 
