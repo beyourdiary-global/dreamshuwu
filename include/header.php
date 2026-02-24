@@ -134,6 +134,40 @@ $finalOgUrl     = !empty($specificSeo['og_url']) ? $specificSeo['og_url'] : ($gl
                 }
             });
         });
+
+        const breadcrumbs = Array.from(document.querySelectorAll('.page-action-breadcrumb'));
+        if (breadcrumbs.length > 0) {
+            const preferredBreadcrumb = breadcrumbs.find(el => el.closest('.card-header')) || breadcrumbs[0];
+            const dashboardMain = document.querySelector('.dashboard-main');
+            const fallbackParent = preferredBreadcrumb.closest('.container-fluid, .container') || preferredBreadcrumb.parentElement;
+            let mountParent = fallbackParent;
+
+            if (dashboardMain) {
+                const innerContainer = Array.from(dashboardMain.children).find(child => {
+                    return child.classList && (child.classList.contains('container-fluid') || child.classList.contains('container'));
+                });
+                mountParent = innerContainer || dashboardMain;
+            }
+
+            if (mountParent) {
+                let inlineHost = mountParent.querySelector(':scope > .global-breadcrumb-inline');
+                if (!inlineHost) {
+                    inlineHost = document.createElement('div');
+                    inlineHost.className = 'global-breadcrumb-inline';
+                    mountParent.insertBefore(inlineHost, mountParent.firstElementChild);
+                }
+
+                inlineHost.innerHTML = '';
+                inlineHost.appendChild(preferredBreadcrumb);
+                preferredBreadcrumb.classList.add('global-page-breadcrumb');
+            }
+
+            breadcrumbs.forEach(el => {
+                if (el !== preferredBreadcrumb) {
+                    el.remove();
+                }
+            });
+        }
     });
     </script>
 </head>

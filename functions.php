@@ -1374,6 +1374,22 @@ function generateBreadcrumb($conn, $currentUrl, $fallbackName = '') {
     $homeUrl = defined('URL_USER_DASHBOARD') ? URL_USER_DASHBOARD : '/dashboard.php'; 
     $pageName = $fallbackName;
 
+    $adminCenterText = '管理员管理';
+    $adminCenterUrl = defined('URL_ADMIN_DASHBOARD') ? URL_ADMIN_DASHBOARD : ($homeUrl . '?view=admin');
+    $isAdminPage = false;
+    $isAdminHome = false;
+
+    if (!empty($currentUrl)) {
+        $pathPart = (string)parse_url($currentUrl, PHP_URL_PATH);
+        $queryPart = (string)parse_url($currentUrl, PHP_URL_QUERY);
+        parse_str($queryPart, $queryVars);
+        $viewParam = isset($queryVars['view']) ? (string)$queryVars['view'] : '';
+
+        $adminViews = ['admin', 'page_action', 'page_info', 'user_role'];
+        $isAdminPage = in_array($viewParam, $adminViews, true) || ($pathPart !== '' && strpos($pathPart, '/src/pages/admin/') !== false);
+        $isAdminHome = ($viewParam === 'admin');
+    }
+
     if ($conn && !empty($currentUrl)) {
         $stmt = $conn->prepare("SELECT name_cn FROM " . PAGE_INFO_LIST . " WHERE public_url = ? AND status = 'A' LIMIT 1");
         if ($stmt) {
@@ -1392,8 +1408,12 @@ function generateBreadcrumb($conn, $currentUrl, $fallbackName = '') {
 
     // Build the clickable HTML using Bootstrap classes for styling
     $html = '<a href="' . htmlspecialchars($homeUrl) . '" class="text-muted text-decoration-none hover-primary">' . htmlspecialchars($homeText) . '</a>';
+
+    if ($isAdminPage) {
+        $html .= ' / <a href="' . htmlspecialchars($adminCenterUrl) . '" class="text-muted text-decoration-none hover-primary">' . htmlspecialchars($adminCenterText) . '</a>';
+    }
     
-    if (!empty($pageName)) {
+    if (!empty($pageName) && !($isAdminHome && $pageName === $adminCenterText)) {
         $html .= ' / <a href="' . htmlspecialchars($currentUrl) . '" class="text-muted text-decoration-none hover-primary">' . htmlspecialchars($pageName) . '</a>';
     }
 

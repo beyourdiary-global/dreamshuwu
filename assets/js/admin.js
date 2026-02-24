@@ -435,7 +435,13 @@ function initAuthorVerificationModule() {
       },
     },
     columns: [
-      { data: "id" },
+      {
+        data: null,
+        render: function (data, type, row, meta) {
+          var start = meta && meta.settings ? meta.settings._iDisplayStart : 0;
+          return start + meta.row + 1;
+        },
+      },
       {
         data: null,
         render: function (data) {
@@ -795,7 +801,13 @@ function initEmailTemplateModule() {
       },
     },
     columns: [
-      { data: "id" },
+      {
+        data: null,
+        render: function (data, type, row, meta) {
+          var start = meta && meta.settings ? meta.settings._iDisplayStart : 0;
+          return start + meta.row + 1;
+        },
+      },
       {
         data: "template_code",
         render: function (data) {
