@@ -221,32 +221,17 @@ function formatDate($date, $format = 'Y-m-d') {
 }
 
 /**
- * Get website name from database settings
- * Falls back to WEBSITE_NAME constant if not found
+ * Get website name from database settings helper.
  */
 function getWebsiteName() {
     global $conn;
     
-    if (!$conn) {
-        return defined('WEBSITE_NAME') ? WEBSITE_NAME : 'StarAdmin';
-    }
+    // Fetch settings from the new helper
+    $settings = getWebSettings($conn);
     
-    // Query the correct column name from web_settings table
-    $stmt = $conn->prepare("SELECT website_name FROM " . WEB_SETTINGS . " WHERE id = 1 LIMIT 1");
-    if (!$stmt) {
-        return defined('WEBSITE_NAME') ? WEBSITE_NAME : 'StarAdmin';
-    }
-    
-    $stmt->execute();
-    $stmt->bind_result($siteNameValue);
-    
-    if ($stmt->fetch()) {
-        $stmt->close();
-        return $siteNameValue ?: (defined('WEBSITE_NAME') ? WEBSITE_NAME : 'StarAdmin');
-    }
-    $stmt->close();
-    
-    return defined('WEBSITE_NAME') ? WEBSITE_NAME : 'StarAdmin';
+    // Return the name from the database if available, 
+    // otherwise fallback to the hardcoded default provided by getWebSettings()
+    return isset($settings['website_name']) ? $settings['website_name'] : 'Website Name';
 }
 
 /**
@@ -326,6 +311,7 @@ function columnExists($conn, $tableName, $columnName) {
 /**
  * Author verification notification engine.
  * Replaces placeholders in email templates and records send logs.
+ * Includes rate limiting to prevent spam/abuse (Max 3 emails per hour per user).
  */
 function processAuthorVerificationEmail($conn, $userId, $actionType, $rejectReason = '') {
     if (!$conn) {
@@ -340,33 +326,80 @@ function processAuthorVerificationEmail($conn, $userId, $actionType, $rejectReas
     $safeAction = strtolower(trim((string)$actionType));
     $templateCode = '';
 
-    // [FIX 1] Define tables safely to prevent undefined constant crashes
+    // Table names from constants
     $authorProfileTable = defined('AUTHOR_PROFILE') ? AUTHOR_PROFILE : 'author_profile';
     $usersTable = defined('USR_LOGIN') ? USR_LOGIN : 'users';
     $emailTemplateTable = defined('EMAIL_TEMPLATE') ? EMAIL_TEMPLATE : 'email_template';
     $emailLogTable = defined('EMAIL_LOG') ? EMAIL_LOG : 'email_log';
 
+    // --- [NEW] Rate Limiting Check (Max 3 emails per hour per author) ---
+    $rateLimitSql = "SELECT COUNT(*) FROM {$emailLogTable} WHERE user_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 1 HOUR)";
+    if ($rlStmt = $conn->prepare($rateLimitSql)) {
+        $rlStmt->bind_param('i', $safeUserId);
+        $rlStmt->execute();
+        $recentCount = 0;
+        $rlStmt->bind_result($recentCount);
+        $rlStmt->fetch();
+        $rlStmt->close();
+
+        if ($recentCount >= 3) {
+            return ['success' => false, 'message' => '操作过于频繁，该作者1小时内已发送过多通知邮件，请稍后再试。'];
+        }
+    }
+    // --------------------------------------------------------------------
+
     $hasRejectReasonCol = columnExists($conn, $authorProfileTable, 'reject_reason');
     $hasEmailNotifiedAtCol = columnExists($conn, $authorProfileTable, 'email_notified_at');
     $hasEmailNotifyCountCol = columnExists($conn, $authorProfileTable, 'email_notify_count');
 
-    $rejectReasonExpr = $hasRejectReasonCol ? 'ap.reject_reason' : "'' AS reject_reason";
+    // [FIX] Removed 'ap.' alias since there is no join anymore
+    $rejectReasonExpr = $hasRejectReasonCol ? 'reject_reason' : "'' AS reject_reason";
     
-    // [FIX 2] Bypass placeholder bugs by injecting integers directly
-    $profileSql = "SELECT ap.id, ap.user_id, ap.real_name, ap.pen_name, ap.contact_email, {$rejectReasonExpr}, ap.verification_status, u.email AS login_email\n"
-        . "FROM {$authorProfileTable} ap\n"
-        . "LEFT JOIN {$usersTable} u ON u.id = ap.user_id\n"
-        . "WHERE ap.user_id = {$safeUserId} AND ap.status = 'A' LIMIT 1";
+    // 1. Fetch author profile info (Query 1: No JOIN)
+    $profileSql = "SELECT id, user_id, real_name, pen_name, contact_email, {$rejectReasonExpr}, verification_status "
+        . "FROM {$authorProfileTable} "
+        . "WHERE user_id = ? AND status = 'A' LIMIT 1";
         
-    $profileRes = $conn->query($profileSql);
-    if (!$profileRes) {
+    $stmt = $conn->prepare($profileSql);
+    if (!$stmt) {
         return ['success' => false, 'message' => '读取作者信息失败: ' . $conn->error];
+    }
+    if (!$stmt->bind_param('i', $safeUserId)) {
+        $stmt->close();
+        return ['success' => false, 'message' => '读取作者信息失败: 绑定参数错误'];
+    }
+    if (!$stmt->execute()) {
+        $stmt->close();
+        return ['success' => false, 'message' => '读取作者信息失败: ' . $stmt->error];
+    }
+    $profileRes = $stmt->get_result();
+    if (!$profileRes) {
+        $stmt->close();
+        return ['success' => false, 'message' => '读取作者信息失败: ' . $stmt->error];
     }
     $authorProfile = $profileRes->fetch_assoc();
     $profileRes->free();
+    $stmt->close();
 
     if (empty($authorProfile)) {
         return ['success' => false, 'message' => '作者资料不存在'];
+    }
+
+    // 2. Fetch login email separately (Query 2)
+    $authorProfile['login_email'] = '';
+    if (!empty($authorProfile['user_id'])) {
+        $userSql = "SELECT email AS login_email FROM {$usersTable} WHERE id = ? LIMIT 1";
+        if ($uStmt = $conn->prepare($userSql)) {
+            $uStmt->bind_param('i', $authorProfile['user_id']);
+            if ($uStmt->execute()) {
+                $uRes = $uStmt->get_result();
+                if ($uRes && $uRow = $uRes->fetch_assoc()) {
+                    $authorProfile['login_email'] = $uRow['login_email'] ?? '';
+                }
+                if ($uRes) $uRes->free();
+            }
+            $uStmt->close();
+        }
     }
 
     // Determine Template Code
@@ -387,18 +420,32 @@ function processAuthorVerificationEmail($conn, $userId, $actionType, $rejectReas
         return ['success' => false, 'message' => '无法匹配邮件模板类型'];
     }
 
-    // Load Email Template from DB
-    $escTemplateCode = $conn->real_escape_string($templateCode);
-    $templateSql = "SELECT template_code, subject, content FROM {$emailTemplateTable} WHERE template_code = '{$escTemplateCode}' AND status = 'A' LIMIT 1";
+    // Load Email Template using Prepared Statements
+    $templateSql = "SELECT template_code, subject, content FROM {$emailTemplateTable} WHERE template_code = ? AND status = 'A' LIMIT 1";
+    $stmt = $conn->prepare($templateSql);
     
-    $templateRes = $conn->query($templateSql);
-    if (!$templateRes) {
+    if (!$stmt) {
         return ['success' => false, 'message' => '读取邮件模板失败: ' . $conn->error];
     }
+    
+    $stmt->bind_param('s', $templateCode);
+    
+    if (!$stmt->execute()) {
+        $stmt->close();
+        return ['success' => false, 'message' => '读取邮件模板失败: ' . $stmt->error];
+    }
+    
+    $templateRes = $stmt->get_result();
+    
+    if (!$templateRes) {
+        $stmt->close();
+        return ['success' => false, 'message' => '读取邮件模板失败: ' . $conn->error];
+    }
+    
     $templateRow = $templateRes->fetch_assoc();
     $templateRes->free();
+    $stmt->close();
 
-    // If template is not found in database, return error
     if (empty($templateRow)) {
         return ['success' => false, 'message' => "系统必备模板 [{$templateCode}] 未创建或已禁用！"];
     }
@@ -421,7 +468,7 @@ function processAuthorVerificationEmail($conn, $userId, $actionType, $rejectReas
         $resolvedRejectReason = '无';
     }
 
-    // Replace Variables logic
+    // Variable replacement
     $replacements = [
         '{{real_name}}' => (string)($authorProfile['real_name'] ?? ''),
         '{{pen_name}}' => (string)($authorProfile['pen_name'] ?? ''),
@@ -432,28 +479,39 @@ function processAuthorVerificationEmail($conn, $userId, $actionType, $rejectReas
     $mailSubject = strtr((string)$templateRow['subject'], $replacements);
     $mailBody = strtr((string)$templateRow['content'], $replacements);
 
+    // Using pre-defined MAIL_FROM and MAIL_FROM_NAME constants
     $headers = "MIME-Version: 1.0\r\n";
     $headers .= "Content-type: text/html; charset=UTF-8\r\n";
-    $headers .= "From: " . (defined('MAIL_FROM_NAME') ? MAIL_FROM_NAME : 'System') . " <" . (defined('MAIL_FROM') ? MAIL_FROM : 'admin@localhost') . ">\r\n";
+    $headers .= "From: " . MAIL_FROM_NAME . " <" . MAIL_FROM . ">\r\n";
 
     $sentStatus = 'failed';
     $errorMessage = '';
     
-    // Trigger Send Email
-    $sendResult = @mail($recipientEmail, $mailSubject, $mailBody, $headers);
+    // Trigger Send Email (sanitize recipient to prevent header injection)
+    $safeRecipientEmail = filter_var((string)$recipientEmail, FILTER_VALIDATE_EMAIL);
+    if ($safeRecipientEmail === false || preg_match('/[\r\n]/', $safeRecipientEmail)) {
+        $sendResult = false;
+        $errorMessage = '收件人邮箱地址无效，邮件未发送';
+    } else {
+        $sendResult = @mail($safeRecipientEmail, $mailSubject, $mailBody, $headers);
+    }
     if ($sendResult) {
         $sentStatus = 'success';
     } else {
-        $errorMessage = '本地mail()服务发送失败 (请检查SMTP配置)';
+        if ($errorMessage === '') {
+            $errorMessage = '本地mail()服务发送失败 (请检查SMTP配置)';
+        }
     }
 
     // Insert Email Log
-    $escSentStatus = $conn->real_escape_string($sentStatus);
-    $escErrMsg = $conn->real_escape_string($errorMessage);
-    $logSql = "INSERT INTO {$emailLogTable} (user_id, template_code, sent_status, error_message, created_at) VALUES ({$safeUserId}, '{$escTemplateCode}', '{$escSentStatus}', '{$escErrMsg}', NOW())";
-    $conn->query($logSql); 
+    $logSql = "INSERT INTO {$emailLogTable} (user_id, template_code, sent_status, error_message, created_at) VALUES (?, ?, ?, ?, NOW())";
+    if ($logStmt = $conn->prepare($logSql)) {
+        $logStmt->bind_param('isss', $safeUserId, $templateCode, $sentStatus, $errorMessage);
+        $logStmt->execute();
+        $logStmt->close();
+    }
 
-    // Update Notification Data in author_profile
+    // Update notification metadata in author_profile
     $setClauses = [];
     if ($hasEmailNotifiedAtCol) {
         $setClauses[] = 'email_notified_at = NOW()';
@@ -463,8 +521,12 @@ function processAuthorVerificationEmail($conn, $userId, $actionType, $rejectReas
     }
 
     if (!empty($setClauses)) {
-        $updateAuthorSql = "UPDATE {$authorProfileTable} SET " . implode(', ', $setClauses) . " WHERE user_id = {$safeUserId}";
-        $conn->query($updateAuthorSql);
+        $updateAuthorSql = "UPDATE {$authorProfileTable} SET " . implode(', ', $setClauses) . " WHERE user_id = ?";
+        if ($stmt = $conn->prepare($updateAuthorSql)) {
+            $stmt->bind_param('i', $safeUserId);
+            $stmt->execute();
+            $stmt->close();
+        }
     }
 
     if ($sentStatus !== 'success') {
@@ -481,6 +543,7 @@ function processAuthorVerificationEmail($conn, $userId, $actionType, $rejectReas
         'template_code' => $templateCode
     ];
 }
+
 /**
  * Check if the form has any modifications. (Backend fallback)
  */
@@ -839,16 +902,6 @@ function getWebSettings($conn) {
 }
 
 /**
- * Normalize user-group keys for permission checks.
- * Example: "Super Admin" => "super_admin"
- */
-function normalizeGroupKey($groupValue) {
-    $text = strtolower(trim((string)$groupValue));
-    if ($text === '') return '';
-    return str_replace([' ', '-', '.'], '_', $text);
-}
-
-/**
  * Fetch a single page_action row by id.
  */
 function fetchPageActionRowById($conn, $table, $id) {
@@ -1139,7 +1192,7 @@ function getAdministratorRoleId($conn) {
 }
 
 /**
- * Fully Dynamic Gatekeeper (Optimized: No JOINs)
+ * Fully Dynamic Gatekeeper
  * 1. Fetches all possible actions from PAGE_ACTION.
  * 2. Fetches assigned actions from USER_ROLE_PERMISSION.
  * 3. Fetches enabled actions from ACTION_MASTER.

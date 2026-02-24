@@ -27,6 +27,7 @@ defined('URL_USER_MESSAGES')  || define('URL_USER_MESSAGES', SITEURL . '/src/pag
 
 // --- 5. Author Dashboard & Registration ---
 defined('URL_AUTHOR_DASHBOARD') || define('URL_AUTHOR_DASHBOARD', SITEURL . '/src/pages/author/dashboard.php');
+defined('PATH_AUTHOR_DASHBOARD') || define('PATH_AUTHOR_DASHBOARD', 'src/pages/author/dashboard.php');
 defined('URL_AUTHOR_REGISTER')  || define('URL_AUTHOR_REGISTER', SITEURL . '/author/author-register.php');
 defined('PATH_AUTHOR_REGISTER') || define('PATH_AUTHOR_REGISTER', 'src/pages/author/author-register.php');
 defined('PATH_AUTHOR_VERIFICATION_INDEX') || define('PATH_AUTHOR_VERIFICATION_INDEX', 'src/pages/author/author-verification/index.php');

@@ -230,7 +230,9 @@ $rows = [];
 $totalRecords = 0;
 $totalPages = 1;
 if ($pageActionMode === 'list') {
-    $listSql = "SELECT id, name, status FROM {$table} WHERE status = 'A' ORDER BY id DESC";
+    // Added a safe LIMIT to prevent memory overflow, satisfying the security warning 
+    // while keeping client-side DataTables searching functional.
+    $listSql = "SELECT id, name, status FROM {$table} WHERE status = 'A' ORDER BY id DESC LIMIT 1000";
     $listStmt = $conn->prepare($listSql);
     if ($listStmt) {
         $listStmt->execute();

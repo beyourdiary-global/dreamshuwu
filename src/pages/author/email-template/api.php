@@ -17,14 +17,25 @@ try {
     $perm = hasPagePermission($conn, $currentUrl);
     
     if (empty($perm) || (isset($perm->view) && empty($perm->view))) {
-        $perm = hasPagePermission($conn, '/src/pages/author/email-template/index.php');
-    }
-    if (empty($perm) || (isset($perm->view) && empty($perm->view))) {
-        $perm = hasPagePermission($conn, '/dashboard.php?view=email_template');
+        $legacyPath = defined('PATH_EMAIL_TEMPLATE_INDEX') ? ('/' . ltrim(PATH_EMAIL_TEMPLATE_INDEX, '/')) : '/src/pages/author/email-template/index.php';
+        $perm = hasPagePermission($conn, $legacyPath);
     }
     $auditPage = 'Email Template Management';
 
     $mode = strtolower(trim((string)($_REQUEST['mode'] ?? 'data')));
+
+    // --- [NEW] CSRF Token Protection ---
+    // Validate CSRF token for all state-changing operations to prevent malicious forged requests
+    if (in_array($mode, ['create', 'update', 'delete'])) {
+        $headers = function_exists('getallheaders') ? getallheaders() : [];
+        $clientToken = $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? $headers['X-CSRF-Token'] ?? '';
+        
+        if (empty($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $clientToken)) {
+            http_response_code(403);
+            throw new Exception('安全校验失败：非法的请求 (Invalid CSRF Token)');
+        }
+    }
+    // -----------------------------------
 
     // Helper: Fetch Template Row
     if (!function_exists('fetchEmailTemplateRowById')) {
@@ -112,15 +123,18 @@ try {
         $stmtFiltered->fetch();
         $stmtFiltered->close();
 
-        // Safe integer injection to bypass LIMIT ?,? driver bugs
-        $sqlData = "SELECT id, template_code, template_name, subject, content, status, updated_at FROM " . EMAIL_TEMPLATE . $baseWhere . $searchWhere . " ORDER BY id DESC LIMIT {$start}, {$length}";
+        $sqlData = "SELECT id, template_code, template_name, subject, content, status, updated_at FROM " . EMAIL_TEMPLATE . $baseWhere . $searchWhere . " ORDER BY id DESC LIMIT ?, ?";
         $stmtData = $conn->prepare($sqlData);
         if (!$stmtData) throw new Exception('读取数据失败: ' . $conn->error);
-
-        if (!empty($params)) {
-            $bind = [$types];
-            foreach ($params as $k => $v) $bind[] = &$params[$k];
-            call_user_func_array([$stmtData, 'bind_param'], $bind);
+        
+        $typesData = (isset($types) ? $types : '') . 'ii';
+        $paramsData = (isset($params) && is_array($params)) ? $params : [];
+        $paramsData[] = $start;
+        $paramsData[] = $length;
+        if (!empty($paramsData)) {
+            $bindData = [$typesData];
+            foreach ($paramsData as $k => $v) $bindData[] = &$paramsData[$k];
+            call_user_func_array([$stmtData, 'bind_param'], $bindData);
         }
 
         $stmtData->execute();
@@ -170,9 +184,22 @@ try {
         if ($templateCode === '' || $templateName === '' || $subject === '' || $content === '') {
             throw new Exception('请完整填写必填字段');
         }
+
+        // ADDED VALIDATION HERE
+        if (mb_strlen($templateCode, 'UTF-8') > 50) {
+            throw new Exception('模板代码长度不能超过50个字符');
+        }
+        if (mb_strlen($templateName, 'UTF-8') > 100) {
+            throw new Exception('模板名称长度不能超过100个字符');
+        }
+        if (mb_strlen($subject, 'UTF-8') > 255) {
+            throw new Exception('邮件主题长度不能超过255个字符');
+        }
+        
         if (!preg_match('/^[A-Z0-9_]+$/', $templateCode)) {
             throw new Exception('模板代码仅允许大写字母、数字、下划线');
         }
+
         if (!in_array($status, ['A', 'D'], true)) $status = 'A';
 
         $checkSql = "SELECT id FROM " . EMAIL_TEMPLATE . " WHERE template_code = ? LIMIT 1";
@@ -355,20 +382,31 @@ try {
     throw new Exception('不支持的请求模式: ' . htmlspecialchars($mode));
 
 } catch (Throwable $e) {
+    // ... [previous logic above remains the same] ...
+
+} catch (Throwable $e) {
+    // 1. Log the actual exception details to the server's error log for debugging
+    // This records the message, file path, and line number without showing it to the user.
+    error_log("Email Template API Error: " . $e->getMessage() . " in " . $e->getFile() . " on line " . $e->getLine());
+
+    // 2. Clear any stray output to ensure a clean JSON response
     if (ob_get_length()) ob_clean(); 
     header('Content-Type: application/json; charset=utf-8');
     
     $modeStr = isset($_REQUEST['mode']) ? $_REQUEST['mode'] : 'data';
     
     if ($modeStr === 'data') {
+        // Response format expected by DataTables
         echo json_encode([
             'draw' => intval($_REQUEST['draw'] ?? 1),
             'recordsTotal' => 0,
             'recordsFiltered' => 0,
             'data' => [],
-            'error' => '接口错误，请稍后重试' 
+            // Generic message for security
+            'error' => '接口错误，请检查系统日志' 
         ]);
     } else {
+        // Standard JSON response for Create/Update/Delete actions
         echo json_encode([
             'success' => false,
             'message' => '操作失败，请稍后重试'

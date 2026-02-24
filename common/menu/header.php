@@ -23,40 +23,87 @@ $isUserDashboardPage = ($currentPage === $dashboardPage);
 $authorZoneUrl = URL_LOGIN;
 $isAuthorPage = false;
 if ($isLoggedIn) {
-    $authorZoneUrl = URL_AUTHOR_REGISTER;
+    $authorZoneUrl = URL_USER_DASHBOARD;
     $currentUserId = isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : 0;
-    $roleName = strtolower(trim((string)($_SESSION['role_name'] ?? '')));
-    $isAdminRole = ($roleName !== '' && (strpos($roleName, 'admin') !== false || strpos($roleName, '管理员') !== false));
 
-    if (!$isAdminRole && !empty($_SESSION['role_id']) && isset($conn) && $conn) {
-        $roleId = (int)$_SESSION['role_id'];
-        $stmtRole = $conn->prepare("SELECT name_en, name_cn FROM " . USER_ROLE . " WHERE id = ? AND status = 'A' LIMIT 1");
-        if ($stmtRole) {
-            $stmtRole->bind_param('i', $roleId);
-            $stmtRole->execute();
-            $stmtRole->bind_result($roleNameEn, $roleNameCn);
-            if ($stmtRole->fetch()) {
-                $roleText = strtolower(trim((string)$roleNameEn . ' ' . (string)$roleNameCn));
-                $isAdminRole = (strpos($roleText, 'admin') !== false || strpos($roleText, '管理员') !== false);
-            }
-            $stmtRole->close();
-        }
+    $pathFromUrl = static function ($url) {
+        $path = parse_url((string)$url, PHP_URL_PATH);
+        return is_string($path) ? $path : '';
+    };
+
+    $pathFromConst = static function ($constName) {
+        if (!defined($constName)) return '';
+        $raw = trim((string)constant($constName));
+        if ($raw === '') return '';
+        return '/' . ltrim($raw, '/');
+    };
+
+    $authorVerificationKeys = [
+        $pathFromUrl(URL_AUTHOR_VERIFICATION),
+        $pathFromConst('PATH_AUTHOR_VERIFICATION_INDEX')
+    ];
+    $authorDashboardKeys = [
+        $pathFromUrl(URL_AUTHOR_DASHBOARD),
+        $pathFromConst('PATH_AUTHOR_DASHBOARD')
+    ];
+    $authorRegisterKeys = [
+        $pathFromUrl(URL_AUTHOR_REGISTER),
+        $pathFromConst('PATH_AUTHOR_REGISTER')
+    ];
+
+    $sessionRoleId = isset($_SESSION['role_id']) ? (int)$_SESSION['role_id'] : 0;
+    $cacheTtlSeconds = 300;
+    $permCache = isset($_SESSION['header_permission_cache']) && is_array($_SESSION['header_permission_cache'])
+        ? $_SESSION['header_permission_cache']
+        : [];
+
+    $cacheValid = (
+        isset($permCache['user_id'], $permCache['role_id'], $permCache['expires_at'], $permCache['view']) &&
+        (int)$permCache['user_id'] === $currentUserId &&
+        (int)$permCache['role_id'] === $sessionRoleId &&
+        (int)$permCache['expires_at'] > time() &&
+        is_array($permCache['view'])
+    );
+
+    if (!$cacheValid) {
+        $permCache = [
+            'user_id' => $currentUserId,
+            'role_id' => $sessionRoleId,
+            'expires_at' => time() + $cacheTtlSeconds,
+            'view' => []
+        ];
     }
 
-    if ($isAdminRole) {
+    $canViewAny = function ($keys) use (&$permCache, $conn) {
+        if (empty($keys) || !isset($conn) || !$conn) return false;
+
+        foreach ($keys as $key) {
+            $routeKey = trim((string)$key);
+            if ($routeKey === '') continue;
+
+            if (!array_key_exists($routeKey, $permCache['view'])) {
+                $perm = hasPagePermission($conn, $routeKey);
+                $permCache['view'][$routeKey] = (!empty($perm) && isset($perm->view) && !empty($perm->view));
+            }
+
+            if (!empty($permCache['view'][$routeKey])) {
+                return true;
+            }
+        }
+
+        return false;
+    };
+
+    if ($canViewAny($authorVerificationKeys)) {
         $authorZoneUrl = URL_AUTHOR_VERIFICATION;
-    } elseif ($currentUserId > 0 && isset($conn) && $conn) {
-        $stmtAuthor = $conn->prepare("SELECT verification_status FROM " . AUTHOR_PROFILE . " WHERE user_id = ? AND status = 'A' LIMIT 1");
-        if ($stmtAuthor) {
-            $stmtAuthor->bind_param('i', $currentUserId);
-            $stmtAuthor->execute();
-            $stmtAuthor->bind_result($verificationStatus);
-            if ($stmtAuthor->fetch() && strtolower((string)$verificationStatus) === 'approved') {
-                $authorZoneUrl = URL_AUTHOR_DASHBOARD;
-            }
-            $stmtAuthor->close();
-        }
+    } elseif ($canViewAny($authorDashboardKeys)) {
+        $authorZoneUrl = URL_AUTHOR_DASHBOARD;
+    } elseif ($canViewAny($authorRegisterKeys)) {
+        $authorZoneUrl = URL_AUTHOR_REGISTER;
     }
+
+    $permCache['expires_at'] = time() + $cacheTtlSeconds;
+    $_SESSION['header_permission_cache'] = $permCache;
 
     $authorVerificationPath = parse_url(URL_AUTHOR_VERIFICATION, PHP_URL_PATH);
     $emailTemplatePath = parse_url(URL_EMAIL_TEMPLATE, PHP_URL_PATH);

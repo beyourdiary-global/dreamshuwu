@@ -13,10 +13,8 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
 
 $perm = hasPagePermission($conn, $currentUrl);
 if (empty($perm) || (isset($perm->view) && empty($perm->view))) {
-    $perm = hasPagePermission($conn, '/src/pages/author/email-template/index.php');
-}
-if (empty($perm) || (isset($perm->view) && empty($perm->view))) {
-    $perm = hasPagePermission($conn, '/dashboard.php?view=email_template');
+    $legacyPath = defined('PATH_EMAIL_TEMPLATE_INDEX') ? ('/' . ltrim(PATH_EMAIL_TEMPLATE_INDEX, '/')) : '/src/pages/author/email-template/index.php';
+    $perm = hasPagePermission($conn, $legacyPath);
 }
 checkPermissionError('view', $perm, '邮件模板管理');
 $apiEndpoint = defined('URL_EMAIL_TEMPLATE_API') ? URL_EMAIL_TEMPLATE_API : (SITEURL . '/src/pages/author/email-template/api.php');
@@ -41,9 +39,24 @@ if (!$isEmbeddedEmailTemplate) {
     $pageMetaKey = $currentUrl;
 }
 
+// Define the arrays for rendering the UI
+$perPageOptions = [10, 20, 50, 100];
+
+$tableHeaders = [
+    ['label' => 'ID', 'width' => '70px', 'class' => ''],
+    ['label' => '模板代码', 'width' => '160px', 'class' => ''],
+    ['label' => '模板名称', 'width' => '', 'class' => ''],
+    ['label' => '主题', 'width' => '', 'class' => ''],
+    ['label' => '状态', 'width' => '90px', 'class' => ''],
+    ['label' => '更新时间', 'width' => '170px', 'class' => ''],
+    ['label' => '操作', 'width' => '170px', 'class' => 'text-center'],
+];
+
 ob_start();
 ?>
-<div class="container-fluid px-0" id="emailTemplateApp" data-api-url="<?php echo htmlspecialchars($apiEndpoint); ?>">
+<div class="container-fluid px-0" id="emailTemplateApp" 
+     data-api-url="<?php echo htmlspecialchars($apiEndpoint); ?>"
+    data-csrf="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>">
     <div class="card border-0 shadow-sm">
         <div class="card-header bg-white d-flex justify-content-between align-items-center py-3 flex-wrap gap-2">
             <div>
@@ -62,10 +75,9 @@ ob_start();
                 <div class="d-flex align-items-center gap-2">
                     <span>显示</span>
                     <select name="per_page" class="form-select" style="width: 90px;">
-                        <option value="10">10</option>
-                        <option value="20">20</option>
-                        <option value="50">50</option>
-                        <option value="100">100</option>
+                        <?php foreach ($perPageOptions as $option): ?>
+                            <option value="<?php echo $option; ?>"><?php echo $option; ?></option>
+                        <?php endforeach; ?>
                     </select>
                     <span>项结果</span>
                 </div>
@@ -78,13 +90,13 @@ ob_start();
                 <table id="emailTemplateTable" class="table table-hover align-middle w-100">
                     <thead>
                         <tr>
-                            <th style="width: 70px;">ID</th>
-                            <th style="width: 160px;">模板代码</th>
-                            <th>模板名称</th>
-                            <th>主题</th>
-                            <th style="width: 90px;">状态</th>
-                            <th style="width: 170px;">更新时间</th>
-                            <th style="width: 170px;" class="text-center">操作</th>
+                            <?php foreach ($tableHeaders as $header): ?>
+                                <?php 
+                                $styleAttr = !empty($header['width']) ? ' style="width: ' . htmlspecialchars($header['width']) . ';"' : '';
+                                $classAttr = !empty($header['class']) ? ' class="' . htmlspecialchars($header['class']) . '"' : '';
+                                ?>
+                                <th<?php echo $styleAttr . $classAttr; ?>><?php echo htmlspecialchars($header['label']); ?></th>
+                            <?php endforeach; ?>
                         </tr>
                     </thead>
                     <tbody></tbody>

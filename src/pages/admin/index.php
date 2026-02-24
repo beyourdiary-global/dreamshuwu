@@ -18,18 +18,14 @@ $permUserRole   = hasPagePermission($conn, $baseViewPath . 'user_role');
 
 $permAuthorVerification = hasPagePermission($conn, '/author/author-verification.php');
 if (empty($permAuthorVerification) || (isset($permAuthorVerification->view) && empty($permAuthorVerification->view))) {
-    $permAuthorVerification = hasPagePermission($conn, '/src/pages/author/author-verification/index.php');
-}
-if (empty($permAuthorVerification) || (isset($permAuthorVerification->view) && empty($permAuthorVerification->view))) {
-    $permAuthorVerification = hasPagePermission($conn, '/dashboard.php?view=author_verification');
+    $authorVerificationLegacyPath = defined('PATH_AUTHOR_VERIFICATION_INDEX') ? ('/' . ltrim(PATH_AUTHOR_VERIFICATION_INDEX, '/')) : '/src/pages/author/author-verification/index.php';
+    $permAuthorVerification = hasPagePermission($conn, $authorVerificationLegacyPath);
 }
 
 $permEmailTemplate = hasPagePermission($conn, '/author/email-template.php');
 if (empty($permEmailTemplate) || (isset($permEmailTemplate->view) && empty($permEmailTemplate->view))) {
-    $permEmailTemplate = hasPagePermission($conn, '/src/pages/author/email-template/index.php');
-}
-if (empty($permEmailTemplate) || (isset($permEmailTemplate->view) && empty($permEmailTemplate->view))) {
-    $permEmailTemplate = hasPagePermission($conn, '/dashboard.php?view=email_template');
+    $emailTemplateLegacyPath = defined('PATH_EMAIL_TEMPLATE_INDEX') ? ('/' . ltrim(PATH_EMAIL_TEMPLATE_INDEX, '/')) : '/src/pages/author/email-template/index.php';
+    $permEmailTemplate = hasPagePermission($conn, $emailTemplateLegacyPath);
 }
 ?>
 <div class="container-fluid">

@@ -10,12 +10,15 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
     exit();
 }
 
+// [NEW] Generate CSRF token if it doesn't exist
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
 $perm = hasPagePermission($conn, $currentUrl);
 if (empty($perm) || (isset($perm->view) && empty($perm->view))) {
-    $perm = hasPagePermission($conn, '/src/pages/author/author-verification/index.php');
-}
-if (empty($perm) || (isset($perm->view) && empty($perm->view))) {
-    $perm = hasPagePermission($conn, '/dashboard.php?view=author_verification');
+    $legacyPath = defined('PATH_AUTHOR_VERIFICATION_INDEX') ? ('/' . ltrim(PATH_AUTHOR_VERIFICATION_INDEX, '/')) : '/src/pages/author/author-verification/index.php';
+    $perm = hasPagePermission($conn, $legacyPath);
 }
 checkPermissionError('view', $perm, '作者审核管理');
 
@@ -101,12 +104,42 @@ if (!isset($customCSS) || !is_array($customCSS)) {
     $customCSS = [];
 }
 $customCSS[] = 'dataTables.bootstrap.min.css';
-$customCSS[] = 'dashboard.css';
+$customCSS[] = 'author.css';
 $pageMetaKey = $currentUrl;
+
+// --- Arrays for Rendering UI ---
+$perPageOptions = [10, 20, 50, 100];
+
+$statusFilterOptions = [
+    'pending,rejected' => '待审核 + 驳回',
+    'pending' => '仅待审核',
+    'rejected' => '仅驳回',
+    'approved' => '仅通过',
+    'all' => '全部状态'
+];
+
+$tableHeaders = [
+    ['label' => 'ID', 'width' => '70px', 'class' => ''],
+    ['label' => '用户', 'width' => '', 'class' => ''],
+    ['label' => '真实姓名', 'width' => '', 'class' => ''],
+    ['label' => '笔名', 'width' => '', 'class' => ''],
+    ['label' => '状态', 'width' => '110px', 'class' => ''],
+    ['label' => '驳回原因', 'width' => '', 'class' => ''],
+    ['label' => '通知次数', 'width' => '90px', 'class' => ''],
+    ['label' => '更新时间', 'width' => '170px', 'class' => ''],
+    ['label' => '操作', 'width' => '250px', 'class' => 'text-center']
+];
+
+$actionTypeOptions = [
+    'approve' => '通过',
+    'reject' => '驳回',
+    'resend' => '重发通知'
+];
+// -------------------------------
 
 ob_start();
 ?>
-<div class="container-fluid px-0" id="authorVerificationApp" data-api-url="<?php echo htmlspecialchars($apiEndpoint); ?>">
+<div class="container-fluid px-0" id="authorVerificationApp" data-api-url="<?php echo htmlspecialchars($apiEndpoint); ?>" data-csrf="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>">
     <div class="card border-0 shadow-sm">
         <div class="card-header bg-white d-flex justify-content-between align-items-center py-3 flex-wrap gap-2">
             <div>
@@ -210,20 +243,19 @@ ob_start();
                 <div class="d-flex align-items-center gap-2">
                     <span>显示</span>
                     <select name="per_page" class="form-select" style="width: 90px;">
-                        <option value="10">10</option>
-                        <option value="20">20</option>
-                        <option value="50">50</option>
-                        <option value="100">100</option>
+                        <?php foreach ($perPageOptions as $option): ?>
+                            <option value="<?php echo $option; ?>"><?php echo $option; ?></option>
+                        <?php endforeach; ?>
                     </select>
                     <span>项结果</span>
                 </div>
                 <div class="d-flex align-items-center gap-2" style="width: 520px; max-width: 100%;">
                     <select name="status_filter" class="form-select" style="max-width: 200px;">
-                        <option value="pending,rejected" selected>待审核 + 驳回</option>
-                        <option value="pending">仅待审核</option>
-                        <option value="rejected">仅驳回</option>
-                        <option value="approved">仅通过</option>
-                        <option value="all">全部状态</option>
+                        <?php foreach ($statusFilterOptions as $val => $label): ?>
+                            <option value="<?php echo htmlspecialchars($val); ?>" <?php echo $val === 'pending,rejected' ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($label); ?>
+                            </option>
+                        <?php endforeach; ?>
                     </select>
                     <input type="text" name="search" class="form-control" placeholder="搜索真实姓名 / 笔名 / 邮箱...">
                 </div>
@@ -233,15 +265,13 @@ ob_start();
                 <table id="authorVerificationTable" class="table table-hover align-middle w-100">
                     <thead>
                         <tr>
-                            <th style="width: 70px;">ID</th>
-                            <th>用户</th>
-                            <th>真实姓名</th>
-                            <th>笔名</th>
-                            <th style="width: 110px;">状态</th>
-                            <th>驳回原因</th>
-                            <th style="width: 90px;">通知次数</th>
-                            <th style="width: 170px;">更新时间</th>
-                            <th style="width: 250px;" class="text-center">操作</th>
+                            <?php foreach ($tableHeaders as $header): ?>
+                                <?php 
+                                $styleAttr = !empty($header['width']) ? ' style="width: ' . htmlspecialchars($header['width']) . ';"' : '';
+                                $classAttr = !empty($header['class']) ? ' class="' . htmlspecialchars($header['class']) . '"' : '';
+                                ?>
+                                <th<?php echo $styleAttr . $classAttr; ?>><?php echo htmlspecialchars($header['label']); ?></th>
+                            <?php endforeach; ?>
                         </tr>
                     </thead>
                     <tbody></tbody>
@@ -264,9 +294,9 @@ ob_start();
                     <div class="mb-3">
                         <label class="form-label">操作类型</label>
                         <select name="action_type" class="form-select" required>
-                            <option value="approve">通过</option>
-                            <option value="reject">驳回</option>
-                            <option value="resend">重发通知</option>
+                            <?php foreach ($actionTypeOptions as $val => $label): ?>
+                                <option value="<?php echo htmlspecialchars($val); ?>"><?php echo htmlspecialchars($label); ?></option>
+                            <?php endforeach; ?>
                         </select>
                     </div>
                     <div class="mb-3" id="authorVerifyRejectReasonWrap" style="display:none;">

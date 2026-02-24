@@ -362,6 +362,7 @@ function initAuthorVerificationModule() {
   if (tableEl.dataset.dtReady === "1") return true;
 
   var apiUrl = appRoot.getAttribute("data-api-url") || "";
+  var csrfToken = appRoot.getAttribute("data-csrf") || ""; // [NEW] Read the token
   if (!apiUrl) return false;
 
   var searchInput = form.querySelector('input[name="search"]');
@@ -565,6 +566,7 @@ function initAuthorVerificationModule() {
           method: "POST",
           headers: {
             "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+            "X-CSRF-Token": csrfToken, // [NEW] Add CSRF Header
           },
           body: body,
           credentials: "same-origin",
@@ -619,12 +621,14 @@ function initAuthorVerificationModule() {
       event.preventDefault();
       var formData = new FormData(actionForm);
       formData.set("mode", "verify");
+      formData.set("csrf_token", csrfToken);
       var body = new URLSearchParams(formData).toString();
 
       fetch(apiUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+          "X-CSRF-Token": csrfToken,
         },
         body: body,
         credentials: "same-origin",
@@ -634,6 +638,12 @@ function initAuthorVerificationModule() {
         })
         .then(function (payload) {
           if (payload && payload.success) {
+            if (
+              document.activeElement &&
+              typeof document.activeElement.blur === "function"
+            ) {
+              document.activeElement.blur();
+            }
             if (modal) modal.hide();
             if (typeof Swal !== "undefined")
               Swal.fire("成功", payload.message || "操作成功", "success");
@@ -690,6 +700,7 @@ function initEmailTemplateModule() {
   if (tableEl.dataset.dtReady === "1") return true;
 
   var apiUrl = appRoot.getAttribute("data-api-url") || "";
+  var csrfToken = appRoot.getAttribute("data-csrf") || "";
   if (!apiUrl) return false;
 
   var searchInput = form.querySelector('input[name="search"]');
@@ -857,11 +868,16 @@ function initEmailTemplateModule() {
     if (deleteBtn) {
       var deleteId = deleteBtn.getAttribute("data-id") || "0";
       var doDelete = function () {
-        var body = "mode=delete&id=" + encodeURIComponent(deleteId);
+        var body =
+          "mode=delete&id=" +
+          encodeURIComponent(rowIdForDelete) +
+          "&csrf_token=" +
+          encodeURIComponent(csrfToken);
         fetch(apiUrl, {
           method: "POST",
           headers: {
             "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+            "X-CSRF-Token": csrfToken,
           },
           body: body,
           credentials: "same-origin",
@@ -918,6 +934,7 @@ function initEmailTemplateModule() {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+          "X-CSRF-Token": csrfToken, // [NEW] Add CSRF Header
         },
         body: body,
         credentials: "same-origin",
@@ -927,6 +944,12 @@ function initEmailTemplateModule() {
         })
         .then(function (payload) {
           if (payload && payload.success) {
+            if (
+              document.activeElement &&
+              typeof document.activeElement.blur === "function"
+            ) {
+              document.activeElement.blur();
+            }
             if (modal) modal.hide();
             if (typeof Swal !== "undefined")
               Swal.fire("成功", payload.message || "保存成功", "success");

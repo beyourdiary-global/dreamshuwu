@@ -290,6 +290,9 @@ CREATE TABLE IF NOT EXISTS author_profile (
   avatar VARCHAR(255) DEFAULT NULL COMMENT 'Avatar image',
   bio TEXT DEFAULT NULL COMMENT 'Author bio',
   verification_status VARCHAR(20) NOT NULL DEFAULT 'pending' COMMENT 'pending / approved / rejected',
+  reject_reason TEXT DEFAULT NULL COMMENT 'Mandatory when status is rejected',
+  email_notified_at DATETIME DEFAULT NULL COMMENT 'Last notification timestamp',
+  email_notify_count INT DEFAULT 0 COMMENT 'Total number of notifications sent',
   status CHAR(1) NOT NULL DEFAULT 'A' COMMENT 'A = Active, D = Deleted',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT 'Created timestamp',
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Updated timestamp',
@@ -341,24 +344,45 @@ foreach ($tables as $name => $sql) {
     }
 }
 
-// 5. Alter Table for author_profile (Adds new fields if they don't exist)
-$alterAuthorProfile = "ALTER TABLE author_profile 
-  ADD COLUMN reject_reason TEXT DEFAULT NULL COMMENT 'Mandatory when status is rejected' AFTER verification_status,
-  ADD COLUMN email_notified_at DATETIME DEFAULT NULL COMMENT 'Last notification timestamp' AFTER reject_reason,
-  ADD COLUMN email_notify_count INT DEFAULT 0 COMMENT 'Total number of notifications sent' AFTER email_notified_at;";
-
-if ($conn->query($alterAuthorProfile) === TRUE) {
-    echo "Table '<strong>author_profile</strong>' altered successfully (columns added).<br>";
-} else {
-    // Error code 1060 means "Duplicate column name", which means the table is already updated.
-    if ($conn->errno == 1060) {
-        echo "Table '<strong>author_profile</strong>' columns already up to date.<br>";
+// 5. Alter Table for author_profile (Adds new fields if they don't exist, idempotently)
+// Helper to add a column if it does not already exist
+$authorProfileColumns = [
+    'reject_reason' => "ALTER TABLE author_profile 
+        ADD COLUMN reject_reason TEXT DEFAULT NULL COMMENT 'Mandatory when status is rejected' AFTER verification_status",
+    'email_notified_at' => "ALTER TABLE author_profile 
+        ADD COLUMN email_notified_at DATETIME DEFAULT NULL COMMENT 'Last notification timestamp' AFTER reject_reason",
+    'email_notify_count' => "ALTER TABLE author_profile 
+        ADD COLUMN email_notify_count INT DEFAULT 0 COMMENT 'Total number of notifications sent' AFTER email_notified_at",
+];
+foreach ($authorProfileColumns as $columnName => $alterSql) {
+    // Check if the column already exists
+    $checkSql = "SHOW COLUMNS FROM author_profile LIKE '" . $conn->real_escape_string($columnName) . "'";
+    if ($result = $conn->query($checkSql)) {
+        if ($result->num_rows > 0) {
+            // Column already exists; skip adding it
+            echo "Column '<strong>" . htmlspecialchars($columnName, ENT_QUOTES, 'UTF-8') . "</strong>' in 'author_profile' already exists.<br>";
+            $result->free();
+            continue;
+        }
+        $result->free();
     } else {
-        echo "Error altering table '<strong>author_profile</strong>': " . $conn->error . "<br>";
+        echo "Error checking column '<strong>" . htmlspecialchars($columnName, ENT_QUOTES, 'UTF-8') . "</strong>' in 'author_profile': " . $conn->error . "<br>";
+        continue;
+    }
+    // Column does not exist; attempt to add it
+    if ($conn->query($alterSql) === TRUE) {
+        echo "Column '<strong>" . htmlspecialchars($columnName, ENT_QUOTES, 'UTF-8') . "</strong>' added to 'author_profile'.<br>";
+    } else {
+        // Error code 1060 means "Duplicate column name" (possible race condition)
+        if ($conn->errno == 1060) {
+            echo "Column '<strong>" . htmlspecialchars($columnName, ENT_QUOTES, 'UTF-8') . "</strong>' in 'author_profile' already up to date.<br>";
+        } else {
+            echo "Error altering table '<strong>author_profile</strong>' when adding column '<strong>" . htmlspecialchars($columnName, ENT_QUOTES, 'UTF-8') . "</strong>': " . $conn->error . "<br>";
+        }
     }
 }
 
-// 6. Insert Default Email Templates
+// 6. Insert Default Email Templates (Secured with Prepared Statements)
 $defaultTemplates = [
     [
         'code' => 'AUTHOR_APPROVED',
@@ -374,11 +398,17 @@ $defaultTemplates = [
     ]
 ];
 
+// PREPARE the existence check statement ONCE outside the loop for efficiency
+$checkStmt = $conn->prepare("SELECT id FROM email_template WHERE template_code = ? LIMIT 1");
+
 foreach ($defaultTemplates as $tpl) {
-    // Check if template code already exists
-    $checkTpl = $conn->query("SELECT id FROM email_template WHERE template_code = '" . $tpl['code'] . "' LIMIT 1");
+    // REFACTORED: Use the prepared statement for the existence check
+    $checkStmt->bind_param("s", $tpl['code']);
+    $checkStmt->execute();
+    $checkStmt->store_result();
+    $exists = ($checkStmt->num_rows > 0);
     
-    if ($checkTpl && $checkTpl->num_rows == 0) {
+    if (!$exists) {
         $stmt = $conn->prepare("INSERT INTO email_template (template_code, template_name, subject, content, status, created_at, updated_at) VALUES (?, ?, ?, ?, 'A', NOW(), NOW())");
         $stmt->bind_param("ssss", $tpl['code'], $tpl['name'], $tpl['subject'], $tpl['content']);
         
@@ -392,7 +422,6 @@ foreach ($defaultTemplates as $tpl) {
         echo "Template '<strong>" . $tpl['code'] . "</strong>' already exists, skipping insert.<br>";
     }
 }
-
-$conn->close();
+$checkStmt->close();
 echo "<hr><strong>Environment Build Complete!</strong>";
 ?>
