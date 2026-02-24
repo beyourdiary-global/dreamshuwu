@@ -934,6 +934,18 @@ function initEmailTemplateModule() {
               if (typeof Swal !== "undefined")
                 Swal.fire("成功", payload.message || "删除成功", "success");
               table.ajax.reload(null, false);
+            } else if (
+              payload &&
+              payload.type === "warning" &&
+              typeof Swal !== "undefined"
+            ) {
+              Swal.fire({
+                icon: "warning",
+                title: "没有修改",
+                text: "无需保存",
+                timer: 2000,
+                showConfirmButton: false,
+              });
             } else if (typeof Swal !== "undefined") {
               Swal.fire(
                 "错误",
@@ -999,6 +1011,18 @@ function initEmailTemplateModule() {
             if (typeof Swal !== "undefined")
               Swal.fire("成功", payload.message || "保存成功", "success");
             table.ajax.reload(null, false);
+          } else if (
+            payload &&
+            payload.type === "warning" &&
+            typeof Swal !== "undefined"
+          ) {
+            Swal.fire({
+              icon: "warning",
+              title: "没有修改",
+              text: "无需保存",
+              timer: 2000,
+              showConfirmButton: false,
+            });
           } else if (typeof Swal !== "undefined") {
             Swal.fire(
               "错误",

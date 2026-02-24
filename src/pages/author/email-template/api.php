@@ -285,6 +285,23 @@ try {
         }
         // -------------------------------------------------------------------------
 
+        $newData = [
+            'template_code' => $templateCode,
+            'template_name' => $templateName,
+            'subject' => $subject,
+            'content' => $content,
+            'status' => $status,
+        ];
+        $changeResult = checkNoChangesAndRedirect($newData, $oldRow);
+        if (is_array($changeResult)) {
+            echo safeJsonEncode([
+                'success' => false,
+                'message' => $changeResult['message'],
+                'type' => $changeResult['type']
+            ]);
+            exit();
+        }
+
         $checkSql = "SELECT id FROM " . EMAIL_TEMPLATE . " WHERE template_code = ? AND id <> ? LIMIT 1";
         $checkStmt = $conn->prepare($checkSql);
         if (!$checkStmt) throw new Exception('校验失败: ' . $conn->error);
@@ -382,9 +399,6 @@ try {
     throw new Exception('不支持的请求模式: ' . htmlspecialchars($mode));
 
 } catch (Throwable $e) {
-    // ... [previous logic above remains the same] ...
-
-} catch (Throwable $e) {
     // 1. Log the actual exception details to the server's error log for debugging
     // This records the message, file path, and line number without showing it to the user.
     error_log("Email Template API Error: " . $e->getMessage() . " in " . $e->getFile() . " on line " . $e->getLine());
@@ -397,7 +411,7 @@ try {
     
     if ($modeStr === 'data') {
         // Response format expected by DataTables
-        echo json_encode([
+        echo safeJsonEncode([
             'draw' => intval($_REQUEST['draw'] ?? 1),
             'recordsTotal' => 0,
             'recordsFiltered' => 0,
@@ -407,9 +421,14 @@ try {
         ]);
     } else {
         // Standard JSON response for Create/Update/Delete actions
-        echo json_encode([
+        $errMsg = trim((string)$e->getMessage());
+        if ($errMsg === '') {
+            $errMsg = '操作失败，请稍后重试';
+        }
+
+        echo safeJsonEncode([
             'success' => false,
-            'message' => '操作失败，请稍后重试'
+            'message' => $errMsg
         ]);
     }
     exit();
