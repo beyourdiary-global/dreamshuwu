@@ -64,6 +64,7 @@
 /* --- Main Content Area --- */
 .dashboard-main {
   flex-grow: 1;
+  min-width: 0;
 }
 
 /* --- Profile Card --- */
@@ -81,6 +82,7 @@
   position: relative;
   margin-bottom: 30px;
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+  min-width: 0;
 }
 
 .profile-avatar {
@@ -95,6 +97,12 @@
 .profile-info h2 {
   margin: 0 0 5px 0;
   font-size: 20px;
+  word-break: break-word;
+}
+
+.profile-info {
+  min-width: 0;
+  flex: 1;
 }
 
 .level-badge {
@@ -113,6 +121,7 @@
   margin-top: 10px;
   font-size: 13px;
   opacity: 0.9;
+  flex-wrap: wrap;
 }
 
 /* Settings Button (Base Style) */
@@ -228,11 +237,15 @@
   /* Adjust Profile Card */
   .profile-card {
     padding: 20px;
+    align-items: flex-start;
+    gap: 12px;
   }
 
   .profile-avatar {
     width: 60px;
     height: 60px;
+    margin-right: 0;
+    flex-shrink: 0;
   }
 
   /* Switch Icons: Hide Gear, Show Arrow */
@@ -252,9 +265,62 @@
     color: #fff;
     opacity: 0.8;
   }
+
+  .quick-actions-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .action-card {
+    min-width: 0;
+    padding: 18px 8px;
+  }
+
+  .action-card h4 {
+    word-break: break-word;
+    line-height: 1.25;
+  }
 }
 
 @media (max-width: 480px) {
+  .dashboard-container {
+    padding: 0 10px;
+  }
+
+  .profile-card {
+    padding: 16px 14px;
+  }
+
+  .profile-info h2 {
+    font-size: 18px;
+  }
+
+  .profile-stats {
+    gap: 10px;
+    font-size: 12px;
+  }
+
+  .quick-actions-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .action-card {
+    padding: 14px 6px;
+    border-radius: 10px;
+  }
+
+  .action-icon-wrapper {
+    width: 42px;
+    height: 42px;
+    font-size: 18px;
+    margin-bottom: 8px;
+  }
+
+  .action-card h4 {
+    font-size: 12px;
+  }
+
   .dashboard-main > .alert {
     font-size: 13px; /* Slightly smaller font for tight screens */
     padding: 15px 45px 15px 15px !important; /* Proper spacing for all sides */
@@ -262,5 +328,36 @@
 
   .dashboard-main > .alert .btn-close {
     right: 8px; /* Move closer to edge on very small screens */
+  }
+}
+
+@media (max-width: 320px) {
+  .dashboard-container {
+    padding: 0 8px;
+  }
+
+  .profile-card {
+    padding: 14px 12px;
+  }
+
+  .profile-avatar {
+    width: 52px;
+    height: 52px;
+  }
+
+  .profile-info h2 {
+    font-size: 16px;
+  }
+
+  .quick-actions-grid {
+    gap: 8px;
+  }
+
+  .action-card {
+    padding: 12px 4px;
+  }
+
+  .action-card h4 {
+    font-size: 11px;
   }
 }

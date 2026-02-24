@@ -267,13 +267,22 @@ try {
     // MODE: VERIFY - Bypassing "?" for the core queries
     // =========================================================================
     if ($mode === 'verify') {
-        $editError = checkPermissionError('edit', $perm, '作者审核管理', false);
-        if ($editError) throw new Exception($editError);
+        $actionType = strtolower(trim((string)($_POST['action_type'] ?? '')));
+        
+        // [FIX] Strictly verify custom permissions without falling back to "edit"
+        if ($actionType === 'approve' && empty($perm->approve)) {
+            throw new Exception('权限不足：您没有执行【通过】操作的权限。');
+        }
+        if ($actionType === 'reject' && empty($perm->reject)) {
+            throw new Exception('权限不足：您没有执行【驳回】操作的权限。');
+        }
+        if ($actionType === 'resend' && empty($perm->resend) && empty($perm->{'resend email'})) {
+            throw new Exception('权限不足：您没有执行【重发】操作的权限。');
+        }
 
         $id = (int)($_POST['id'] ?? 0);
-        $actionType = strtolower(trim((string)($_POST['action_type'] ?? '')));
         $rejectReason = trim((string)($_POST['reject_reason'] ?? ''));
-
+        
         if ($id <= 0) throw new Exception('无效记录ID');
         if (!in_array($actionType, ['approve', 'reject', 'resend'], true)) throw new Exception('无效操作类型');
         if ($actionType === 'reject' && $rejectReason === '') throw new Exception('驳回原因不能为空');

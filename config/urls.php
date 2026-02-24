@@ -41,12 +41,17 @@ defined('URL_EMAIL_TEMPLATE_API') || define('URL_EMAIL_TEMPLATE_API', SITEURL . 
 
 // --- 6. Novel Management (Tags) ---
 defined('URL_NOVEL_TAGS')        || define('URL_NOVEL_TAGS', URL_USER_DASHBOARD . '?view=tags');
+defined('QUERY_TAG_MODE')        || define('QUERY_TAG_MODE', 'tag_mode');
+defined('QUERY_FORM_MODE')       || define('QUERY_FORM_MODE', 'form');
+defined('URL_NOVEL_TAGS_FORM')   || define('URL_NOVEL_TAGS_FORM', URL_NOVEL_TAGS . '&' . QUERY_TAG_MODE . '=' . QUERY_FORM_MODE);
 defined('URL_NOVEL_TAGS_API')    || define('URL_NOVEL_TAGS_API', SITEURL . '/src/pages/tags/index.php');
 defined('PATH_NOVEL_TAGS_INDEX') || define('PATH_NOVEL_TAGS_INDEX', 'src/pages/tags/index.php');
 defined('PATH_NOVEL_TAGS_FORM')  || define('PATH_NOVEL_TAGS_FORM', 'src/pages/tags/form.php');
 
 // --- 7. Novel Management (Categories) ---
 defined('URL_NOVEL_CATS')        || define('URL_NOVEL_CATS', URL_USER_DASHBOARD . '?view=categories');
+defined('QUERY_CAT_MODE')        || define('QUERY_CAT_MODE', 'cat_mode');
+defined('URL_NOVEL_CATS_FORM')   || define('URL_NOVEL_CATS_FORM', URL_NOVEL_CATS . '&' . QUERY_CAT_MODE . '=' . QUERY_FORM_MODE);
 defined('URL_NOVEL_CATS_API')    || define('URL_NOVEL_CATS_API', SITEURL . '/src/pages/category/index.php');
 defined('PATH_NOVEL_CATS_INDEX') || define('PATH_NOVEL_CATS_INDEX', 'src/pages/category/index.php');
 defined('PATH_NOVEL_CATS_FORM')  || define('PATH_NOVEL_CATS_FORM', 'src/pages/category/form.php');

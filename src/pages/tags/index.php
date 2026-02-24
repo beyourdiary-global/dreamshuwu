@@ -15,6 +15,8 @@ $auditPage = 'Tag Management';
 $viewQuery = "SELECT id, name FROM " . $tagTable;
 $deleteQuery = "DELETE FROM " . $tagTable . " WHERE id = ?";
 $isEmbeddedInDashboard = isset($EMBED_TAGS_PAGE) && $EMBED_TAGS_PAGE === true;
+$tagMode = isset($_GET[QUERY_TAG_MODE]) ? (string)$_GET[QUERY_TAG_MODE] : (isset($_GET['pa_mode']) ? (string)$_GET['pa_mode'] : '');
+$pageActionMode = ($tagMode === QUERY_FORM_MODE) ? QUERY_FORM_MODE : 'list';
 
 // Request Type Detection
 $isAjaxRequest = isset($_GET['mode']) && $_GET['mode'] === 'data';
@@ -35,6 +37,12 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
     }
     header("Location: " . URL_LOGIN); 
     exit();
+}
+
+if ($isEmbeddedInDashboard && $pageActionMode === 'form') {
+    $EMBED_TAG_FORM_PAGE = true;
+    require BASE_PATH . PATH_NOVEL_TAGS_FORM;
+    return;
 }
 
 // 2. Helper Functions (safeJsonEncode is loaded from functions.php via common.php)
@@ -150,7 +158,7 @@ if ($isAjaxRequest) {
 
     $data = [];
     while ($stmt->fetch()) {
-        $editUrl = URL_USER_DASHBOARD . '?view=tag_form&id=' . (int) $id;
+        $editUrl = URL_NOVEL_TAGS_FORM . '&id=' . (int) $id;
         
         $actionsHtml = '';
         // 1. Check dynamic permission properties
@@ -300,7 +308,7 @@ if ($isEmbeddedInDashboard): ?>
                     <h4 class="m-0 text-primary"><i class="fa-solid fa-tags"></i> 标签管理</h4>
                 </div>
                 <?php if ($perm->add): ?>
-                <a href="<?php echo URL_USER_DASHBOARD; ?>?view=tag_form" class="btn btn-primary desktop-add-btn">
+                <a href="<?php echo URL_NOVEL_TAGS_FORM; ?>" class="btn btn-primary desktop-add-btn">
                     <i class="fa-solid fa-plus"></i> 新增标签
                 </a>
                 <?php endif; ?>
@@ -348,7 +356,7 @@ if ($isEmbeddedInDashboard): ?>
                 <h4 class="m-0 text-primary"><i class="fa-solid fa-tags"></i> 标签管理</h4>
             </div>
             <?php if ($perm->add): ?>
-            <a href="<?php echo URL_USER_DASHBOARD; ?>?view=tag_form" class="btn btn-primary desktop-add-btn">
+            <a href="<?php echo URL_NOVEL_TAGS_FORM; ?>" class="btn btn-primary desktop-add-btn">
                 <i class="fa-solid fa-plus"></i> 新增标签
             </a>
             <?php endif; ?>

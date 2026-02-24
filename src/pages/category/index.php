@@ -31,6 +31,14 @@ $deleteQuery = "DELETE FROM " . $catTable . " WHERE id = ?";
 
 // 2. Embed Detection
 $isEmbeddedInDashboard = isset($EMBED_CATS_PAGE) && $EMBED_CATS_PAGE === true;
+$catMode = isset($_GET[QUERY_CAT_MODE]) ? (string)$_GET[QUERY_CAT_MODE] : (isset($_GET['pa_mode']) ? (string)$_GET['pa_mode'] : '');
+$pageActionMode = ($catMode === QUERY_FORM_MODE) ? QUERY_FORM_MODE : 'list';
+
+if ($isEmbeddedInDashboard && $pageActionMode === 'form') {
+    $EMBED_CAT_FORM_PAGE = true;
+    require BASE_PATH . PATH_NOVEL_CATS_FORM;
+    return;
+}
 
 // API: DATA FETCH
 if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
@@ -126,7 +134,7 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
         }
 
         // Edit URL points to Dashboard
-        $editUrl = URL_USER_DASHBOARD . "?view=cat_form&id=" . (int) $cat['id'];
+        $editUrl = URL_NOVEL_CATS_FORM . '&id=' . (int) $cat['id'];
         
         // [ADDED] Dynamically build actions based on permission object properties
         $btns = '';
@@ -254,7 +262,7 @@ if ($isEmbeddedInDashboard): ?>
                 <h4 class="m-0 text-primary"><i class="fa-solid fa-layer-group"></i> 分类管理</h4>
             </div>
             <?php if ($perm->add): ?>
-            <a href="<?php echo URL_USER_DASHBOARD; ?>?view=cat_form" class="btn btn-primary desktop-add-btn"><i class="fa-solid fa-plus"></i> 新增分类</a>
+            <a href="<?php echo URL_NOVEL_CATS_FORM; ?>" class="btn btn-primary desktop-add-btn"><i class="fa-solid fa-plus"></i> 新增分类</a>
             <?php endif; ?>
         </div>
         <div class="card-body">
@@ -279,7 +287,7 @@ if ($isEmbeddedInDashboard): ?>
     </div>
 </div>
 <?php if ($perm->add): ?>
-<a href="<?php echo URL_USER_DASHBOARD; ?>?view=cat_form" class="btn btn-primary btn-add-mobile"><i class="fa-solid fa-plus fa-lg"></i></a>
+<a href="<?php echo URL_NOVEL_CATS_FORM; ?>" class="btn btn-primary btn-add-mobile"><i class="fa-solid fa-plus fa-lg"></i></a>
 <?php endif; ?>
 <?php else: ?>
 <?php endif; ?>

@@ -1,8 +1,8 @@
 <?php
 require_once dirname(__DIR__, 3) . '/common.php';
 
-// 1. Identify this specific view's URL as registered in your DB
-$currentUrl = '/dashboard.php?view=tag_form'; 
+// 1. Use parent list page URL (single-page mode with tag_mode=form)
+$currentUrl = '/dashboard.php?view=tags'; 
 
 // [ADDED] Fetch dynamic permission object
 $perm = hasPagePermission($conn, $currentUrl);
@@ -37,8 +37,8 @@ $actionToCheck = $isEditMode ? 'edit' : 'add';
 checkPermissionError($actionToCheck, $perm, '标签');
 
 if ($isEmbeddedTagForm) {
-    $listPageUrl = URL_USER_DASHBOARD . '?view=tags';
-    $formActionUrl = URL_USER_DASHBOARD . '?view=tag_form' . ($isEditMode ? '&id=' . intval($tagId) : ''); 
+    $listPageUrl = URL_NOVEL_TAGS;
+    $formActionUrl = URL_NOVEL_TAGS_FORM . ($isEditMode ? '&id=' . intval($tagId) : ''); 
 } else {
     $listPageUrl = defined('URL_NOVEL_TAGS') ? URL_NOVEL_TAGS : 'index.php';
     $formActionUrl = ''; 
@@ -282,7 +282,7 @@ if ($isEmbeddedTagForm): ?>
         </div>
     </div>
 <?php else: ?>
-<?php $pageMetaKey = 'tag_form'; ?>
+<?php $pageMetaKey = '/dashboard.php?view=tags'; ?>
 <!DOCTYPE html>
 <html lang="<?php echo defined('SITE_LANG') ? SITE_LANG : 'zh-CN'; ?>">
 <head>

@@ -56,7 +56,9 @@ ob_start();
 ?>
 <div class="container-fluid px-0" id="emailTemplateApp" 
      data-api-url="<?php echo htmlspecialchars($apiEndpoint); ?>"
-    data-csrf="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>">
+     data-csrf="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>"
+     data-can-edit="<?php echo !empty($perm->edit) ? 1 : 0; ?>"
+     data-can-delete="<?php echo !empty($perm->delete) ? 1 : 0; ?>">
     <div class="card border-0 shadow-sm">
         <div class="card-header bg-white d-flex justify-content-between align-items-center py-3 flex-wrap gap-2">
             <div>

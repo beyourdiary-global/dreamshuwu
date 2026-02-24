@@ -2,8 +2,8 @@
 // Path: src/pages/category/form.php
 require_once dirname(__DIR__, 3) . '/common.php';
 
-// 1. Identify this specific view's URL as registered in your DB
-$currentUrl = '/dashboard.php?view=cat_form'; 
+// 1. Use parent list page URL (single-page mode with cat_mode=form)
+$currentUrl = '/dashboard.php?view=categories'; 
 
 // [ADDED] Fetch dynamic permission object
 $perm = hasPagePermission($conn, $currentUrl);
@@ -39,8 +39,8 @@ $actionToCheck = $isEditMode ? 'edit' : 'add';
 checkPermissionError($actionToCheck, $perm, '分类');
 
 if ($isEmbeddedCatForm) {
-    $listPageUrl = URL_USER_DASHBOARD . '?view=categories';
-    $formActionUrl = URL_USER_DASHBOARD . '?view=cat_form' . ($isEditMode ? '&id=' . intval($id) : ''); 
+    $listPageUrl = URL_NOVEL_CATS;
+    $formActionUrl = URL_NOVEL_CATS_FORM . ($isEditMode ? '&id=' . intval($id) : ''); 
 } else {
     $listPageUrl = URL_NOVEL_CATS; 
     $formActionUrl = '';
