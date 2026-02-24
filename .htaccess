@@ -26,6 +26,11 @@ RewriteCond %{REQUEST_URI} !^/src/pages/admin/page-information-list/index\.php$
 # 7. Allow User Role API
 RewriteCond %{REQUEST_URI} !^/src/pages/admin/user-role/index\.php$
 
+# 8. Allow Author Verification API (NEW)
+RewriteCond %{REQUEST_URI} !^/src/pages/author/author-verification/api\.php$
+
+# 9. Allow Email Template API (NEW)
+RewriteCond %{REQUEST_URI} !^/src/pages/author/email-template/api\.php$
 # Block everything else in src/
 
 RewriteRule ^src/ - [F,L]

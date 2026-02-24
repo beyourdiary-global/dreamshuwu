@@ -13,14 +13,35 @@ $auditPage = 'User Dashboard';
 
 // --- VIEW LOGIC ---
 $currentView     = isset($_GET['view']) ? $_GET['view'] : 'home';
+$legacyMode      = isset($_GET['pa_mode']) ? trim((string)$_GET['pa_mode']) : '';
+$tagMode         = isset($_GET[QUERY_TAG_MODE]) ? trim((string)$_GET[QUERY_TAG_MODE]) : $legacyMode;
+$catMode         = isset($_GET[QUERY_CAT_MODE]) ? trim((string)$_GET[QUERY_CAT_MODE]) : $legacyMode;
+
+if ($currentView === 'tag_form') {
+    $redirectUrl = URL_NOVEL_TAGS_FORM;
+    if (!empty($_GET['id'])) {
+        $redirectUrl .= '&id=' . (int)$_GET['id'];
+    }
+    header('Location: ' . $redirectUrl);
+    exit();
+}
+
+if ($currentView === 'cat_form') {
+    $redirectUrl = URL_NOVEL_CATS_FORM;
+    if (!empty($_GET['id'])) {
+        $redirectUrl .= '&id=' . (int)$_GET['id'];
+    }
+    header('Location: ' . $redirectUrl);
+    exit();
+}
 
 // Define View States
-$isTagListView    = ($currentView === 'tags');
-$isTagFormView    = ($currentView === 'tag_form');
+$isTagListView    = ($currentView === 'tags' && $tagMode !== QUERY_FORM_MODE);
+$isTagFormView    = ($currentView === 'tags' && $tagMode === QUERY_FORM_MODE);
 $isTagSection     = $isTagListView || $isTagFormView;
 
-$isCatListView    = ($currentView === 'categories');
-$isCatFormView    = ($currentView === 'cat_form');
+$isCatListView    = ($currentView === 'categories' && $catMode !== QUERY_FORM_MODE);
+$isCatFormView    = ($currentView === 'categories' && $catMode === QUERY_FORM_MODE);
 $isCatSection     = $isCatListView || $isCatFormView;
 
 $isProfileView    = ($currentView === 'profile');
@@ -40,9 +61,7 @@ $baseViewPath = '/dashboard.php?view=';
 $permDashboard  = hasPagePermission($conn, '/dashboard.php');
 $permProfile    = hasPagePermission($conn, $baseViewPath . 'profile');
 $permTags       = hasPagePermission($conn, $baseViewPath . 'tags');
-$permTagForm    = hasPagePermission($conn, $baseViewPath . 'tag_form');
 $permCategories = hasPagePermission($conn, $baseViewPath . 'categories');
-$permCatForm    = hasPagePermission($conn, $baseViewPath . 'cat_form');
 $permMeta       = hasPagePermission($conn, $baseViewPath . 'meta_settings');
 $permWeb        = hasPagePermission($conn, $baseViewPath . 'web_settings');
 $permAdmin      = hasPagePermission($conn, $baseViewPath . 'admin');
@@ -52,6 +71,22 @@ $permUserRole   = hasPagePermission($conn, $baseViewPath . 'user_role');
 
 if (!$isTagSection && !$isCatSection && !$isProfileView && !$isMetaView && !$isWebSettingView && !$isAdminSection) {
     checkPermissionError('view', $permDashboard, '仪表盘首页');
+}
+
+if ($isTagSection) {
+    checkPermissionError('view', $permTags, '小说标签');
+    if ($isTagFormView) {
+        $tagFormActionToCheck = !empty($_GET['id']) ? 'edit' : 'add';
+        checkPermissionError($tagFormActionToCheck, $permTags, '标签表单');
+    }
+}
+
+if ($isCatSection) {
+    checkPermissionError('view', $permCategories, '小说分类');
+    if ($isCatFormView) {
+        $catFormActionToCheck = !empty($_GET['id']) ? 'edit' : 'add';
+        checkPermissionError($catFormActionToCheck, $permCategories, '分类表单');
+    }
 }
 
 // Data Fetching
@@ -210,21 +245,13 @@ $pageMetaKey = ($currentView === 'home' || empty($currentView)) ? '/dashboard.ph
             if (!defined('PROFILE_EMBEDDED')) define('PROFILE_EMBEDDED', true);
             require BASE_PATH . PATH_PROFILE;
 
-        elseif ($isTagListView):
+        elseif ($isTagSection):
             $EMBED_TAGS_PAGE = true;
             require BASE_PATH . PATH_NOVEL_TAGS_INDEX;
-        
-        elseif ($isTagFormView):
-            $EMBED_TAG_FORM_PAGE = true;
-            require BASE_PATH . PATH_NOVEL_TAGS_FORM;
 
-        elseif ($isCatListView):
+        elseif ($isCatSection):
             $EMBED_CATS_PAGE = true;
             require BASE_PATH . PATH_NOVEL_CATS_INDEX;
-        
-        elseif ($isCatFormView):
-            $EMBED_CAT_FORM_PAGE = true;
-            require BASE_PATH . PATH_NOVEL_CATS_FORM;
         
         elseif ($isMetaView):
             $EMBED_META_PAGE = true;

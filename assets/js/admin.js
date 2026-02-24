@@ -362,8 +362,14 @@ function initAuthorVerificationModule() {
   if (tableEl.dataset.dtReady === "1") return true;
 
   var apiUrl = appRoot.getAttribute("data-api-url") || "";
-  var csrfToken = appRoot.getAttribute("data-csrf") || ""; // [NEW] Read the token
+  var csrfToken = appRoot.getAttribute("data-csrf") || "";
   if (!apiUrl) return false;
+
+  // Read permissions from data attributes for Author Module
+  var canApprove = appRoot.getAttribute("data-can-approve") === "1";
+  var canReject = appRoot.getAttribute("data-can-reject") === "1";
+  var canResend = appRoot.getAttribute("data-can-resend") === "1";
+  var canDelete = appRoot.getAttribute("data-can-delete") === "1";
 
   var searchInput = form.querySelector('input[name="search"]');
   var perPageSelect = form.querySelector('select[name="per_page"]');
@@ -491,23 +497,40 @@ function initAuthorVerificationModule() {
         render: function (data) {
           var id = parseInt(data.id || 0, 10);
           var reason = adminEscapeHtml(data.reject_reason || "");
-          return (
-            "" +
-            '<button type="button" class="btn btn-sm btn-outline-success me-1 btn-author-action" data-id="' +
-            id +
-            '" data-action="approve" title="通过">通过</button>' +
-            '<button type="button" class="btn btn-sm btn-outline-danger me-1 btn-author-action" data-id="' +
-            id +
-            '" data-action="reject" data-reason="' +
-            reason +
-            '" title="驳回">驳回</button>' +
-            '<button type="button" class="btn btn-sm btn-outline-primary me-1 btn-author-action" data-id="' +
-            id +
-            '" data-action="resend" title="重发通知">重发</button>' +
-            '<button type="button" class="btn btn-sm btn-outline-secondary btn-author-delete" data-id="' +
-            id +
-            '" title="软删除">删除</button>'
-          );
+          var html = "";
+
+          if (canApprove) {
+            html +=
+              '<button type="button" class="btn btn-sm btn-outline-success me-1 btn-author-action" data-id="' +
+              id +
+              '" data-action="approve" title="通过">通过</button>';
+          }
+          if (canReject) {
+            html +=
+              '<button type="button" class="btn btn-sm btn-outline-danger me-1 btn-author-action" data-id="' +
+              id +
+              '" data-action="reject" data-reason="' +
+              reason +
+              '" title="驳回">驳回</button>';
+          }
+          if (canResend) {
+            html +=
+              '<button type="button" class="btn btn-sm btn-outline-primary me-1 btn-author-action" data-id="' +
+              id +
+              '" data-action="resend" title="重发通知">重发</button>';
+          }
+          if (canDelete) {
+            html +=
+              '<button type="button" class="btn btn-sm btn-outline-secondary btn-author-delete" data-id="' +
+              id +
+              '" title="软删除">删除</button>';
+          }
+
+          if (html === "") {
+            html = '<span class="text-muted small">无操作权限</span>';
+          }
+
+          return html;
         },
       },
     ],
@@ -561,12 +584,16 @@ function initAuthorVerificationModule() {
     if (deleteBtn) {
       var rowIdForDelete = deleteBtn.getAttribute("data-id") || "0";
       var doDelete = function () {
-        var body = "mode=delete&id=" + encodeURIComponent(rowIdForDelete);
+        var body =
+          "mode=delete&id=" +
+          encodeURIComponent(rowIdForDelete) +
+          "&csrf_token=" +
+          encodeURIComponent(csrfToken);
         fetch(apiUrl, {
           method: "POST",
           headers: {
             "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-            "X-CSRF-Token": csrfToken, // [NEW] Add CSRF Header
+            "X-CSRF-Token": csrfToken,
           },
           body: body,
           credentials: "same-origin",
@@ -703,6 +730,10 @@ function initEmailTemplateModule() {
   var csrfToken = appRoot.getAttribute("data-csrf") || "";
   if (!apiUrl) return false;
 
+  // Read strictly enforced permissions for Email Template Module
+  var canEdit = appRoot.getAttribute("data-can-edit") === "1";
+  var canDelete = appRoot.getAttribute("data-can-delete") === "1";
+
   var searchInput = form.querySelector('input[name="search"]');
   var perPageSelect = form.querySelector('select[name="per_page"]');
   var addBtn = document.getElementById("btnEmailTemplateAdd");
@@ -802,15 +833,28 @@ function initEmailTemplateModule() {
         className: "text-center",
         render: function (data) {
           var id = parseInt(data.id || 0, 10);
-          return (
-            "" +
-            '<button type="button" class="btn btn-sm btn-outline-primary me-1 btn-email-edit" data-id="' +
-            id +
-            '">编辑</button>' +
-            '<button type="button" class="btn btn-sm btn-outline-danger btn-email-delete" data-id="' +
-            id +
-            '">删除</button>'
-          );
+          var isRequired = data.is_required === true;
+          var html = "";
+
+          if (canEdit) {
+            html +=
+              '<button type="button" class="btn btn-sm btn-outline-primary me-1 btn-email-edit" data-id="' +
+              id +
+              '">编辑</button>';
+          }
+
+          if (canDelete && !isRequired) {
+            html +=
+              '<button type="button" class="btn btn-sm btn-outline-danger btn-email-delete" data-id="' +
+              id +
+              '">删除</button>';
+          }
+
+          if (html === "") {
+            html = '<span class="text-muted small">无操作权限</span>';
+          }
+
+          return html;
         },
       },
     ],
@@ -870,7 +914,7 @@ function initEmailTemplateModule() {
       var doDelete = function () {
         var body =
           "mode=delete&id=" +
-          encodeURIComponent(rowIdForDelete) +
+          encodeURIComponent(deleteId) +
           "&csrf_token=" +
           encodeURIComponent(csrfToken);
         fetch(apiUrl, {
@@ -928,13 +972,14 @@ function initEmailTemplateModule() {
       if (codeInput && codeInput.value) {
         codeInput.value = String(codeInput.value).toUpperCase().trim();
       }
+      formData.set("csrf_token", csrfToken);
       var body = new URLSearchParams(formData).toString();
 
       fetch(apiUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-          "X-CSRF-Token": csrfToken, // [NEW] Add CSRF Header
+          "X-CSRF-Token": csrfToken,
         },
         body: body,
         credentials: "same-origin",
