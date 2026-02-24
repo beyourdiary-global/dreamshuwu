@@ -135,8 +135,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         <div class="reg-card">
             <h3>新用户</h3>
             <p style="color: #666;">简单几步即可完成注册</p>
-
-            <form id="regForm" method="POST" autocomplete="off" data-field-errors="<?php echo htmlspecialchars(json_encode($fieldErrors ?? [])); ?>">
+            <form id="regForm" method="POST" autocomplete="off" data-field-errors="<?php echo empty($fieldErrors) ? '{}' : htmlspecialchars(json_encode($fieldErrors)); ?>">
                 <div class="auth-field">
                     <label class="form-label" for="name">姓名</label>
                     <input type="text" class="form-control" id="name" name="name" placeholder="姓名" value="<?php echo htmlspecialchars($name); ?>" required>
