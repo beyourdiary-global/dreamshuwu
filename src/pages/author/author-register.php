@@ -15,6 +15,8 @@ checkPermissionError('view', $perm, '作者注册页面');
 $userId = $_SESSION['user_id'];
 $auditPage = 'Author Registration';
 
+$sqlGetProfileByUserId = "SELECT * FROM " . AUTHOR_PROFILE . " WHERE user_id = %d AND status = 'A' LIMIT 1";
+$sqlGetProfileById     = "SELECT * FROM " . AUTHOR_PROFILE . " WHERE id = %d AND status = 'A' LIMIT 1";
 $sqlInsertProfile = "INSERT INTO " . AUTHOR_PROFILE . " 
                      (user_id, real_name, id_number, id_photo_front, id_photo_back, contact_phone, contact_email, 
                       bank_account_name, bank_name, bank_country, bank_swift_code, bank_account_number, 
@@ -38,9 +40,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $errorMsg = "";
 
-    // [FIX] Removed get_result() - Safe integer-casted lookup
+    // 1. Fetch existing using reusable query
     $safeUserId = (int)$userId;
-    $eRes = $conn->query("SELECT * FROM " . AUTHOR_PROFILE . " WHERE user_id = {$safeUserId} LIMIT 1");
+    $eRes = $conn->query(sprintf($sqlGetProfileByUserId, $safeUserId));
     $existingData = $eRes && $eRes->num_rows > 0 ? $eRes->fetch_assoc() : [];
     if ($eRes) $eRes->free();
 
@@ -130,11 +132,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (empty($errorMsg)) {
         
-        // [FIX] Removed get_result() - Safe integer lookup
+        // 2. Fetch Old Data for Audit using reusable query
         $oldData = null;
         if ($isEditMode) {
             $safeRecordId = (int)$recordId;
-            $oRes = $conn->query("SELECT * FROM " . AUTHOR_PROFILE . " WHERE id = {$safeRecordId}");
+            $oRes = $conn->query(sprintf($sqlGetProfileById, $safeRecordId));
             if ($oRes && $oRes->num_rows > 0) $oldData = $oRes->fetch_assoc();
             if ($oRes) $oRes->free();
         }
@@ -173,10 +175,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $executedQuery = $sqlUpdateProfile;
             }
 
-            // [FIX] Removed get_result()
+            // 3. Fetch New Data for Audit using reusable query
             $newData = null;
             $safeTargetId = (int)$targetId;
-            $nRes = $conn->query("SELECT * FROM " . AUTHOR_PROFILE . " WHERE id = {$safeTargetId}");
+            $nRes = $conn->query(sprintf($sqlGetProfileById, $safeTargetId));
             if ($nRes && $nRes->num_rows > 0) $newData = $nRes->fetch_assoc();
             if ($nRes) $nRes->free();
 
@@ -213,9 +215,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit();
 }
 
-// [FIX] Simplify GET data load to bypass result_metadata() issues completely
+// 4. Simplify GET data load using reusable query
 $safeUserIdGet = (int)$userId;
-$resGet = $conn->query("SELECT * FROM " . AUTHOR_PROFILE . " WHERE user_id = {$safeUserIdGet} AND status = 'A' LIMIT 1");
+$queryGet = sprintf($sqlGetProfileByUserId, $safeUserIdGet); // Format it once
+$resGet = $conn->query($queryGet); // Execute it
 $authorData = $resGet && $resGet->num_rows > 0 ? $resGet->fetch_assoc() : [];
 if ($resGet) $resGet->free();
 
@@ -232,7 +235,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && function_exists('logAudit') && !defi
         'page'           => $auditPage,
         'action'         => 'V',
         'action_message' => 'Viewing Author Registration Page',
-        'query'          => "SELECT * FROM " . AUTHOR_PROFILE . " WHERE user_id = {$safeUserIdGet}",
+        'query'          => $queryGet,
         'query_table'    => AUTHOR_PROFILE,
         'user_id'        => $userId
     ]);

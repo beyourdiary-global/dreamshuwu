@@ -17,6 +17,8 @@ $(document).ready(function () {
     columns: [
       {
         data: null,
+        orderable: false, // [FIX] Added to disable sorting
+        searchable: false, // [FIX] Added to disable searching
         render: function (data, type, row, meta) {
           var start = meta && meta.settings ? meta.settings._iDisplayStart : 0;
           return start + meta.row + 1;

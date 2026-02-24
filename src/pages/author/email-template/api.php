@@ -399,9 +399,9 @@ try {
     throw new Exception('不支持的请求模式: ' . htmlspecialchars($mode));
 
 } catch (Throwable $e) {
-    // 1. Log the actual exception details to the server's error log for debugging
-    // This records the message, file path, and line number without showing it to the user.
-    error_log("Email Template API Error: " . $e->getMessage() . " in " . $e->getFile() . " on line " . $e->getLine());
+    // 1. Log the full, unredacted error to the server logs for the admin
+    $fullErrorMsg = trim((string)$e->getMessage());
+    error_log("Email Template API Error: " . $fullErrorMsg . " in " . $e->getFile() . " on line " . $e->getLine());
 
     // 2. Clear any stray output to ensure a clean JSON response
     if (ob_get_length()) ob_clean(); 
@@ -416,19 +416,20 @@ try {
             'recordsTotal' => 0,
             'recordsFiltered' => 0,
             'data' => [],
-            // Generic message for security
             'error' => '接口错误，请检查系统日志' 
         ]);
     } else {
-        // Standard JSON response for Create/Update/Delete actions
-        $errMsg = trim((string)$e->getMessage());
-        if ($errMsg === '') {
-            $errMsg = '操作失败，请稍后重试';
+        // [FIX] Security: Hide database details from the frontend user.
+        // We split the string by ": " so "读取数据失败: SQL syntax..." becomes just "读取数据失败"
+        $safeUserMsg = explode(': ', $fullErrorMsg)[0];
+        
+        if ($safeUserMsg === '') {
+            $safeUserMsg = '操作失败，请稍后重试';
         }
 
         echo safeJsonEncode([
             'success' => false,
-            'message' => $errMsg
+            'message' => $safeUserMsg
         ]);
     }
     exit();
