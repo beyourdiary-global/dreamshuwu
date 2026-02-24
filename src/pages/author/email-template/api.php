@@ -285,6 +285,23 @@ try {
         }
         // -------------------------------------------------------------------------
 
+        $newData = [
+            'template_code' => $templateCode,
+            'template_name' => $templateName,
+            'subject' => $subject,
+            'content' => $content,
+            'status' => $status,
+        ];
+        $changeResult = checkNoChangesAndRedirect($newData, $oldRow);
+        if (is_array($changeResult)) {
+            echo safeJsonEncode([
+                'success' => false,
+                'message' => $changeResult['message'],
+                'type' => $changeResult['type']
+            ]);
+            exit();
+        }
+
         $checkSql = "SELECT id FROM " . EMAIL_TEMPLATE . " WHERE template_code = ? AND id <> ? LIMIT 1";
         $checkStmt = $conn->prepare($checkSql);
         if (!$checkStmt) throw new Exception('校验失败: ' . $conn->error);
@@ -382,12 +399,9 @@ try {
     throw new Exception('不支持的请求模式: ' . htmlspecialchars($mode));
 
 } catch (Throwable $e) {
-    // ... [previous logic above remains the same] ...
-
-} catch (Throwable $e) {
-    // 1. Log the actual exception details to the server's error log for debugging
-    // This records the message, file path, and line number without showing it to the user.
-    error_log("Email Template API Error: " . $e->getMessage() . " in " . $e->getFile() . " on line " . $e->getLine());
+    // 1. Log the full, unredacted error to the server logs for the admin
+    $fullErrorMsg = trim((string)$e->getMessage());
+    error_log("Email Template API Error: " . $fullErrorMsg . " in " . $e->getFile() . " on line " . $e->getLine());
 
     // 2. Clear any stray output to ensure a clean JSON response
     if (ob_get_length()) ob_clean(); 
@@ -397,19 +411,25 @@ try {
     
     if ($modeStr === 'data') {
         // Response format expected by DataTables
-        echo json_encode([
+        echo safeJsonEncode([
             'draw' => intval($_REQUEST['draw'] ?? 1),
             'recordsTotal' => 0,
             'recordsFiltered' => 0,
             'data' => [],
-            // Generic message for security
             'error' => '接口错误，请检查系统日志' 
         ]);
     } else {
-        // Standard JSON response for Create/Update/Delete actions
-        echo json_encode([
+        // [FIX] Security: Hide database details from the frontend user.
+        // We split the string by ": " so "读取数据失败: SQL syntax..." becomes just "读取数据失败"
+        $safeUserMsg = explode(': ', $fullErrorMsg)[0];
+        
+        if ($safeUserMsg === '') {
+            $safeUserMsg = '操作失败，请稍后重试';
+        }
+
+        echo safeJsonEncode([
             'success' => false,
-            'message' => '操作失败，请稍后重试'
+            'message' => $safeUserMsg
         ]);
     }
     exit();

@@ -350,7 +350,7 @@ try {
             $conn->commit();
         } catch (Throwable $transactionException) {
             $conn->rollback();
-            throw clone $transactionException; // Re-throw to hit the main catch block and log it
+            throw $transactionException; // [FIX] Removed 'clone' which causes Fatal Errors
         }
 
         if (isset($emailResult['success']) && !$emailResult['success']) {

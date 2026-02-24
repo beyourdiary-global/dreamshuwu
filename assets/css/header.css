@@ -49,6 +49,15 @@
   z-index: 1021;
 }
 
+.global-breadcrumb-inline {
+  width: 100%;
+  margin: 0 0 12px 0;
+}
+
+.global-page-breadcrumb {
+  margin-bottom: 0 !important;
+}
+
 /* --- 2. Flex Layout Structure --- */
 .header-container {
   max-width: 1600px;
@@ -424,6 +433,10 @@
 }
 
 @media (max-width: 767px) {
+  .global-breadcrumb-inline {
+    margin-bottom: 10px;
+  }
+
   .desktop-nav {
     display: none;
   }

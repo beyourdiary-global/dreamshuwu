@@ -186,6 +186,7 @@ if ($isEmbedded):
         }
 ?>
 <div class="container-fluid px-0">
+    <?php $displayIndexStart = ((max(1, (int)$page) - 1) * max(1, (int)$perPage)) + 1; ?>
     <div class="card page-action-card">
         <div class="card-header bg-white d-flex justify-content-between align-items-center py-3 flex-wrap gap-2">
             <div>
@@ -229,9 +230,10 @@ if ($isEmbedded):
                     <?php if (empty($rows)): ?>
                         <tr><td colspan="5" class="text-center text-muted">暂无数据</td></tr>
                     <?php else: ?>
+                        <?php $displayIndex = $displayIndexStart; ?>
                         <?php foreach ($rows as $row): ?>
                             <tr>
-                                <td><?php echo (int)$row['id']; ?></td>
+                                <td><?php echo $displayIndex++; ?></td>
                                 <td>
                                     <div class="fw-bold"><?php echo htmlspecialchars($row['name_en']); ?></div>
                                     <div class="small text-muted"><?php echo htmlspecialchars($row['name_cn']); ?></div>
@@ -257,11 +259,12 @@ if ($isEmbedded):
 
             <div class="page-action-mobile-list">
                 <?php if (!empty($rows)): ?>
+                    <?php $displayIndex = $displayIndexStart; ?>
                     <?php foreach ($rows as $row): ?>
                         <div class="page-action-mobile-item" data-item="<?php echo (int)$row['id']; ?>">
                             <div class="page-action-mobile-head">
                                 <div>
-                                    <div><strong>#<?php echo (int)$row['id']; ?></strong></div>
+                                    <div><strong>#<?php echo $displayIndex++; ?></strong></div>
                                     <div><?php echo htmlspecialchars($row['name_en']); ?></div>
                                     <div class="small text-muted"><?php echo htmlspecialchars($row['name_cn']); ?></div>
                                     <div class="small text-muted"><code><?php echo htmlspecialchars($row['url']); ?></code></div>

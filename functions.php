@@ -326,13 +326,12 @@ function processAuthorVerificationEmail($conn, $userId, $actionType, $rejectReas
     $safeAction = strtolower(trim((string)$actionType));
     $templateCode = '';
 
-    // Table names from constants
     $authorProfileTable = defined('AUTHOR_PROFILE') ? AUTHOR_PROFILE : 'author_profile';
     $usersTable = defined('USR_LOGIN') ? USR_LOGIN : 'users';
     $emailTemplateTable = defined('EMAIL_TEMPLATE') ? EMAIL_TEMPLATE : 'email_template';
     $emailLogTable = defined('EMAIL_LOG') ? EMAIL_LOG : 'email_log';
 
-    // --- [NEW] Rate Limiting Check (Max 3 emails per hour per author) ---
+    // Rate Limiting Check
     $rateLimitSql = "SELECT COUNT(*) FROM {$emailLogTable} WHERE user_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 1 HOUR)";
     if ($rlStmt = $conn->prepare($rateLimitSql)) {
         $rlStmt->bind_param('i', $safeUserId);
@@ -346,63 +345,66 @@ function processAuthorVerificationEmail($conn, $userId, $actionType, $rejectReas
             return ['success' => false, 'message' => '操作过于频繁，该作者1小时内已发送过多通知邮件，请稍后再试。'];
         }
     }
-    // --------------------------------------------------------------------
 
     $hasRejectReasonCol = columnExists($conn, $authorProfileTable, 'reject_reason');
     $hasEmailNotifiedAtCol = columnExists($conn, $authorProfileTable, 'email_notified_at');
     $hasEmailNotifyCountCol = columnExists($conn, $authorProfileTable, 'email_notify_count');
-
-    // [FIX] Removed 'ap.' alias since there is no join anymore
     $rejectReasonExpr = $hasRejectReasonCol ? 'reject_reason' : "'' AS reject_reason";
     
-    // 1. Fetch author profile info (Query 1: No JOIN)
+    // 1. Fetch author profile info (Query 1: No JOIN) - [FIX] Replaced get_result()
     $profileSql = "SELECT id, user_id, real_name, pen_name, contact_email, {$rejectReasonExpr}, verification_status "
         . "FROM {$authorProfileTable} "
         . "WHERE user_id = ? AND status = 'A' LIMIT 1";
         
     $stmt = $conn->prepare($profileSql);
-    if (!$stmt) {
-        return ['success' => false, 'message' => '读取作者信息失败: ' . $conn->error];
-    }
-    if (!$stmt->bind_param('i', $safeUserId)) {
-        $stmt->close();
-        return ['success' => false, 'message' => '读取作者信息失败: 绑定参数错误'];
-    }
+    if (!$stmt) return ['success' => false, 'message' => '读取作者信息失败: ' . $conn->error];
+    
+    $stmt->bind_param('i', $safeUserId);
     if (!$stmt->execute()) {
-        $stmt->close();
-        return ['success' => false, 'message' => '读取作者信息失败: ' . $stmt->error];
+        $err = $stmt->error; $stmt->close();
+        return ['success' => false, 'message' => '读取作者信息失败: ' . $err];
     }
-    $profileRes = $stmt->get_result();
-    if (!$profileRes) {
+    
+    $stmt->store_result();
+    if ($stmt->num_rows === 0) {
         $stmt->close();
-        return ['success' => false, 'message' => '读取作者信息失败: ' . $stmt->error];
-    }
-    $authorProfile = $profileRes->fetch_assoc();
-    $profileRes->free();
-    $stmt->close();
-
-    if (empty($authorProfile)) {
         return ['success' => false, 'message' => '作者资料不存在'];
     }
+    
+    $r_id = $r_uid = $r_realName = $r_penName = $r_email = $r_rej = $r_status = null;
+    $stmt->bind_result($r_id, $r_uid, $r_realName, $r_penName, $r_email, $r_rej, $r_status);
+    $stmt->fetch();
+    
+    $authorProfile = [
+        'id' => $r_id,
+        'user_id' => $r_uid,
+        'real_name' => (string)$r_realName,
+        'pen_name' => (string)$r_penName,
+        'contact_email' => (string)$r_email,
+        'reject_reason' => (string)$r_rej,
+        'verification_status' => (string)$r_status
+    ];
+    $stmt->close();
 
-    // 2. Fetch login email separately (Query 2)
+    // 2. Fetch login email (Query 2) - [FIX] Replaced get_result()
     $authorProfile['login_email'] = '';
     if (!empty($authorProfile['user_id'])) {
-        $userSql = "SELECT email AS login_email FROM {$usersTable} WHERE id = ? LIMIT 1";
+        $userSql = "SELECT email FROM {$usersTable} WHERE id = ? LIMIT 1";
         if ($uStmt = $conn->prepare($userSql)) {
             $uStmt->bind_param('i', $authorProfile['user_id']);
             if ($uStmt->execute()) {
-                $uRes = $uStmt->get_result();
-                if ($uRes && $uRow = $uRes->fetch_assoc()) {
-                    $authorProfile['login_email'] = $uRow['login_email'] ?? '';
+                $uStmt->store_result();
+                if ($uStmt->num_rows > 0) {
+                    $r_loginEmail = null;
+                    $uStmt->bind_result($r_loginEmail);
+                    $uStmt->fetch();
+                    $authorProfile['login_email'] = (string)$r_loginEmail;
                 }
-                if ($uRes) $uRes->free();
             }
             $uStmt->close();
         }
     }
 
-    // Determine Template Code
     if ($safeAction === 'approved' || $safeAction === 'approve') {
         $templateCode = 'AUTHOR_APPROVED';
     } elseif ($safeAction === 'rejected' || $safeAction === 'reject') {
@@ -420,37 +422,34 @@ function processAuthorVerificationEmail($conn, $userId, $actionType, $rejectReas
         return ['success' => false, 'message' => '无法匹配邮件模板类型'];
     }
 
-    // Load Email Template using Prepared Statements
+    // Load Email Template - [FIX] Replaced get_result()
     $templateSql = "SELECT template_code, subject, content FROM {$emailTemplateTable} WHERE template_code = ? AND status = 'A' LIMIT 1";
     $stmt = $conn->prepare($templateSql);
     
-    if (!$stmt) {
-        return ['success' => false, 'message' => '读取邮件模板失败: ' . $conn->error];
-    }
+    if (!$stmt) return ['success' => false, 'message' => '读取邮件模板失败: ' . $conn->error];
     
     $stmt->bind_param('s', $templateCode);
-    
     if (!$stmt->execute()) {
-        $stmt->close();
-        return ['success' => false, 'message' => '读取邮件模板失败: ' . $stmt->error];
+        $err = $stmt->error; $stmt->close();
+        return ['success' => false, 'message' => '读取邮件模板失败: ' . $err];
     }
     
-    $templateRes = $stmt->get_result();
-    
-    if (!$templateRes) {
+    $stmt->store_result();
+    if ($stmt->num_rows === 0) {
         $stmt->close();
-        return ['success' => false, 'message' => '读取邮件模板失败: ' . $conn->error];
-    }
-    
-    $templateRow = $templateRes->fetch_assoc();
-    $templateRes->free();
-    $stmt->close();
-
-    if (empty($templateRow)) {
         return ['success' => false, 'message' => "系统必备模板 [{$templateCode}] 未创建或已禁用！"];
     }
+    
+    $r_tcode = $r_subj = $r_cont = null;
+    $stmt->bind_result($r_tcode, $r_subj, $r_cont);
+    $stmt->fetch();
+    $templateRow = [
+        'template_code' => (string)$r_tcode,
+        'subject' => (string)$r_subj,
+        'content' => (string)$r_cont
+    ];
+    $stmt->close();
 
-    // Determine Recipient
     $recipientEmail = trim((string)($authorProfile['contact_email'] ?? ''));
     if ($recipientEmail === '') {
         $recipientEmail = trim((string)($authorProfile['login_email'] ?? ''));
@@ -468,7 +467,6 @@ function processAuthorVerificationEmail($conn, $userId, $actionType, $rejectReas
         $resolvedRejectReason = '无';
     }
 
-    // Variable replacement
     $replacements = [
         '{{real_name}}' => (string)($authorProfile['real_name'] ?? ''),
         '{{pen_name}}' => (string)($authorProfile['pen_name'] ?? ''),
@@ -479,7 +477,6 @@ function processAuthorVerificationEmail($conn, $userId, $actionType, $rejectReas
     $mailSubject = strtr((string)$templateRow['subject'], $replacements);
     $mailBody = strtr((string)$templateRow['content'], $replacements);
 
-    // Using pre-defined MAIL_FROM and MAIL_FROM_NAME constants
     $headers = "MIME-Version: 1.0\r\n";
     $headers .= "Content-type: text/html; charset=UTF-8\r\n";
     $headers .= "From: " . MAIL_FROM_NAME . " <" . MAIL_FROM . ">\r\n";
@@ -487,7 +484,6 @@ function processAuthorVerificationEmail($conn, $userId, $actionType, $rejectReas
     $sentStatus = 'failed';
     $errorMessage = '';
     
-    // Trigger Send Email (sanitize recipient to prevent header injection)
     $safeRecipientEmail = filter_var((string)$recipientEmail, FILTER_VALIDATE_EMAIL);
     if ($safeRecipientEmail === false || preg_match('/[\r\n]/', $safeRecipientEmail)) {
         $sendResult = false;
@@ -503,7 +499,6 @@ function processAuthorVerificationEmail($conn, $userId, $actionType, $rejectReas
         }
     }
 
-    // Insert Email Log
     $logSql = "INSERT INTO {$emailLogTable} (user_id, template_code, sent_status, error_message, created_at) VALUES (?, ?, ?, ?, NOW())";
     if ($logStmt = $conn->prepare($logSql)) {
         $logStmt->bind_param('isss', $safeUserId, $templateCode, $sentStatus, $errorMessage);
@@ -511,14 +506,9 @@ function processAuthorVerificationEmail($conn, $userId, $actionType, $rejectReas
         $logStmt->close();
     }
 
-    // Update notification metadata in author_profile
     $setClauses = [];
-    if ($hasEmailNotifiedAtCol) {
-        $setClauses[] = 'email_notified_at = NOW()';
-    }
-    if ($hasEmailNotifyCountCol) {
-        $setClauses[] = 'email_notify_count = COALESCE(email_notify_count, 0) + 1';
-    }
+    if ($hasEmailNotifiedAtCol) $setClauses[] = 'email_notified_at = NOW()';
+    if ($hasEmailNotifyCountCol) $setClauses[] = 'email_notify_count = COALESCE(email_notify_count, 0) + 1';
 
     if (!empty($setClauses)) {
         $updateAuthorSql = "UPDATE {$authorProfileTable} SET " . implode(', ', $setClauses) . " WHERE user_id = ?";
@@ -1133,14 +1123,16 @@ function getDefaultUserRoleId($conn) {
         // 2. Bind the variables to the placeholders
         $stmt->bind_param("sssss", $name_en1, $name_en2, $name_cn1, $name_cn2, $status);
 
-        // 3. Execute and get the result
+        // 3. Execute and bind result safely (No get_result)
         $stmt->execute();
-        $result = $stmt->get_result();
+        $stmt->store_result();
 
-        if ($result && $result->num_rows > 0) {
-            $row = $result->fetch_assoc();
+        if ($stmt->num_rows > 0) {
+            $roleId = null;
+            $stmt->bind_result($roleId);
+            $stmt->fetch();
             $stmt->close();
-            return (int)$row['id'];
+            return (int)$roleId;
         }
 
         $stmt->close();
@@ -1152,7 +1144,6 @@ function getDefaultUserRoleId($conn) {
 /**
  * This will be used for Administrator accounts created by the Super Admin. 
  * It looks for a role named 'Administrator' or 'Super Administrator'.
- * 
  */
 function getAdministratorRoleId($conn) {
     if (!$conn) return null;
@@ -1175,14 +1166,16 @@ function getAdministratorRoleId($conn) {
         // 2. Bind the variables to the placeholders
         $stmt->bind_param("sssss", $name_en1, $name_en2, $name_cn1, $name_cn2, $status);
 
-        // 3. Execute and get the result
+        // 3. Execute and bind result safely (No get_result)
         $stmt->execute();
-        $result = $stmt->get_result();
+        $stmt->store_result();
 
-        if ($result && $result->num_rows > 0) {
-            $row = $result->fetch_assoc();
+        if ($stmt->num_rows > 0) {
+            $roleId = null;
+            $stmt->bind_result($roleId);
+            $stmt->fetch();
             $stmt->close();
-            return (int)$row['id'];
+            return (int)$roleId;
         }
 
         $stmt->close();
@@ -1381,6 +1374,22 @@ function generateBreadcrumb($conn, $currentUrl, $fallbackName = '') {
     $homeUrl = defined('URL_USER_DASHBOARD') ? URL_USER_DASHBOARD : '/dashboard.php'; 
     $pageName = $fallbackName;
 
+    $adminCenterText = '管理员管理';
+    $adminCenterUrl = defined('URL_ADMIN_DASHBOARD') ? URL_ADMIN_DASHBOARD : ($homeUrl . '?view=admin');
+    $isAdminPage = false;
+    $isAdminHome = false;
+
+    if (!empty($currentUrl)) {
+        $pathPart = (string)parse_url($currentUrl, PHP_URL_PATH);
+        $queryPart = (string)parse_url($currentUrl, PHP_URL_QUERY);
+        parse_str($queryPart, $queryVars);
+        $viewParam = isset($queryVars['view']) ? (string)$queryVars['view'] : '';
+
+        $adminViews = ['admin', 'page_action', 'page_info', 'user_role'];
+        $isAdminPage = in_array($viewParam, $adminViews, true) || ($pathPart !== '' && strpos($pathPart, '/src/pages/admin/') !== false);
+        $isAdminHome = ($viewParam === 'admin');
+    }
+
     if ($conn && !empty($currentUrl)) {
         $stmt = $conn->prepare("SELECT name_cn FROM " . PAGE_INFO_LIST . " WHERE public_url = ? AND status = 'A' LIMIT 1");
         if ($stmt) {
@@ -1399,8 +1408,12 @@ function generateBreadcrumb($conn, $currentUrl, $fallbackName = '') {
 
     // Build the clickable HTML using Bootstrap classes for styling
     $html = '<a href="' . htmlspecialchars($homeUrl) . '" class="text-muted text-decoration-none hover-primary">' . htmlspecialchars($homeText) . '</a>';
+
+    if ($isAdminPage) {
+        $html .= ' / <a href="' . htmlspecialchars($adminCenterUrl) . '" class="text-muted text-decoration-none hover-primary">' . htmlspecialchars($adminCenterText) . '</a>';
+    }
     
-    if (!empty($pageName)) {
+    if (!empty($pageName) && !($isAdminHome && $pageName === $adminCenterText)) {
         $html .= ' / <a href="' . htmlspecialchars($currentUrl) . '" class="text-muted text-decoration-none hover-primary">' . htmlspecialchars($pageName) . '</a>';
     }
 

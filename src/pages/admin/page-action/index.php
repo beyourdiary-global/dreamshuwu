@@ -264,6 +264,7 @@ if ($isEmbeddedPageAction):
     <?php require __DIR__ . '/form.php'; ?>
 <?php else: ?>
 <div class="container-fluid px-0" id="pageActionApp" data-delete-api-url="<?php echo htmlspecialchars($apiEndpoint); ?>">
+    <?php $displayIndexStart = ((max(1, (int)$currentPage) - 1) * max(1, (int)$perPage)) + 1; ?>
     <div class="card page-action-card">
         <div class="card-header bg-white d-flex justify-content-between align-items-center py-3 flex-wrap gap-2">
             <div>
@@ -313,9 +314,10 @@ if ($isEmbeddedPageAction):
                     </thead>
                     <tbody>
                     <?php if (!empty($rows)): ?>
+                        <?php $displayIndex = $displayIndexStart; ?>
                         <?php foreach ($rows as $item): ?>
                             <tr>
-                                <td><?php echo (int)$item['id']; ?></td>
+                                <td><?php echo $displayIndex++; ?></td>
                                 <td><?php echo htmlspecialchars($item['name']); ?></td>
                                 <td><span class="badge bg-success">A</span></td>
                                 <td class="text-center">
@@ -343,11 +345,12 @@ if ($isEmbeddedPageAction):
 
             <div class="page-action-mobile-list">
                 <?php if (!empty($rows)): ?>
+                    <?php $displayIndex = $displayIndexStart; ?>
                     <?php foreach ($rows as $item): ?>
                         <div class="page-action-mobile-item" data-item="<?php echo (int)$item['id']; ?>">
                             <div class="page-action-mobile-head">
                                 <div>
-                                    <div><strong>#<?php echo (int)$item['id']; ?></strong></div>
+                                    <div><strong>#<?php echo $displayIndex++; ?></strong></div>
                                     <div><?php echo htmlspecialchars($item['name']); ?></div>
                                 </div>
                                 <span class="badge bg-success">A</span>

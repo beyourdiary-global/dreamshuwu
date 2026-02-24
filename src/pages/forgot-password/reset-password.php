@@ -79,7 +79,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $validToken) {
 <body class="auth-page">
 <?php require_once BASE_PATH . 'common/menu/header.php'; ?>
 
-<main class="dashboard-main">
+<main class="auth-main">
     <div class="auth-layout">
         <div class="reset-card">
             <h3>重置密码</h3>

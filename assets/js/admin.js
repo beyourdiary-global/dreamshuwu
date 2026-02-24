@@ -435,7 +435,13 @@ function initAuthorVerificationModule() {
       },
     },
     columns: [
-      { data: "id" },
+      {
+        data: null,
+        render: function (data, type, row, meta) {
+          var start = meta && meta.settings ? meta.settings._iDisplayStart : 0;
+          return start + meta.row + 1;
+        },
+      },
       {
         data: null,
         render: function (data) {
@@ -795,7 +801,13 @@ function initEmailTemplateModule() {
       },
     },
     columns: [
-      { data: "id" },
+      {
+        data: null,
+        render: function (data, type, row, meta) {
+          var start = meta && meta.settings ? meta.settings._iDisplayStart : 0;
+          return start + meta.row + 1;
+        },
+      },
       {
         data: "template_code",
         render: function (data) {
@@ -934,6 +946,18 @@ function initEmailTemplateModule() {
               if (typeof Swal !== "undefined")
                 Swal.fire("成功", payload.message || "删除成功", "success");
               table.ajax.reload(null, false);
+            } else if (
+              payload &&
+              payload.type === "warning" &&
+              typeof Swal !== "undefined"
+            ) {
+              Swal.fire({
+                icon: "warning",
+                title: "没有修改",
+                text: "无需保存",
+                timer: 2000,
+                showConfirmButton: false,
+              });
             } else if (typeof Swal !== "undefined") {
               Swal.fire(
                 "错误",
@@ -999,6 +1023,18 @@ function initEmailTemplateModule() {
             if (typeof Swal !== "undefined")
               Swal.fire("成功", payload.message || "保存成功", "success");
             table.ajax.reload(null, false);
+          } else if (
+            payload &&
+            payload.type === "warning" &&
+            typeof Swal !== "undefined"
+          ) {
+            Swal.fire({
+              icon: "warning",
+              title: "没有修改",
+              text: "无需保存",
+              timer: 2000,
+              showConfirmButton: false,
+            });
           } else if (typeof Swal !== "undefined") {
             Swal.fire(
               "错误",

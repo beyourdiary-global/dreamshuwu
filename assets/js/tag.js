@@ -15,7 +15,15 @@ $(document).ready(function () {
     serverSide: true,
     ajax: { url: apiUrl, type: "GET" },
     columns: [
-      { data: 0 },
+      {
+        data: null,
+        orderable: false, // [FIX] Added to disable sorting
+        searchable: false, // [FIX] Added to disable searching
+        render: function (data, type, row, meta) {
+          var start = meta && meta.settings ? meta.settings._iDisplayStart : 0;
+          return start + meta.row + 1;
+        },
+      },
       { data: 1, orderable: false },
       { data: 2, orderable: false, className: "text-center" },
     ],

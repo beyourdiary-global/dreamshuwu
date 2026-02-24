@@ -8,19 +8,15 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
     exit();
 }
 
-// View Permission Check
 $currentUrl = '/author/author-register.php';
 $perm = hasPagePermission($conn, $currentUrl);
-
-// Check page view permission, redirect to dashboard if denied
 checkPermissionError('view', $perm, '作者注册页面');
 
 $userId = $_SESSION['user_id'];
-$auditPage = 'Author Registration'; // [NEW] Used for Audit Log
+$auditPage = 'Author Registration';
 
-// Define all SQL queries at the top for cleaner code management & Audit Logging
-$sqlGetExisting = "SELECT * FROM " . AUTHOR_PROFILE . " WHERE user_id = ? LIMIT 1";
-
+$sqlGetProfileByUserId = "SELECT * FROM " . AUTHOR_PROFILE . " WHERE user_id = %d AND status = 'A' LIMIT 1";
+$sqlGetProfileById     = "SELECT * FROM " . AUTHOR_PROFILE . " WHERE id = %d AND status = 'A' LIMIT 1";
 $sqlInsertProfile = "INSERT INTO " . AUTHOR_PROFILE . " 
                      (user_id, real_name, id_number, id_photo_front, id_photo_back, contact_phone, contact_email, 
                       bank_account_name, bank_name, bank_country, bank_swift_code, bank_account_number, 
@@ -33,12 +29,9 @@ $sqlUpdateProfile = "UPDATE " . AUTHOR_PROFILE . " SET
                      pen_name=?, avatar=?, bio=?, verification_status='pending', updated_at=NOW() 
                      WHERE user_id=?";
 
-$sqlGetProfileData = "SELECT * FROM " . AUTHOR_PROFILE . " WHERE user_id = ? AND status = 'A' LIMIT 1";
-
-// Handle Form Submission (POST) API
+// Handle Form Submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
-    // API Check: Return JSON for permission denial
     if (empty($perm->add) && empty($perm->edit)) {
         header('Content-Type: application/json; charset=utf-8');
         echo safeJsonEncode(['success' => false, 'message' => "权限不足：您没有提交或修改作者资料的权限。"]);
@@ -47,31 +40,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $errorMsg = "";
 
-    // Query database first to determine if this is an 'add' or 'edit' operation
-    $existingData = [];
-    $eStmt = $conn->prepare($sqlGetExisting);
-    $eStmt->bind_param("i", $userId);
-    $eStmt->execute();
-    $eRes = $eStmt->get_result();
-    if ($eRes && $eRes->num_rows > 0) {
-        $existingData = $eRes->fetch_assoc();
-    }
-    $eStmt->close();
+    // 1. Fetch existing using reusable query
+    $safeUserId = (int)$userId;
+    $eRes = $conn->query(sprintf($sqlGetProfileByUserId, $safeUserId));
+    $existingData = $eRes && $eRes->num_rows > 0 ? $eRes->fetch_assoc() : [];
+    if ($eRes) $eRes->free();
 
     $isEditMode = !empty($existingData);
     $recordId = $isEditMode ? $existingData['id'] : null;
 
-    // Collect and sanitize input data
     $realName = trim($_POST['real_name'] ?? '');
     $idNumber = trim($_POST['id_number'] ?? '');
     $contactPhone = trim($_POST['contact_phone'] ?? '');
     $contactEmail = trim($_POST['contact_email'] ?? '');
-    
     $penName = trim($_POST['pen_name'] ?? '');
-    if (empty($penName)) {
-        // Auto-generate pen name if left empty
-        $penName = uniqid('Author_'); 
-    }
+    if (empty($penName)) $penName = uniqid('Author_'); 
     
     $bio = trim($_POST['bio'] ?? '');
     $bankAccountName = trim($_POST['bank_account_name'] ?? '');
@@ -80,7 +63,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $bankSwift = trim($_POST['bank_swift_code'] ?? '');
     $bankAccNum = trim($_POST['bank_account_number'] ?? '');
 
-    // === [NEW] Check for no changes in Edit Mode ===
     if ($isEditMode) {
         $hasNewFiles = (isset($_FILES['id_photo_front']) && $_FILES['id_photo_front']['size'] > 0) ||
                        (isset($_FILES['id_photo_back']) && $_FILES['id_photo_back']['size'] > 0) ||
@@ -100,9 +82,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'bank_swift_code'     => $bankSwift,
                 'bank_account_number' => $bankAccNum,
             ];
-            
             $changeResult = checkNoChangesAndRedirect($newData, $existingData);
-            
             if (is_array($changeResult)) {
                 header('Content-Type: application/json; charset=utf-8');
                 echo safeJsonEncode(['success' => false, 'message' => $changeResult['message']]);
@@ -110,43 +90,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
     }
-    // === END NEW BLOCK ===
 
-    // Handle File Uploads & Cleanup Old Files
     $uploadDir = BASE_PATH . 'assets/uploads/authors/';
-    
-    // Initialize with existing values
     $idFront = $existingData['id_photo_front'] ?? '';
     $idBack  = $existingData['id_photo_back'] ?? '';
     $avatar  = $existingData['avatar'] ?? '';
 
-    // Process ID Front Photo
     if (isset($_FILES['id_photo_front']) && $_FILES['id_photo_front']['size'] > 0) {
         $res = uploadImage($_FILES['id_photo_front'], $uploadDir);
         if ($res['success']) {
-            if (!empty($idFront) && file_exists($uploadDir . $idFront)) unlink($uploadDir . $idFront);
+            if (!empty($idFront) && file_exists($uploadDir . $idFront)) @unlink($uploadDir . $idFront);
             $idFront = $res['filename'];
         } else {
             $errorMsg = "正面身份证上传失败: " . $res['message'];
         }
     }
     
-    // Process ID Back Photo
     if (empty($errorMsg) && isset($_FILES['id_photo_back']) && $_FILES['id_photo_back']['size'] > 0) {
         $res = uploadImage($_FILES['id_photo_back'], $uploadDir);
         if ($res['success']) {
-            if (!empty($idBack) && file_exists($uploadDir . $idBack)) unlink($uploadDir . $idBack);
+            if (!empty($idBack) && file_exists($uploadDir . $idBack)) @unlink($uploadDir . $idBack);
             $idBack = $res['filename'];
         } else {
             $errorMsg = "反面身份证上传失败: " . $res['message'];
         }
     }
     
-    // Process Avatar Photo
     if (empty($errorMsg) && isset($_FILES['avatar']) && $_FILES['avatar']['size'] > 0) {
         $res = uploadImage($_FILES['avatar'], $uploadDir);
         if ($res['success']) {
-             if (!empty($avatar) && file_exists($uploadDir . $avatar)) unlink($uploadDir . $avatar);
+             if (!empty($avatar) && file_exists($uploadDir . $avatar)) @unlink($uploadDir . $avatar);
             $avatar = $res['filename'];
         } else {
             $errorMsg = "头像上传失败: " . $res['message'];
@@ -157,24 +130,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errorMsg = "请上传完整的身份证正反面照片。";
     }
 
-    // Execute Database Transaction
     if (empty($errorMsg)) {
         
-        // [AUDIT LOG PREP] 1. Fetch exact old data explicitly before modifying
+        // 2. Fetch Old Data for Audit using reusable query
         $oldData = null;
         if ($isEditMode) {
-            $oStmt = $conn->prepare("SELECT * FROM " . AUTHOR_PROFILE . " WHERE id = ?");
-            $oStmt->bind_param("i", $recordId);
-            $oStmt->execute();
-            $oRes = $oStmt->get_result();
+            $safeRecordId = (int)$recordId;
+            $oRes = $conn->query(sprintf($sqlGetProfileById, $safeRecordId));
             if ($oRes && $oRes->num_rows > 0) $oldData = $oRes->fetch_assoc();
-            $oStmt->close();
+            if ($oRes) $oRes->free();
         }
 
         $conn->begin_transaction();
         try {
             if (!$isEditMode) {
-                // Insert new record 
                 $stmt = $conn->prepare($sqlInsertProfile);
                 $stmt->bind_param("issssssssssssss", 
                     $userId, $realName, $idNumber, $idFront, $idBack, $contactPhone, $contactEmail,
@@ -182,7 +151,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $penName, $avatar, $bio
                 );
                 if (!$stmt->execute()) throw new Exception("Insert failed: " . $stmt->error);
-                
                 $targetId = $conn->insert_id;
                 $stmt->close();
                 
@@ -191,7 +159,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $actionMsg = 'Registered as Author';
                 $executedQuery = $sqlInsertProfile;
             } else {
-                // Update existing record
                 $stmt = $conn->prepare($sqlUpdateProfile);
                 $stmt->bind_param("ssssssssssssssi", 
                     $realName, $idNumber, $idFront, $idBack, $contactPhone, $contactEmail,
@@ -199,7 +166,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $penName, $avatar, $bio, $userId
                 );
                 if (!$stmt->execute()) throw new Exception("Update failed: " . $stmt->error);
-                
                 $targetId = $recordId;
                 $stmt->close();
                 
@@ -209,16 +175,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $executedQuery = $sqlUpdateProfile;
             }
 
-            // [AUDIT LOG PREP] 2. Fetch fresh new data explicitly after modification
+            // 3. Fetch New Data for Audit using reusable query
             $newData = null;
-            $nStmt = $conn->prepare("SELECT * FROM " . AUTHOR_PROFILE . " WHERE id = ?");
-            $nStmt->bind_param("i", $targetId);
-            $nStmt->execute();
-            $nRes = $nStmt->get_result();
+            $safeTargetId = (int)$targetId;
+            $nRes = $conn->query(sprintf($sqlGetProfileById, $safeTargetId));
             if ($nRes && $nRes->num_rows > 0) $newData = $nRes->fetch_assoc();
-            $nStmt->close();
+            if ($nRes) $nRes->free();
 
-            // [AUDIT LOG RECORDING] 3. Trigger the log 
             if (function_exists('logAudit')) {
                 logAudit([
                     'page'           => $auditPage,
@@ -234,7 +197,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             $conn->commit();
-            
             header('Content-Type: application/json; charset=utf-8');
             echo safeJsonEncode(['success' => true, 'message' => $successMsg]);
             exit();
@@ -253,39 +215,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit();
 }
 
-// Fetch the latest author_profile status to display on the form
-$stmt = $conn->prepare($sqlGetProfileData);
-$stmt->bind_param("i", $userId);
-$stmt->execute();
-
-$authorData = [];
-$meta = $stmt->result_metadata();
-if ($meta) {
-    $row = []; $params = [];
-    while ($field = $meta->fetch_field()) { $params[] = &$row[$field->name]; }
-    call_user_func_array(array($stmt, 'bind_result'), $params);
-    if ($stmt->fetch()) { 
-        foreach($row as $k => $v) { $authorData[$k] = $v; } 
-    }
-}
-$stmt->close();
+// 4. Simplify GET data load using reusable query
+$safeUserIdGet = (int)$userId;
+$queryGet = sprintf($sqlGetProfileByUserId, $safeUserIdGet); // Format it once
+$resGet = $conn->query($queryGet); // Execute it
+$authorData = $resGet && $resGet->num_rows > 0 ? $resGet->fetch_assoc() : [];
+if ($resGet) $resGet->free();
 
 $authorStatus = $authorData['verification_status'] ?? null;
 
-// Redirect to dashboard if already approved
 if ($authorStatus === 'approved') {
     header("Location: " . URL_AUTHOR_DASHBOARD);
     exit();
 }
 
-// [AUDIT LOG RECORDING] Log Page View Action (GET requests only)
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && function_exists('logAudit') && !defined('AUTHOR_REG_VIEW_LOGGED')) {
     define('AUTHOR_REG_VIEW_LOGGED', true);
     logAudit([
         'page'           => $auditPage,
         'action'         => 'V',
         'action_message' => 'Viewing Author Registration Page',
-        'query'          => $sqlGetProfileData,
+        'query'          => $queryGet,
         'query_table'    => AUTHOR_PROFILE,
         'user_id'        => $userId
     ]);
@@ -324,7 +274,6 @@ $pageMetaKey = $currentUrl;
         <?php endif; ?>
 
         <?php
-        // Define Identity Fields (Text Inputs Only) - Strict Regex Patterns Applied
         $identityFields = [
             ['name' => 'real_name',     'label' => '真实姓名',   'type' => 'text',  'width' => 'col-md-6', 'required' => true, 'pattern' => ''],
             ['name' => 'id_number',     'label' => '身份证号码', 'type' => 'text',  'width' => 'col-md-6', 'required' => true, 'pattern' => '^\d+$'],
@@ -332,7 +281,6 @@ $pageMetaKey = $currentUrl;
             ['name' => 'contact_email', 'label' => '联系邮箱',   'type' => 'email', 'width' => 'col-md-6', 'required' => true, 'pattern' => ''],
         ];
 
-        // Define Bank Fields
         $bankFields = [
             ['name' => 'bank_account_name',   'label' => '收款人姓名', 'type' => 'text', 'width' => 'col-md-6',  'required' => false],
             ['name' => 'bank_name',           'label' => '银行名称',   'type' => 'text', 'width' => 'col-md-6',  'required' => false],
@@ -415,7 +363,6 @@ $pageMetaKey = $currentUrl;
 
             <h4 class="author-section-title mt-5">收款账户信息 (选填 - 用于稿费结算)</h4>
             <div class="row mb-4">
-                
                 <?php foreach ($bankFields as $field): ?>
                 <div class="<?php echo $field['width']; ?> mb-3">
                     <label class="form-label"><?php echo $field['label']; ?></label>
@@ -425,13 +372,11 @@ $pageMetaKey = $currentUrl;
                            value="<?php echo htmlspecialchars($authorData[$field['name']] ?? ''); ?>">
                 </div>
                 <?php endforeach; ?>
-
             </div>
 
             <div class="text-center mt-5 pt-3 border-top">
                 <?php if (!empty($perm->add) || !empty($perm->edit)): ?>
                     <?php 
-                    // Dynamic Button Text and Icon based on Status
                     $buttonText = ($authorStatus === 'pending') ? '更新资料' : '提交申请';
                     $buttonIcon = ($authorStatus === 'pending') ? 'fa-rotate' : 'fa-paper-plane';
                     ?>

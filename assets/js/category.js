@@ -14,7 +14,15 @@ $(document).ready(function () {
     // [FIX] Use the dynamic URL
     ajax: { url: apiUrl, type: "GET" },
     columns: [
-      { data: 0 }, // ID [NEW]
+      {
+        data: null,
+        orderable: false, // [FIX] Added to disable sorting
+        searchable: false, // [FIX] Added to disable searching
+        render: function (data, type, row, meta) {
+          var start = meta && meta.settings ? meta.settings._iDisplayStart : 0;
+          return start + meta.row + 1;
+        },
+      },
       { data: 1 }, // Category Name
       { data: 2, orderable: false }, // Tags
       { data: 3, orderable: false, className: "text-center" }, // Actions
