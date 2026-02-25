@@ -203,7 +203,7 @@ $pageMetaKey = $currentUrl;
     <?php require_once BASE_PATH . 'include/header.php'; ?>
     <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/dataTables.bootstrap.min.css">
     <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/responsive.bootstrap.min.css">
-    <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/audit-log.css?v=<?php echo time(); ?>">
+    <link rel="stylesheet" href="css/audit-log.css?v=<?php echo time(); ?>">
 </head>
 <body>
 <?php require_once BASE_PATH . 'common/menu/header.php'; ?>
@@ -236,6 +236,6 @@ $pageMetaKey = $currentUrl;
 <script src="<?php echo URL_ASSETS; ?>/js/jquery-3.6.0.min.js"></script>
 <script src="<?php echo URL_ASSETS; ?>/js/jquery.dataTables.min.js"></script>
 <script src="<?php echo URL_ASSETS; ?>/js/dataTables.bootstrap.min.js"></script>
-<script src="<?php echo URL_ASSETS; ?>/js/audit-log.js?v=<?php echo time(); ?>"></script>
+<script src="js/audit-log.js?v=<?php echo time(); ?>"></script>
 </body>
 </html>
