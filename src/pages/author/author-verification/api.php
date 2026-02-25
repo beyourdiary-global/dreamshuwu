@@ -309,6 +309,14 @@ try {
                 $updateSql .= " WHERE id = {$escId} AND status = 'A'";
                 if (!$conn->query($updateSql)) throw new Exception('审核更新失败: ' . $conn->error);
                 
+                // [NEW] Upgrade the user to the Author role
+                if (function_exists('upgradeUserToAuthorRole')) {
+                    $roleUpdated = upgradeUserToAuthorRole($conn, $authorUserId, $currentUserId);
+                    if (!$roleUpdated) {
+                    throw new Exception('角色分配失败：系统缺少“Author/作者”角色。');
+                    }
+                }
+
                 if (function_exists('processAuthorVerificationEmail')) {
                     $emailResult = processAuthorVerificationEmail($conn, $authorUserId, 'approved', '');
                 }
