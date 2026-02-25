@@ -12,7 +12,7 @@ defined('URL_FORGOT_PWD') || define('URL_FORGOT_PWD', SITEURL . '/forgot-passwor
 defined('URL_RESET_PWD')  || define('URL_RESET_PWD', SITEURL . '/reset-password.php');
 
 // --- 3. Main Pages ---
-defined('URL_HOME')       || define('URL_HOME', SITEURL . '/Home.php');
+defined('URL_HOME')       || define('URL_HOME', SITEURL . '/index.php');
 defined('URL_CATEGORIES') || define('URL_CATEGORIES', SITEURL . '/src/pages/categories.php');
 defined('URL_RANKING')    || define('URL_RANKING', SITEURL . '/src/pages/ranking.php');
 defined('URL_BOOKSHELF')  || define('URL_BOOKSHELF', SITEURL . '/src/pages/bookshelf.php');
