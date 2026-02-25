@@ -1628,6 +1628,6 @@ function requireApprovedAuthor($conn, $userId) {
     }
     
     // Fallback if query fails
-    header("Location: " . (defined('URL_HOME') ? URL_HOME : '/Home.php'));
+    header("Location: " . (defined('URL_HOME') ? URL_HOME : '/index.php'));
     exit();
 }

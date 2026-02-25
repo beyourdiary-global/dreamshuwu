@@ -163,7 +163,7 @@ document.addEventListener("DOMContentLoaded", () => {
       })
         .done((resp) => {
           if (resp && resp.success) {
-            window.location.href = resp.redirect || "Home.php";
+            window.location.href = resp.redirect || "index.php";
             return;
           }
           const message =
