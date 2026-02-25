@@ -372,7 +372,10 @@ $(document).ready(function () {
           render: function (data) {
             let buttons = '<div class="d-flex justify-content-center gap-2">';
 
-            // View button (Modal trigger)
+            // [NEW] 管理章节按钮 (Chapter Management Entry Point)
+            buttons += `<a href="/author/novel/${data}/chapters/" class="btn btn-sm btn-outline-success" title="管理章节 (Manage Chapters)"><i class="fa-solid fa-list-ol"></i></a>`;
+
+            // View button is generally available to anyone who can access the page
             buttons += `<button class="btn btn-sm btn-outline-info btn-view-novel" data-id="${data}" title="查看 (View)"><i class="fa-solid fa-eye"></i></button>`;
 
             // Edit button permission check

@@ -353,6 +353,68 @@ CREATE TABLE IF NOT EXISTS novel (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ";
 
+$tables['chapter'] = "
+CREATE TABLE IF NOT EXISTS chapter (
+  id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  novel_id BIGINT NOT NULL COMMENT 'FK to novel table',
+  author_id INT NOT NULL COMMENT 'FK to users table',
+  chapter_number INT NOT NULL COMMENT 'Used for manual ordering/sorting',
+  title VARCHAR(255) NOT NULL COMMENT 'Chapter Title',
+  content MEDIUMTEXT NOT NULL COMMENT 'Strict plain-text only content',
+  word_count INT DEFAULT 0 COMMENT 'Auto-calculated word count',
+  publish_status ENUM('draft', 'scheduled', 'published') DEFAULT 'draft',
+  scheduled_publish_at DATETIME NULL COMMENT 'Future timestamp for automated publishing',
+  status CHAR(1) NOT NULL DEFAULT 'A' COMMENT 'A = Active, D = Deleted (Soft Delete)',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_novel_chapter (novel_id, chapter_number),
+  CONSTRAINT fk_chapter_novel FOREIGN KEY (novel_id) REFERENCES novel (id) ON DELETE CASCADE,
+  CONSTRAINT fk_chapter_author FOREIGN KEY (author_id) REFERENCES users (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+";
+
+// --- 22. Chapter Version History Table ---
+$tables['chapter_version'] = "
+CREATE TABLE IF NOT EXISTS chapter_version (
+  id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  chapter_id BIGINT NOT NULL COMMENT 'FK to chapter table',
+  version_number INT NOT NULL COMMENT 'Incremental version count per chapter',
+  title VARCHAR(255) NOT NULL,
+  content MEDIUMTEXT NOT NULL,
+  word_count INT NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  created_by INT NOT NULL COMMENT 'Author user_id',
+  INDEX idx_version_lookup (chapter_id, version_number),
+  CONSTRAINT fk_version_chapter FOREIGN KEY (chapter_id) REFERENCES chapter (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+";
+
+$tables['sensitive_word'] = "
+CREATE TABLE IF NOT EXISTS sensitive_word (
+  id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  word VARCHAR(100) NOT NULL COMMENT 'The forbidden word',
+  replacement VARCHAR(100) DEFAULT '***' COMMENT 'The safe string to replace with',
+  severity_level TINYINT(1) NOT NULL DEFAULT 1 COMMENT '1:Auto-replace, 2:Replace+Warn, 3:Block',
+  status CHAR(1) NOT NULL DEFAULT 'A' COMMENT 'A = Active, I = Inactive',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY unique_sensitive_word (word)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+";
+
+$tables['sensitive_word_log'] = "
+CREATE TABLE IF NOT EXISTS sensitive_word_log (
+  id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  author_id INT NOT NULL COMMENT 'User who triggered the violation',
+  chapter_id BIGINT DEFAULT NULL COMMENT 'Target chapter (if applicable)',
+  detected_word VARCHAR(100) NOT NULL,
+  severity_level TINYINT(1) NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_violation_author (author_id),
+  CONSTRAINT fk_sw_log_author FOREIGN KEY (author_id) REFERENCES users (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+";
+
+
 // 4. Run Queries
 
 foreach ($tables as $name => $sql) {

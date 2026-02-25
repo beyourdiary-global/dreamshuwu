@@ -35,6 +35,12 @@ RewriteCond %{REQUEST_URI} !^/src/pages/author/email-template/api\.php$
 # 10. Allow Author Novel Management API (NEW)
 RewriteCond %{REQUEST_URI} !^/src/pages/author/novel-management/api\.php$
 
+# 11. Allow Chapter Management API
+RewriteCond %{REQUEST_URI} !^/src/pages/author/chapter-management/api\.php$
+
+# 12. Chapter Management Dynamic Routing
+RewriteRule ^author/novel/([0-9]+)/chapters/?$ src/pages/author/chapter-management/index.php?novel_id=$1 [QSA,L]
+
 # Block everything else in src/
 RewriteRule ^src/ - [F,L]
 
