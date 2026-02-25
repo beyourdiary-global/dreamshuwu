@@ -334,6 +334,25 @@ CREATE TABLE IF NOT EXISTS email_log (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ";
 
+$tables['novel'] = "
+CREATE TABLE IF NOT EXISTS novel (
+  id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  author_id INT NOT NULL COMMENT 'FK to users table (author)',
+  title VARCHAR(100) NOT NULL COMMENT 'Book Title',
+  category_id BIGINT NOT NULL COMMENT 'FK to novel_category',
+  tags TEXT DEFAULT NULL COMMENT 'Comma separated tag names',
+  introduction VARCHAR(2000) DEFAULT NULL COMMENT 'Introduction',
+  cover_image VARCHAR(255) DEFAULT NULL COMMENT 'Cover image path',
+  completion_status VARCHAR(20) DEFAULT 'ongoing' COMMENT 'ongoing / completed',
+  status CHAR(1) NOT NULL DEFAULT 'A' COMMENT 'active / deleted',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY unique_title_per_author (author_id, title),
+  CONSTRAINT fk_novel_author FOREIGN KEY (author_id) REFERENCES users (id) ON DELETE CASCADE,
+  CONSTRAINT fk_novel_category_link FOREIGN KEY (category_id) REFERENCES novel_category (id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+";
+
 // 4. Run Queries
 
 foreach ($tables as $name => $sql) {

@@ -26,7 +26,7 @@ defined('URL_USER_HISTORY')   || define('URL_USER_HISTORY', SITEURL . '/src/page
 defined('URL_USER_MESSAGES')  || define('URL_USER_MESSAGES', SITEURL . '/src/pages/user/messages.php');
 
 // --- 5. Author Dashboard & Registration ---
-defined('URL_AUTHOR_DASHBOARD') || define('URL_AUTHOR_DASHBOARD', SITEURL . '/src/pages/author/dashboard.php');
+defined('URL_AUTHOR_DASHBOARD') || define('URL_AUTHOR_DASHBOARD', SITEURL . '/author/dashboard.php');
 defined('PATH_AUTHOR_DASHBOARD') || define('PATH_AUTHOR_DASHBOARD', 'src/pages/author/dashboard.php');
 defined('URL_AUTHOR_REGISTER')  || define('URL_AUTHOR_REGISTER', SITEURL . '/author/author-register.php');
 defined('PATH_AUTHOR_REGISTER') || define('PATH_AUTHOR_REGISTER', 'src/pages/author/author-register.php');
@@ -86,3 +86,8 @@ defined('URL_USER_ROLE')       || define('URL_USER_ROLE', URL_USER_DASHBOARD . '
 defined('URL_USER_ROLE_API')   || define('URL_USER_ROLE_API', SITEURL . '/src/pages/admin/user-role/index.php');
 
 defined('PATH_USER_ROLE_INDEX') || define('PATH_USER_ROLE_INDEX', 'src/pages/admin/user-role/index.php');
+
+// [NEW] Author Novel Management 
+defined('URL_AUTHOR_NOVEL_MANAGEMENT') || define('URL_AUTHOR_NOVEL_MANAGEMENT', SITEURL . '/author/novel-management.php');
+defined('PATH_AUTHOR_NOVEL_MANAGEMENT') || define('PATH_AUTHOR_NOVEL_MANAGEMENT', 'src/pages/author/novel-management/index.php');
+defined('URL_AUTHOR_NOVEL_API') || define('URL_AUTHOR_NOVEL_API', SITEURL . '/src/pages/author/novel-management/api.php');

@@ -1289,8 +1289,6 @@ function renderTableActions($htmlString) {
 // @param bool $redirect Whether to redirect directly when access is denied
 function checkPermissionError($actionType, $perm, $moduleName = '数据', $redirect = true) {
     
-    // Force absolute path to the dashboard home page.
-    $dashboardUrl = '/dashboard.php'; 
     $errorMessage = null;
 
     // Check if the permission object exists
@@ -1322,37 +1320,35 @@ function checkPermissionError($actionType, $perm, $moduleName = '数据', $redir
         // If it's an AJAX request (e.g., DataTables), return JSON
         if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
             header('Content-Type: application/json');
-            echo json_encode(['success' => false, 'message' => $errorMessage]);
+            echo safeJsonEncode(['success' => false, 'message' => $errorMessage]);
             exit();
         }
 
-        // [CRITICAL FIX]: Prevent Infinite Redirect Loop!
+        // Set the flash message so it displays on the next page
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $_SESSION['flash_msg'] = $errorMessage;
+        $_SESSION['flash_type'] = 'danger';
+
         // Check if we are currently on the Dashboard Home
         $currentView = $_GET['view'] ?? '';
         $isDashboardHome = (strpos($_SERVER['SCRIPT_NAME'], 'dashboard.php') !== false) && empty($currentView);
 
-        // If the user lacks permission for the Dashboard Home itself, redirecting them TO the Dashboard Home causes a loop.
-        if ($isDashboardHome || $moduleName === '仪表盘首页') {
-            // Halt completely and show the static error UI instead of redirecting
-            $errorMessage;
-        }
-
-        // For all other sub-pages, it is safe to redirect back to the Dashboard Home
-        if (session_status() === PHP_SESSION_NONE) session_start();
-        $_SESSION['flash_msg'] = $errorMessage;
-        $_SESSION['flash_type'] = 'danger';
+        // Determine fallback URL to prevent infinite redirect loops.
+        // If they lack permission for the Dashboard itself, send them to the public Home page.
+        // Otherwise, send them back to their Dashboard home.
+        $targetRedirectUrl = ($isDashboardHome || $moduleName === '仪表盘首页') ? URL_HOME : URL_USER_DASHBOARD;
         
         // Execute Redirect
         if (!headers_sent()) {
-            header("Location: " . $dashboardUrl);
+            header("Location: " . $targetRedirectUrl);
         } else {
             // Output a full-screen overlay to hide the broken layout before JS redirects
             echo '<div style="position:fixed; top:0; left:0; width:100vw; height:100vh; background:#ffffff; z-index:999999; display:flex; justify-content:center; align-items:center;">';
-            echo '<h4 style="color:#dc3545;">权限不足，正在返回首页...</h4>';
+            echo '<h4 style="color:#dc3545;">权限不足，正在跳转...</h4>';
             echo '</div>';
             
             // Use replace() so users cannot click 'Back' into the forbidden page
-            echo "<script>window.location.replace('" . $dashboardUrl . "');</script>";
+            echo "<script>window.location.replace('" . $targetRedirectUrl . "');</script>";
         }
         exit();
     }
@@ -1361,12 +1357,7 @@ function checkPermissionError($actionType, $perm, $moduleName = '数据', $redir
 }
 
 /**
- * Helper: Generate Dynamic Clickable Breadcrumb
- * Fetches the page name from PAGE_INFO_LIST based on the current URL.
- * * @param mysqli $conn         Database connection
- * @param string $currentUrl   The registered public_url of the page
- * @param string $fallbackName Fallback name if the URL is not found in the DB
- * @return string              HTML string for the clickable breadcrumb
+ * Generate Breadcrumb Navigation dynamically based on URL and Database
  */
 function generateBreadcrumb($conn, $currentUrl, $fallbackName = '') {
     $homeText = '首页';
@@ -1374,10 +1365,17 @@ function generateBreadcrumb($conn, $currentUrl, $fallbackName = '') {
     $homeUrl = defined('URL_USER_DASHBOARD') ? URL_USER_DASHBOARD : '/dashboard.php'; 
     $pageName = $fallbackName;
 
+    // Admin Info
     $adminCenterText = '管理员管理';
     $adminCenterUrl = defined('URL_ADMIN_DASHBOARD') ? URL_ADMIN_DASHBOARD : ($homeUrl . '?view=admin');
     $isAdminPage = false;
     $isAdminHome = false;
+
+    // Author Info
+    $authorZoneText = '作者专区';
+    $authorZoneUrl = defined('URL_AUTHOR_DASHBOARD') ? URL_AUTHOR_DASHBOARD : '/author/dashboard.php';
+    $isAuthorPage = false;
+    $isAuthorHome = false;
 
     if (!empty($currentUrl)) {
         $pathPart = (string)parse_url($currentUrl, PHP_URL_PATH);
@@ -1385,11 +1383,19 @@ function generateBreadcrumb($conn, $currentUrl, $fallbackName = '') {
         parse_str($queryPart, $queryVars);
         $viewParam = isset($queryVars['view']) ? (string)$queryVars['view'] : '';
 
+        // Check if Admin Page
         $adminViews = ['admin', 'page_action', 'page_info', 'user_role'];
         $isAdminPage = in_array($viewParam, $adminViews, true) || ($pathPart !== '' && strpos($pathPart, '/src/pages/admin/') !== false);
         $isAdminHome = ($viewParam === 'admin');
+
+        // Check if Author Page (URL starts with /author/)
+        $isAuthorPage = ($pathPart !== '' && strpos($pathPart, '/author/') === 0);
+        // Safely determine author dashboard path
+        $authorHomePath = parse_url($authorZoneUrl, PHP_URL_PATH) ?: '/author/dashboard.php';
+        $isAuthorHome = ($pathPart === $authorHomePath);
     }
 
+    // Fetch translated/actual name from Database
     if ($conn && !empty($currentUrl)) {
         $stmt = $conn->prepare("SELECT name_cn FROM " . PAGE_INFO_LIST . " WHERE public_url = ? AND status = 'A' LIMIT 1");
         if ($stmt) {
@@ -1409,17 +1415,25 @@ function generateBreadcrumb($conn, $currentUrl, $fallbackName = '') {
     // Build the clickable HTML using Bootstrap classes for styling
     $html = '<a href="' . htmlspecialchars($homeUrl) . '" class="text-muted text-decoration-none hover-primary">' . htmlspecialchars($homeText) . '</a>';
 
+    // Inject Parent Nodes
     if ($isAdminPage) {
         $html .= ' / <a href="' . htmlspecialchars($adminCenterUrl) . '" class="text-muted text-decoration-none hover-primary">' . htmlspecialchars($adminCenterText) . '</a>';
+    } elseif ($isAuthorPage) {
+        $html .= ' / <a href="' . htmlspecialchars($authorZoneUrl) . '" class="text-muted text-decoration-none hover-primary">' . htmlspecialchars($authorZoneText) . '</a>';
     }
     
-    if (!empty($pageName) && !($isAdminHome && $pageName === $adminCenterText)) {
-        $html .= ' / <a href="' . htmlspecialchars($currentUrl) . '" class="text-muted text-decoration-none hover-primary">' . htmlspecialchars($pageName) . '</a>';
+    // Inject Current Page Node
+    if (!empty($pageName)) {
+        // Prevent duplication like "Admin / Admin" or "Author / Author" on their respective dashboards
+        if (($isAdminHome && $pageName === $adminCenterText) || ($isAuthorHome && $pageName === $authorZoneText)) {
+            // Do not append the page name if it is redundant
+        } else {
+            $html .= ' / <a href="' . htmlspecialchars($currentUrl) . '" class="text-muted text-decoration-none hover-primary">' . htmlspecialchars($pageName) . '</a>';
+        }
     }
 
     return '<div class="page-action-breadcrumb text-muted mb-1" style="font-size: 13px;">' . $html . '</div>';
 }
-
 /**
  * Fetch dynamic page registry for Meta Settings dropdown.
  * Uses public_url as the key so pages can easily map their current URL to their SEO settings.
@@ -1453,4 +1467,167 @@ function getDynamicPageRegistry($conn) {
     return $registry;
 }
 
+/**
+ * [NEW] Get the Author role ID.
+ * Looks for a role named 'Author' or '作者'.
+ */
+function getAuthorRoleId($conn) {
+    if (!$conn) return null;
 
+    $sql = "SELECT id FROM " . USER_ROLE . " 
+            WHERE (name_en = 'Author' OR name_cn = '作者') 
+            AND status = 'A' LIMIT 1";
+
+    $stmt = $conn->prepare($sql);
+    if ($stmt) {
+        $stmt->execute();
+        $stmt->store_result();
+
+        if ($stmt->num_rows > 0) {
+            $roleId = null;
+            $stmt->bind_result($roleId);
+            $stmt->fetch();
+            $stmt->close();
+            return (int)$roleId;
+        }
+        $stmt->close();
+    }
+    return null;
+}
+
+/**
+ * [NEW] Upgrade a user to the Author role and log the action.
+ * @param mysqli $conn Database connection
+ * @param int $userId The ID of the user being upgraded (users.id)
+ * @param int $adminId The ID of the admin performing the action
+ * @return bool True if successful or already an author
+ */
+function upgradeUserToAuthorRole($conn, $userId, $adminId) {
+    $authorRoleId = getAuthorRoleId($conn);
+    if (!$authorRoleId) return false; // Author role doesn't exist in the system
+
+    $usersTable = defined('USR_LOGIN') ? USR_LOGIN : 'users';
+
+    // Fetch old user data for the audit log
+    $oldUser = fetchAuditRow($conn, $usersTable, $userId);
+    if (!$oldUser) return false;
+
+    // Prevent redundant updates if they are already an author
+    if ((int)$oldUser['user_role_id'] === $authorRoleId) {
+        return true; 
+    }
+
+    // Update the user_role_id
+    $sql = "UPDATE {$usersTable} SET user_role_id = ? WHERE id = ?";
+    $stmt = $conn->prepare($sql);
+    if ($stmt) {
+        $stmt->bind_param("ii", $authorRoleId, $userId);
+        $ok = $stmt->execute();
+        $stmt->close();
+
+        if ($ok) {
+            // Fetch the updated user data for the audit log
+            $newUser = fetchAuditRow($conn, $usersTable, $userId);
+            
+            if (function_exists('logAudit')) {
+                logAudit([
+                    'page'           => 'Author Verification Management',
+                    'action'         => 'E',
+                    'action_message' => 'Upgraded user account to Author role after verification approval',
+                    'query'          => $sql,
+                    'query_table'    => $usersTable,
+                    'user_id'        => $adminId,
+                    'record_id'      => $userId,
+                    'record_name'    => $oldUser['name'] ?? null,
+                    'old_value'      => $oldUser,
+                    'new_value'      => $newUser
+                ]);
+            }
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * Get the verification status of an author.
+ * Returns 'approved', 'pending', 'rejected', or false if no profile exists.
+ */
+function getAuthorProfileStatus($conn, $userId) {
+    if (!$conn || empty($userId)) return false;
+    
+    $authorProfileTable = defined('AUTHOR_PROFILE') ? AUTHOR_PROFILE : 'author_profile';
+    $sql = "SELECT verification_status FROM " . $authorProfileTable . " WHERE user_id = ? AND status = 'A' LIMIT 1";
+    
+    $stmt = $conn->prepare($sql);
+    if ($stmt) {
+        $stmt->bind_param("i", $userId);
+        $stmt->execute();
+        $stmt->store_result();
+        
+        if ($stmt->num_rows > 0) {
+            $status = null;
+            $stmt->bind_result($status);
+            $stmt->fetch();
+            $stmt->close();
+            return $status;
+        }
+        $stmt->close();
+    }
+    return false;
+}
+
+/**
+ * Strict Author Profile Check
+ * Ensures the user has an 'approved' author profile.
+ * If not, it redirects them to the author registration/status page.
+ *
+ * @param mysqli $conn Database connection
+ * @param int $userId The ID of the user
+ * @return bool True if approved, otherwise it redirects and exits.
+ */
+function requireApprovedAuthor($conn, $userId) {
+    if (!$conn || empty($userId)) {
+        header("Location: " . (defined('URL_LOGIN') ? URL_LOGIN : '/login.php'));
+        exit();
+    }
+
+    $authorProfileTable = AUTHOR_PROFILE;
+    $registerUrl = URL_AUTHOR_REGISTER;
+
+    $sql = "SELECT verification_status FROM " . $authorProfileTable . " WHERE user_id = ? AND status = 'A' LIMIT 1";
+    $stmt = $conn->prepare($sql);
+    
+    if ($stmt) {
+        $stmt->bind_param("i", $userId);
+        $stmt->execute();
+        $stmt->store_result();
+        
+        // If no profile exists, redirect to registration
+        if ($stmt->num_rows === 0) {
+            $stmt->close();
+            header("Location: " . $registerUrl);
+            exit();
+        }
+        
+        $vStatus = null;
+        $stmt->bind_result($vStatus);
+        $stmt->fetch();
+        $stmt->close();
+        
+        // If profile exists but is not approved (pending/rejected), send them to the status page
+        if ($vStatus !== 'approved') {
+            if (session_status() === PHP_SESSION_NONE) session_start();
+            $_SESSION['flash_msg'] = '访问受限：您的作者申请尚未通过审核。';
+            $_SESSION['flash_type'] = 'warning';
+            header("Location: " . $registerUrl);
+            exit();
+        }
+        
+        return true; 
+    }
+    
+    // Fallback if query fails
+    header("Location: " . (defined('URL_HOME') ? URL_HOME : '/Home.php'));
+    exit();
+}

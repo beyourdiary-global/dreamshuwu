@@ -11,9 +11,6 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
     if ($checkStmt) {
         $checkStmt->bind_param("i", $sessionUserId);
         $checkStmt->execute();
-
-        // [COMPATIBILITY FIX]
-        // Use store_result() instead of get_result()
         $checkStmt->store_result();
 
         if ($checkStmt->num_rows === 0) {
@@ -32,14 +29,31 @@ $pageMetaKey = '/Home.php';
 
 <!DOCTYPE html>
 <html lang="<?php echo defined('SITE_LANG') ? SITE_LANG : 'zh-CN'; ?>">
-<?php require_once BASE_PATH . 'include/header.php'; ?>
+<head>
+    <?php require_once BASE_PATH . 'include/header.php'; ?>
+</head>
 <body>
 
 <?php require_once BASE_PATH . 'common/menu/header.php'; ?>
 
 <div class="container main-content" style="max-width: 1200px; margin: 20px auto; padding: 0 15px;">
+    
+    <?php 
+    if (isset($_SESSION['flash_msg'])) {
+        $flashType = $_SESSION['flash_type'] ?? 'info';
+        $flashMsg = $_SESSION['flash_msg'];
+        // Clear the message so it doesn't show up again on refresh
+        unset($_SESSION['flash_msg'], $_SESSION['flash_type']);
+    ?>
+        <div class="alert alert-<?php echo htmlspecialchars($flashType); ?> alert-dismissible fade show shadow-sm" role="alert">
+            <i class="fa-solid fa-circle-exclamation me-2"></i>
+            <?php echo htmlspecialchars($flashMsg); ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    <?php } ?>
+
     <?php if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true): ?>
-        <div class="alert alert-success mt-3">
+        <div class="alert alert-success mt-3 shadow-sm">
             欢迎回来, <strong><?php echo htmlspecialchars($_SESSION['user_name'] ?? 'User'); ?></strong>!
         </div>
     <?php endif; ?>
@@ -47,6 +61,9 @@ $pageMetaKey = '/Home.php';
     <h3 class="mt-4">首页内容区域</h3>
     <p>这里是公开内容，任何人都可以看到 (Banner, Rank, Categories)。</p>
 </div>
+
+<script src="<?php echo URL_ASSETS; ?>/js/jquery-3.6.0.min.js"></script>
+<script src="<?php echo URL_ASSETS; ?>/js/bootstrap.bundle.min.js"></script>
 
 </body>
 </html>

@@ -85,3 +85,101 @@
   object-fit: cover;
   z-index: 2;
 }
+
+/* ======================================================== */
+/* --- Author Dashboard & Action Cards --- */
+/* ======================================================== */
+.hover-lift {
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+}
+
+.action-card {
+  border-radius: 12px;
+}
+
+/* ======================================================== */
+/* --- Novel Management Specific Styles --- */
+/* ======================================================== */
+
+/* Novel Statistics Cards */
+.novel-stat-card {
+  border-radius: 12px;
+  padding: 24px 20px;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transition: transform 0.2s ease;
+  height: 100%;
+}
+
+.novel-stat-card:hover {
+  transform: translateY(-5px);
+}
+
+.novel-stat-card .stat-icon {
+  font-size: 45px;
+  opacity: 0.8;
+}
+
+.novel-stat-card .stat-details h3 {
+  font-size: 32px;
+  font-weight: 700;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.novel-stat-card .stat-details p {
+  margin: 0;
+  font-size: 15px;
+  opacity: 0.9;
+  font-weight: 500;
+}
+
+/* Cover Image Upload Box (3:4 Ratio) */
+.cover-upload-box {
+  width: 150px;
+  height: 200px; /* Forces 3:4 Aspect Ratio */
+  border: 2px dashed #d1d5db;
+  border-radius: 8px;
+  background-color: #f9fafb;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.cover-upload-box:hover {
+  border-color: #233dd2;
+  background-color: #f0f3ff;
+}
+
+.cover-upload-box .placeholder {
+  color: #6b7280;
+  text-align: center;
+  font-size: 13px;
+  z-index: 1;
+  padding: 10px;
+}
+
+.cover-upload-box img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 2;
+}
