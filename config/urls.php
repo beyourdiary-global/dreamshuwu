@@ -91,3 +91,13 @@ defined('PATH_USER_ROLE_INDEX') || define('PATH_USER_ROLE_INDEX', 'src/pages/adm
 defined('URL_AUTHOR_NOVEL_MANAGEMENT') || define('URL_AUTHOR_NOVEL_MANAGEMENT', SITEURL . '/author/novel-management.php');
 defined('PATH_AUTHOR_NOVEL_MANAGEMENT') || define('PATH_AUTHOR_NOVEL_MANAGEMENT', 'src/pages/author/novel-management/index.php');
 defined('URL_AUTHOR_NOVEL_API') || define('URL_AUTHOR_NOVEL_API', SITEURL . '/src/pages/author/novel-management/api.php');
+
+// --- [NEW] Author Chapter Management ---
+defined('URL_AUTHOR_CHAPTER_MANAGEMENT') || define('URL_AUTHOR_CHAPTER_MANAGEMENT', SITEURL . '/author/novel/{id}/chapters/');
+
+// Physical file paths for internal routing and permissions
+defined('PATH_AUTHOR_CHAPTER_MANAGEMENT') || define('PATH_AUTHOR_CHAPTER_MANAGEMENT', 'src/pages/author/chapter-management/index.php');
+
+// API paths
+defined('URL_AUTHOR_CHAPTER_API') || define('URL_AUTHOR_CHAPTER_API', SITEURL . '/src/pages/author/chapter-management/api.php');
+defined('PATH_AUTHOR_CHAPTER_API') || define('PATH_AUTHOR_CHAPTER_API', 'src/pages/author/chapter-management/api.php');

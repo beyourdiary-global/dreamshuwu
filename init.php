@@ -122,6 +122,15 @@ defined('AUTHOR_PROFILE') || define('AUTHOR_PROFILE', 'author_profile');
 defined('EMAIL_TEMPLATE') || define('EMAIL_TEMPLATE', 'email_template');
 defined('EMAIL_LOG') || define('EMAIL_LOG', 'email_log');
 
+// -- Novel Table Constants ---
+defined('NOVEL') || define('NOVEL', 'novel');
+
+// --- Chapter Management Table Constants ---
+defined('CHAPTER')            || define('CHAPTER', 'chapter');
+defined('CHAPTER_VERSION')    || define('CHAPTER_VERSION', 'chapter_version');
+defined('SENSITIVE_WORD')     || define('SENSITIVE_WORD', 'sensitive_word');
+defined('SENSITIVE_WORD_LOG') || define('SENSITIVE_WORD_LOG', 'sensitive_word_log');
+ 
 // --- Application Constants ---
 defined('MIN_AGE_REQUIREMENT') || define('MIN_AGE_REQUIREMENT', 13);
 defined('MIN_PWD_LENGTH')      || define('MIN_PWD_LENGTH', 8);
