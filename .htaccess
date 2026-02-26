@@ -1,47 +1,26 @@
 RewriteEngine On
 
-# Security: Block direct access to "src", EXCEPT for specific files
-
-# 1. Allow Category API
-
-RewriteCond %{REQUEST_URI} !^/src/pages/category/index\.php$
-
-# 2. Allow Tag API
-
-RewriteCond %{REQUEST_URI} !^/src/pages/tags/index\.php$
-
-# 3. Allow Meta API
-
-RewriteCond %{REQUEST_URI} !^/src/pages/meta/index\.php$
-
-# 4. Allow Web Setting API
-RewriteCond %{REQUEST_URI} !^/src/pages/webSetting/index\.php$
-
-# 5. Allow Page Action API
-RewriteCond %{REQUEST_URI} !^/src/pages/admin/page-action/index\.php$
-
-# 6. Allow Page Information List API
-RewriteCond %{REQUEST_URI} !^/src/pages/admin/page-information-list/index\.php$
-
-# 7. Allow User Role API
-RewriteCond %{REQUEST_URI} !^/src/pages/admin/user-role/index\.php$
-
-# 8. Allow Author Verification API
-RewriteCond %{REQUEST_URI} !^/src/pages/author/author-verification/api\.php$
-
-# 9. Allow Email Template API
-RewriteCond %{REQUEST_URI} !^/src/pages/author/email-template/api\.php$
-
-# 10. Allow Author Novel Management API (NEW)
-RewriteCond %{REQUEST_URI} !^/src/pages/author/novel-management/api\.php$
-
-# 11. Allow Chapter Management API
-RewriteCond %{REQUEST_URI} !^/src/pages/author/chapter-management/api\.php$
-
-# 12. Chapter Management Dynamic Routing
+# 1. Dynamic Routing (Must go BEFORE blocking rules)
+# Chapter Management Dynamic Routing
 RewriteRule ^author/novel/([0-9]+)/chapters/?$ src/pages/author/chapter-management/index.php?novel_id=$1 [QSA,L]
 
-# Block everything else in src/
+# 2. Security: Block direct access to "src", EXCEPT for specific files
+RewriteCond %{REQUEST_URI} !^/src/pages/category/index\.php$
+RewriteCond %{REQUEST_URI} !^/src/pages/tags/index\.php$
+RewriteCond %{REQUEST_URI} !^/src/pages/meta/index\.php$
+RewriteCond %{REQUEST_URI} !^/src/pages/webSetting/index\.php$
+RewriteCond %{REQUEST_URI} !^/src/pages/admin/page-action/index\.php$
+RewriteCond %{REQUEST_URI} !^/src/pages/admin/page-information-list/index\.php$
+RewriteCond %{REQUEST_URI} !^/src/pages/admin/user-role/index\.php$
+RewriteCond %{REQUEST_URI} !^/src/pages/author/author-verification/api\.php$
+RewriteCond %{REQUEST_URI} !^/src/pages/author/email-template/api\.php$
+RewriteCond %{REQUEST_URI} !^/src/pages/author/novel-management/api\.php$
+RewriteCond %{REQUEST_URI} !^/src/pages/author/chapter-management/api\.php$
+# Allow the internal router target to be accessed
+RewriteCond %{REQUEST_URI} !^/src/pages/author/chapter-management/index\.php$
+
+# If none of the files above match, block access to anything inside src/
 RewriteRule ^src/ - [F,L]
 
+# 3. Error Pages
 ErrorDocument 404 /error404.php
