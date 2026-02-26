@@ -9,27 +9,22 @@ if (empty($_SESSION['csrf_token'])) {
 $currentUserId = isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : 0;
 requireApprovedAuthor($conn, $currentUserId);
 
-// ==========================================
-// PERMISSION CHECKING
-// ==========================================
-// --- NEW CODE (Specific to Chapter Management URL) ---
-// This forces the system to look for permission for the exact clean URL structure
+// Permission Checking Logic
 if (defined('URL_AUTHOR_CHAPTER_MANAGEMENT')) {
-    // This converts ".../author/novel/{id}/chapters/" into "/author/novel/chapters/"
     $menuUrl = str_replace('{id}/', '', parse_url(URL_AUTHOR_CHAPTER_MANAGEMENT, PHP_URL_PATH));
 } else {
-    // Fallback if the constant is missing
     $menuUrl = '/author/novel/chapters/';
 }
 
 $perm = hasPagePermission($conn, $menuUrl);
 
-// If not found by clean URL, check by the physical system path as a secondary strict check
+// Fallback 1: Check Physical Path
 if (empty($perm)) {
-    $systemPath = PATH_AUTHOR_CHAPTER_MANAGEMENT;
+    $systemPath = defined('PATH_AUTHOR_CHAPTER_MANAGEMENT') ? PATH_AUTHOR_CHAPTER_MANAGEMENT : '/src/pages/author/chapter-management/index.php';
     $perm = hasPagePermission($conn, $systemPath);
 }
-$perm = hasPagePermission($conn, $menuUrl);
+
+// Fallback 2: Check Novel Management
 if (empty($perm) || (isset($perm->view) && empty($perm->view))) {
     $legacyPath = defined('PATH_AUTHOR_NOVEL_MANAGEMENT') ? ('/' . ltrim(PATH_AUTHOR_NOVEL_MANAGEMENT, '/')) : '/src/pages/author/novel-management/index.php';
     $perm = hasPagePermission($conn, $legacyPath);
@@ -42,7 +37,6 @@ if (empty($perm) || empty($perm->view)) {
     exit();
 }
 
-// Export specific permissions for UI rendering
 $canAdd = !empty($perm->add);
 $canEdit = !empty($perm->edit);
 $canDelete = !empty($perm->delete);
@@ -52,9 +46,12 @@ if ($novelId <= 0) {
     die("无效的小说ID (Invalid Novel ID)");
 }
 
-// 验证小说所有权并获取小说详情 (Verify Ownership & Get Novel Details)
+// Verify Ownership & Get Novel Details with Crash Prevention
 $novelSql = "SELECT title, cover_image, completion_status, tags, introduction FROM " . NOVEL . " WHERE id = ? AND author_id = ? AND status = 'A' LIMIT 1";
 $stmt = $conn->prepare($novelSql);
+if (!$stmt) {
+    die("Database Error: 无法准备小说查询语句。请检查线上数据库 NOVEL 表中是否存在 'cover_image', 'completion_status', 'tags', 'introduction' 这些列。错误信息: " . $conn->error);
+}
 $stmt->bind_param("ii", $novelId, $currentUserId);
 $stmt->execute();
 $stmt->store_result();
@@ -64,6 +61,7 @@ if ($stmt->num_rows === 0) {
     echo '<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>访问受限</title><script src="' . URL_ASSETS . '/js/sweetalert2@11.js"></script><style>body { background-color: #f4f7f6; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }</style></head><body><script>Swal.fire({icon: "error",title: "访问受限",text: "该小说不存在或您无权访问 (Access Denied)。",confirmButtonText: "返回我的小说",confirmButtonColor: "#dc3545",allowOutsideClick: false,allowEscapeKey: false}).then(function() {window.location.href = "' . $fallbackUrl . '";});</script></body></html>';
     exit();
 }
+
 $nTitle = $nCover = $nStatus = $nTags = $nIntro = null;
 $stmt->bind_result($nTitle, $nCover, $nStatus, $nTags, $nIntro);
 $stmt->fetch();
@@ -71,7 +69,7 @@ $stmt->close();
 
 $coverUrl = $nCover ? (URL_ASSETS . '/uploads/novel_covers/' . htmlspecialchars($nCover)) : (URL_ASSETS . '/images/no-cover.png');
 
-// 获取章节统计数据 (Fetch Chapter Statistics)
+// Fetch Chapter Statistics with Crash Prevention
 $statSql = "SELECT 
     COUNT(id) as total_chapters, 
     SUM(word_count) as total_words,
@@ -79,8 +77,12 @@ $statSql = "SELECT
     SUM(CASE WHEN publish_status = 'draft' THEN 1 ELSE 0 END) as draft_count
     FROM " . CHAPTER . " WHERE novel_id = ? AND status = 'A'";
 $stmt = $conn->prepare($statSql);
+if (!$stmt) {
+    die("Database Error: 无法准备章节统计查询。请检查线上数据库 CHAPTER 表中是否存在 'publish_status' 或 'word_count' 这些列。错误信息: " . $conn->error);
+}
 $stmt->bind_param("i", $novelId);
 $stmt->execute();
+$statTotalChapters = $statTotalWords = $statPublished = $statDrafts = 0;
 $stmt->bind_result($statTotalChapters, $statTotalWords, $statPublished, $statDrafts);
 $stmt->fetch();
 $stmt->close();
@@ -133,7 +135,7 @@ $currentUrl = '/author/novel/' . $novelId . '/chapters/';
                 </div>
                 <div class="mb-2">
                     <?php 
-                    $tagsArr = explode(',', $nTags);
+                    $tagsArr = explode(',', (string)$nTags); //If $nTags is null (empty), the (string) safely converts it into an empty string.
                     foreach($tagsArr as $tag) {
                         if(trim($tag) !== '') echo '<span class="badge bg-light text-secondary border me-1">'.htmlspecialchars(trim($tag)).'</span>';
                     }

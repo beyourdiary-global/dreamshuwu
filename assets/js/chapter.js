@@ -207,7 +207,18 @@ $(document).ready(function () {
               .fadeOut();
           }
         } else {
-          if (saveMode === "save") Swal.fire("错误", res.message, "error");
+          // 🌟 NEW: CATCH THE NO-CHANGE WARNING 🌟
+          if (res.is_no_change) {
+            Swal.fire({
+              icon: "warning",
+              title: "没有修改",
+              text: "无需保存",
+              confirmButtonColor: "#4e73df",
+            });
+          } else {
+            // Normal Error handling
+            if (saveMode === "save") Swal.fire("错误", res.message, "error");
+          }
         }
       },
       error: function (xhr) {
