@@ -2,15 +2,18 @@
 // Path: src/pages/author/chapter-management/api.php
 try {
     require_once dirname(__DIR__, 4) . '/common.php';
+
+    // Session & Authentication Check
+    requireLogin();
     if (ob_get_length()) ob_clean();
     header('Content-Type: application/json; charset=utf-8');
 
-    if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) throw new Exception('会话过期');
-    $currentUserId = (int)$_SESSION['user_id'];
+    $currentUserId = $_SESSION['user_id'];
     requireApprovedAuthor($conn, $currentUserId);
 
     $mode = strtolower(trim((string)($_REQUEST['mode'] ?? 'data')));
-    $novelId = (int)($_REQUEST['novel_id'] ?? 0);
+    $novelId = ($_REQUEST['novel_id'] ?? 0);
+    $auditPage = 'Chapter Management';
     
     if ($novelId <= 0) throw new Exception('小说ID缺失');
 
@@ -33,7 +36,6 @@ try {
         $perm = hasPagePermission($conn, $legacyPath);
     }
 
-    // Direct permission enforcement to avoid ghost functions
     if (in_array($mode, ['data', 'get', 'get_sensitive_words', 'get_versions', 'get_version_detail'])) {
         if (empty($perm) || empty($perm->view)) throw new Exception('无查看权限 (No View Permission)');
     }
@@ -131,8 +133,8 @@ try {
 
     // Data List
     if ($mode === 'data') {
-        $start = max(0, (int)($_REQUEST['start'] ?? 0));
-        $length = max(1, min(100, (int)($_REQUEST['length'] ?? 10)));
+        $start = max(0, ($_REQUEST['start'] ?? 0));
+        $length = max(1, min(100, ($_REQUEST['length'] ?? 10)));
         
         $countSql = "SELECT COUNT(id) FROM {$chapterTable} WHERE novel_id = ? AND status = 'A'";
         $stmt = $conn->prepare($countSql);
@@ -164,15 +166,20 @@ try {
         }
         $stmt->close();
         
-        echo safeJsonEncode(['draw' => (int)($_REQUEST['draw'] ?? 1), 'recordsTotal' => $totalRecords, 'recordsFiltered' => $totalRecords, 'data' => $rows]);
+        echo safeJsonEncode(['draw' => ($_REQUEST['draw'] ?? 1), 'recordsTotal' => $totalRecords, 'recordsFiltered' => $totalRecords, 'data' => $rows]);
         exit();
     }
 
     // Save Logic
     if ($mode === 'save' || $mode === 'auto_save') {
-        $chapterId = (int)($_POST['chapter_id'] ?? 0);
+        // Pre-define queries for execution and logging
+        $insertSql = "INSERT INTO {$chapterTable} (novel_id, author_id, chapter_number, title, content, word_count, publish_status, scheduled_publish_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        $updateSql = "UPDATE {$chapterTable} SET chapter_number=?, title=?, content=?, word_count=?, publish_status=?, scheduled_publish_at=?, updated_at=NOW() WHERE id=? AND novel_id=?";
+        $insertVersionSql = "INSERT INTO {$chapterVersionTable} (chapter_id, version_number, title, content, word_count, created_by) VALUES (?, ?, ?, ?, ?, ?)";
+
+        $chapterId = ($_POST['chapter_id'] ?? 0);
         $title = trim($_POST['title'] ?? '');
-        $cNum = (int)($_POST['chapter_number'] ?? 1);
+        $cNum = ($_POST['chapter_number'] ?? 1);
         $content = trim($_POST['content'] ?? '');
         $pStatus = $_POST['publish_status'] ?? 'draft';
         $sTime = !empty($_POST['scheduled_publish_at']) ? $_POST['scheduled_publish_at'] : null;
@@ -197,7 +204,6 @@ try {
         // Fetch Old Data using bind_result
         $oldChapterData = null;
         if ($chapterId > 0) {
-            // Ensure we SELECT all fields needed for the comparison
             $osql = "SELECT id, title, chapter_number, content, word_count, publish_status, scheduled_publish_at FROM {$chapterTable} WHERE id = ?";
             $ostmt = $conn->prepare($osql);
             if ($ostmt) {
@@ -219,9 +225,8 @@ try {
                 $ostmt->close();
             }
 
-            // 🌟 IMPLEMENT GLOBAL NO-CHANGE CHECK 🌟
+            // Global NO-CHANGE Check
             if ($mode === 'save' && $oldChapterData && function_exists('checkNoChangesAndRedirect')) {
-                // Map the newly submitted and cleaned data
                 $newData = [
                     'title' => $title,
                     'chapter_number' => $cNum,
@@ -231,10 +236,8 @@ try {
                     'scheduled_publish_at' => $sTime ? date('Y-m-d H:i:s', strtotime($sTime)) : null
                 ];
 
-                // Run the global comparison
                 $noChanges = checkNoChangesAndRedirect($newData, $oldChapterData);
                 
-                // If the function returns an array, it means no changes were detected
                 if ($noChanges !== false) {
                     echo safeJsonEncode([
                         'success' => false, 
@@ -248,21 +251,64 @@ try {
 
         $conn->begin_transaction();
 
-        if ($chapterId === 0) {
-            $sql = "INSERT INTO {$chapterTable} (novel_id, author_id, chapter_number, title, content, word_count, publish_status, scheduled_publish_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
-            $stmt = $conn->prepare($sql);
+        if ($chapterId == 0) {
+            $stmt = $conn->prepare($insertSql);
             if (!$stmt) throw new Exception("Database Error: " . $conn->error);
             $stmt->bind_param("iiississ", $novelId, $currentUserId, $cNum, $title, $content, $wCount, $pStatus, $sTime);
             $stmt->execute();
             $chapterId = $conn->insert_id;
             $stmt->close();
+
+            // Log Insert
+            if (function_exists('logAudit') && $mode === 'save') {
+                logAudit([
+                    'page'           => $auditPage,
+                    'action'         => 'A',
+                    'action_message' => 'Author created new chapter',
+                    'query'          => $insertSql,
+                    'query_table'    => $chapterTable,
+                    'user_id'        => $currentUserId,
+                    'record_id'      => $chapterId,
+                    'record_name'    => $title,
+                    'new_value'      => [
+                        'novel_id' => $novelId,
+                        'title' => $title,
+                        'chapter_number' => $cNum,
+                        'word_count' => $wCount,
+                        'publish_status' => $pStatus,
+                        'scheduled_publish_at' => $sTime
+                    ]
+                ]);
+            }
         } else {
-            $sql = "UPDATE {$chapterTable} SET chapter_number=?, title=?, content=?, word_count=?, publish_status=?, scheduled_publish_at=?, updated_at=NOW() WHERE id=? AND novel_id=?";
-            $stmt = $conn->prepare($sql);
+            $stmt = $conn->prepare($updateSql);
             if (!$stmt) throw new Exception("Database Error: " . $conn->error);
             $stmt->bind_param("ississii", $cNum, $title, $content, $wCount, $pStatus, $sTime, $chapterId, $novelId);
             $stmt->execute();
             $stmt->close();
+
+            // Log Update
+            if (function_exists('logAudit') && $mode === 'save') {
+                logAudit([
+                    'page'           => $auditPage,
+                    'action'         => 'E',
+                    'action_message' => 'Author updated chapter',
+                    'query'          => $updateSql,
+                    'query_table'    => $chapterTable,
+                    'user_id'        => $currentUserId,
+                    'record_id'      => $chapterId,
+                    'record_name'    => $title,
+                    'old_value'      => $oldChapterData,
+                    'new_value'      => [
+                        'title' => $title,
+                        'chapter_number' => $cNum,
+                        'content' => $content,
+                        'word_count' => $wCount,
+                        'publish_status' => $pStatus,
+                        'scheduled_publish_at' => $sTime
+                    ]
+                ]);
+            }
         }
 
         if ($mode === 'save') {
@@ -275,12 +321,31 @@ try {
                 $stmt->fetch();
                 $stmt->close();
 
-                $iSql = "INSERT INTO {$chapterVersionTable} (chapter_id, version_number, title, content, word_count, created_by) VALUES (?, ?, ?, ?, ?, ?)";
-                $stmt2 = $conn->prepare($iSql);
+                $stmt2 = $conn->prepare($insertVersionSql);
                 if ($stmt2) {
                     $stmt2->bind_param("iissii", $chapterId, $nextV, $title, $content, $wCount, $currentUserId);
                     $stmt2->execute();
+                    $versionId = $conn->insert_id;
                     $stmt2->close();
+
+                    if (function_exists('logAudit')) {
+                        logAudit([
+                            'page'           => $auditPage,
+                            'action'         => 'A',
+                            'action_message' => 'Author saved chapter version',
+                            'query'          => $insertVersionSql,
+                            'query_table'    => $chapterVersionTable,
+                            'user_id'        => $currentUserId,
+                            'record_id'      => $versionId,
+                            'record_name'    => $title . ' (v' . $nextV . ')',
+                            'new_value'      => [
+                                'chapter_id' => $chapterId,
+                                'version_number' => $nextV,
+                                'title' => $title,
+                                'word_count' => $wCount
+                            ]
+                        ]);
+                    }
                 }
             }
         }
@@ -294,7 +359,7 @@ try {
     }
 
     // Get Single / Delete
-    $chapterId = (int)($_REQUEST['chapter_id'] ?? 0);
+    $chapterId = ($_REQUEST['chapter_id'] ?? 0);
     if ($chapterId > 0 && in_array($mode, ['get', 'delete'])) {
         $chk = "SELECT id FROM {$chapterTable} WHERE id = ? AND novel_id = ? AND status = 'A' LIMIT 1";
         $stmt=$conn->prepare($chk); 
@@ -318,12 +383,44 @@ try {
         }
         
         if ($mode === 'delete') {
-            $sql = "UPDATE {$chapterTable} SET status = 'D', updated_at=NOW() WHERE id = ?";
-            $stmt=$conn->prepare($sql); 
+            // Define query at top of block
+            $delSql = "UPDATE {$chapterTable} SET status = 'D', updated_at=NOW() WHERE id = ?";
+            
+            // Fetch old data for audit before deleting
+            $oldRow = null;
+            $osql = "SELECT id, title, chapter_number FROM {$chapterTable} WHERE id = ?";
+            $ostmt = $conn->prepare($osql);
+            if ($ostmt) {
+                $ostmt->bind_param("i", $chapterId);
+                $ostmt->execute();
+                $oId=$oTitle=$oNum=null;
+                $ostmt->bind_result($oId, $oTitle, $oNum);
+                if ($ostmt->fetch()) {
+                    $oldRow = ['id' => $oId, 'title' => $oTitle, 'chapter_number' => $oNum];
+                }
+                $ostmt->close();
+            }
+
+            $stmt=$conn->prepare($delSql); 
             if (!$stmt) throw new Exception("Database Error: " . $conn->error);
             $stmt->bind_param("i", $chapterId); 
             $stmt->execute();
             $stmt->close();
+
+            if (function_exists('logAudit')) {
+                logAudit([
+                    'page'           => $auditPage,
+                    'action'         => 'D',
+                    'action_message' => 'Author soft deleted chapter',
+                    'query'          => $delSql,
+                    'query_table'    => $chapterTable,
+                    'user_id'        => $currentUserId,
+                    'record_id'      => $chapterId,
+                    'record_name'    => $oldRow['title'] ?? 'Unknown',
+                    'old_value'      => $oldRow
+                ]);
+            }
+
             echo safeJsonEncode(['success'=>true, 'message'=>'删除成功']);
             exit();
         }
@@ -331,7 +428,7 @@ try {
 
     // Get Versions
     if ($mode === 'get_versions') {
-        $chapterId = (int)($_GET['chapter_id'] ?? 0);
+        $chapterId = ($_GET['chapter_id'] ?? 0);
         $versions = [];
         $sql = "SELECT id, version_number, word_count, created_at FROM {$chapterVersionTable} WHERE chapter_id = ? ORDER BY version_number DESC";
         $stmt = $conn->prepare($sql);
@@ -355,7 +452,7 @@ try {
 
     // Get Version Detail
     if ($mode === 'get_version_detail') {
-        $versionId = (int)($_GET['version_id'] ?? 0);
+        $versionId = ($_GET['version_id'] ?? 0);
         $sql = "SELECT version_number, title, content FROM {$chapterVersionTable} WHERE id = ? LIMIT 1";
         $stmt = $conn->prepare($sql);
         if (!$stmt) throw new Exception("Database Error: " . $conn->error);

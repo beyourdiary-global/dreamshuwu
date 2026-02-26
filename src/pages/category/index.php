@@ -1,6 +1,9 @@
 <?php
-// Path: src/pages/category/index.php
+// Path: src/pages/category/index.ph
 require_once dirname(__DIR__, 3) . '/common.php';
+
+// Auth Check
+requireLogin();
 
 // 1. Identify this specific view's URL as registered in your DB
 $currentUrl = '/dashboard.php?view=categories'; 
@@ -9,18 +12,7 @@ $currentUrl = '/dashboard.php?view=categories';
 $perm = hasPagePermission($conn, $currentUrl);
 
 // --- 2. Check View Permission ---
-checkPermissionError('view', $perm, '分类管理页面');
-
-// 1. Auth Check
-if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
-    if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
-        header('Content-Type: application/json');
-        echo safeJsonEncode(["error" => "Unauthorized"]);
-        exit();
-    }
-    header("Location: " . URL_LOGIN);
-    exit();
-}
+checkPermissionError('view', $perm);
 
 $catTable  = NOVEL_CATEGORY;
 $linkTable = CATEGORY_TAG;
@@ -134,7 +126,7 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
         }
 
         // Edit URL points to Dashboard
-        $editUrl = URL_NOVEL_CATS_FORM . '&id=' . (int) $cat['id'];
+        $editUrl = URL_NOVEL_CATS_FORM . '&id=' . $cat['id'];
         
         // [ADDED] Dynamically build actions based on permission object properties
         $btns = '';
@@ -168,7 +160,7 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
 if (isset($_POST['mode']) && $_POST['mode'] === 'delete') {
     header('Content-Type: application/json');
 
-$deleteError = checkPermissionError('delete', $perm, '分类');
+$deleteError = checkPermissionError('delete', $perm);
     if ($deleteError) {
         echo safeJsonEncode(['success' => false, 'message' => $deleteError]);
         exit();
@@ -253,7 +245,10 @@ if ($flashMsg !== '') {
 
 
 // HTML Output
-if ($isEmbeddedInDashboard): ?>
+if ($isEmbeddedInDashboard):
+    $pageScripts = ['jquery.dataTables.min.js', 'dataTables.bootstrap.min.js', 'category.js'];
+?>
+<link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/dataTables.bootstrap.min.css">
 <div class="category-container">
     <div class="card category-card">
         <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">

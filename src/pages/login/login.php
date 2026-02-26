@@ -60,9 +60,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 session_regenerate_id(true);
 
                 // Set session variables including role_id
-                $_SESSION['user_id'] = (int)$user['id'];
+                $_SESSION['user_id'] = $user['id'];
                 $_SESSION['user_name'] = $user['name'] ?? $email;
-                $_SESSION['role_id'] = isset($user['user_role_id']) ? (int)$user['user_role_id'] : 0;
+                $_SESSION['role_id'] = isset($user['user_role_id']) ? $user['user_role_id'] : 0;
                 $_SESSION['logged_in'] = true;
                 
                 // Audit Log (Safely)
@@ -71,7 +71,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                         'page' => $auditPage, 'action' => 'V',
                         'action_message' => 'User logged in successfully',
                         'query' => $loginQuery, 'query_table' => $dbTable,    
-                        'user_id' => (int)$user['id']
+                        'user_id' => $user['id']
                     ]);
                 }
                 
@@ -142,12 +142,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     <input type="email" class="form-control" id="email" name="email" placeholder="请输入邮箱" required>
                 </div>
 
-                <div class="auth-field mb-3 password-field position-relative">
+                <div class="auth-field mb-3">
                     <label class="form-label">密码</label>
-                    <input type="password" class="form-control" id="password" name="password" placeholder="请输入密码" required>
-                    <button type="button" class="toggle-password" data-target="password">
-                        <i class="fa fa-eye"></i>
-                    </button>
+                    <div class="password-field">
+                        <input type="password" class="form-control" id="password" name="password" placeholder="请输入密码" required>
+                        <button type="button" class="toggle-password" data-target="password">
+                            <i class="fa fa-eye"></i>
+                        </button>
+                    </div>
                 </div>
 
                 <button type="submit" class="btn btn-primary" id="loginBtn">立即登录</button>

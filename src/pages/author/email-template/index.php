@@ -1,29 +1,24 @@
 <?php
 require_once dirname(__DIR__, 4) . '/common.php';
 
-$isEmbeddedEmailTemplate = isset($EMBED_EMAIL_TEMPLATE) && $EMBED_EMAIL_TEMPLATE === true;
-$currentUserId = isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : (isset($_SESSION['userid']) ? (int)$_SESSION['userid'] : 0);
-$currentUrl = '/author/email-template.php';
-$auditPage = 'Email Template Management';
-
-if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
-    header('Location: ' . URL_LOGIN);
-    exit();
-}
-
-
 // Generate a CSRF token if it doesn't exist in the session
 if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 
+requireLogin();
+
+$isEmbeddedEmailTemplate = isset($EMBED_EMAIL_TEMPLATE) && $EMBED_EMAIL_TEMPLATE === true;
+$currentUserId = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : (isset($_SESSION['userid']) ? $_SESSION['userid'] : 0);
+$currentUrl = '/author/email-template.php';
+$auditPage = 'Email Template Management';
 
 $perm = hasPagePermission($conn, $currentUrl);
 if (empty($perm) || (isset($perm->view) && empty($perm->view))) {
     $legacyPath = defined('PATH_EMAIL_TEMPLATE_INDEX') ? ('/' . ltrim(PATH_EMAIL_TEMPLATE_INDEX, '/')) : '/src/pages/author/email-template/index.php';
     $perm = hasPagePermission($conn, $legacyPath);
 }
-checkPermissionError('view', $perm, '邮件模板管理');
+checkPermissionError('view', $perm);
 $apiEndpoint = defined('URL_EMAIL_TEMPLATE_API') ? URL_EMAIL_TEMPLATE_API : (SITEURL . '/src/pages/author/email-template/api.php');
 
 if (function_exists('logAudit') && !defined('EMAIL_TEMPLATE_VIEW_LOGGED')) {

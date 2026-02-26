@@ -203,9 +203,11 @@
     padding: 0 !important;
   }
 
-  /* 1. Prevent horizontal scrolling */
-  .table-responsive,
-  .dataTables_wrapper,
+  /* 1. Prevent horizontal scrolling - scoped to novel/chapter tables */
+  #novelTable_wrapper .table-responsive,
+  #novelTable_wrapper.dataTables_wrapper,
+  #chapterTable_wrapper .table-responsive,
+  #chapterTable_wrapper.dataTables_wrapper,
   #novelTable_wrapper,
   #chapterTable_wrapper {
     overflow-x: hidden !important;
@@ -223,28 +225,38 @@
     margin-top: 10px !important;
   }
 
-  /* 3. Hide all columns by default */
-  table.dataTable thead th,
-  table.dataTable tbody td {
+  /* 3. Hide all columns by default - SCOPED to novel/chapter tables only */
+  table.dataTable#novelTable thead th,
+  table.dataTable#novelTable tbody td,
+  table.dataTable#chapterTable thead th,
+  table.dataTable#chapterTable tbody td {
     display: none !important;
     padding: 6px 4px !important;
     vertical-align: middle !important;
     box-sizing: border-box !important;
   }
 
-  /* 4. Base activation for the 3 visible columns */
-  table.dataTable thead th:nth-child(1),
-  table.dataTable tbody td:nth-child(1),
-  table.dataTable thead th:nth-child(2),
-  table.dataTable tbody td:nth-child(2),
-  table.dataTable thead th:last-child,
-  table.dataTable tbody td:last-child {
+  /* 4. Base activation for the 3 visible columns - SCOPED */
+  table.dataTable#novelTable thead th:nth-child(1),
+  table.dataTable#novelTable tbody td:nth-child(1),
+  table.dataTable#novelTable thead th:nth-child(2),
+  table.dataTable#novelTable tbody td:nth-child(2),
+  table.dataTable#novelTable thead th:last-child,
+  table.dataTable#novelTable tbody td:last-child,
+  table.dataTable#chapterTable thead th:nth-child(1),
+  table.dataTable#chapterTable tbody td:nth-child(1),
+  table.dataTable#chapterTable thead th:nth-child(2),
+  table.dataTable#chapterTable tbody td:nth-child(2),
+  table.dataTable#chapterTable thead th:last-child,
+  table.dataTable#chapterTable tbody td:last-child {
     display: table-cell !important;
   }
 
-  /* 5. Title Column (Middle) - Automatically fills remaining space */
-  table.dataTable thead th:nth-child(2),
-  table.dataTable tbody td:nth-child(2) {
+  /* 5. Title Column (Middle) - SCOPED */
+  table.dataTable#novelTable thead th:nth-child(2),
+  table.dataTable#novelTable tbody td:nth-child(2),
+  table.dataTable#chapterTable thead th:nth-child(2),
+  table.dataTable#chapterTable tbody td:nth-child(2) {
     width: auto !important;
     white-space: nowrap !important;
     overflow: hidden !important;
@@ -298,9 +310,10 @@
   }
 
   /* ================================================== */
-  /* ACTION BUTTONS GRID                                */
+  /* ACTION BUTTONS GRID - SCOPED to novel/chapter      */
   /* ================================================== */
-  table.dataTable tbody td:last-child .d-flex {
+  table.dataTable#novelTable tbody td:last-child .d-flex,
+  table.dataTable#chapterTable tbody td:last-child .d-flex {
     display: flex !important;
     flex-direction: row !important;
     flex-wrap: wrap !important; /* Allows wrapping into 2 rows if needed */
@@ -309,7 +322,8 @@
     width: 100% !important;
   }
 
-  table.dataTable tbody td:last-child .btn {
+  table.dataTable#novelTable tbody td:last-child .btn,
+  table.dataTable#chapterTable tbody td:last-child .btn {
     width: 25px !important;
     height: 25px !important;
     min-width: 25px !important;
@@ -343,7 +357,8 @@
     min-width: 55px !important;
   }
 
-  table.dataTable tbody td:last-child .btn {
+  table.dataTable#novelTable tbody td:last-child .btn,
+  table.dataTable#chapterTable tbody td:last-child .btn {
     width: 22px !important;
     height: 22px !important;
     min-width: 22px !important;

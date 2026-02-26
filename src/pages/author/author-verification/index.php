@@ -1,26 +1,23 @@
 <?php
 require_once dirname(__DIR__, 4) . '/common.php';
 
-$currentUserId = isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : (isset($_SESSION['userid']) ? (int)$_SESSION['userid'] : 0);
+$currentUserId = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : (isset($_SESSION['userid']) ? $_SESSION['userid'] : 0);
 $currentUrl = '/author/author-verification.php';
 $auditPage = 'Author Verification Management';
-
-if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
-    header('Location: ' . URL_LOGIN);
-    exit();
-}
 
 // [NEW] Generate CSRF token if it doesn't exist
 if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 
+requireLogin();
+
 $perm = hasPagePermission($conn, $currentUrl);
 if (empty($perm) || (isset($perm->view) && empty($perm->view))) {
     $legacyPath = defined('PATH_AUTHOR_VERIFICATION_INDEX') ? ('/' . ltrim(PATH_AUTHOR_VERIFICATION_INDEX, '/')) : '/src/pages/author/author-verification/index.php';
     $perm = hasPagePermission($conn, $legacyPath);
 }
-checkPermissionError('view', $perm, '作者审核管理');
+checkPermissionError('view', $perm);
 
 $baseViewUrl = defined('URL_AUTHOR_VERIFICATION') ? URL_AUTHOR_VERIFICATION : (SITEURL . '/author/author-verification.php');
 $apiEndpoint = defined('URL_AUTHOR_VERIFICATION_API') ? URL_AUTHOR_VERIFICATION_API : (SITEURL . '/src/pages/author/author-verification/api.php');
@@ -39,10 +36,10 @@ $countSummarySql = "SELECT "
     . "FROM " . AUTHOR_PROFILE . " WHERE status = 'A'";
 if ($res = $conn->query($countSummarySql)) {
     $row = $res->fetch_assoc();
-    $totalApplications = (int)($row['total_applications'] ?? 0);
-    $pendingApplications = (int)($row['pending_applications'] ?? 0);
-    $approvedAuthors = (int)($row['approved_authors'] ?? 0);
-    $rejectedApplications = (int)($row['rejected_applications'] ?? 0);
+    $totalApplications = ($row['total_applications'] ?? 0);
+    $pendingApplications = ($row['pending_applications'] ?? 0);
+    $approvedAuthors = ($row['approved_authors'] ?? 0);
+    $rejectedApplications = ($row['rejected_applications'] ?? 0);
     $res->free();
 }
 
@@ -50,7 +47,7 @@ $emailLogTable = defined('EMAIL_LOG') ? EMAIL_LOG : 'email_log';
 $emailCountSql = "SELECT COUNT(*) AS total FROM " . $emailLogTable . " WHERE sent_status = 'success' AND DATE(created_at) = CURDATE()";
 if ($res = $conn->query($emailCountSql)) {
     $row = $res->fetch_assoc();
-    $emailsSentToday = (int)($row['total'] ?? 0);
+    $emailsSentToday = ($row['total'] ?? 0);
     $res->free();
 }
 
@@ -68,7 +65,7 @@ if (function_exists('columnExists') && columnExists($conn, AUTHOR_PROFILE, $tren
         while ($trendRow = $trendRes->fetch_assoc()) {
             $key = (string)($trendRow['chart_date'] ?? '');
             if ($key !== '') {
-                $trendByDate[$key] = (int)($trendRow['total'] ?? 0);
+                $trendByDate[$key] = ($trendRow['total'] ?? 0);
             }
         }
         $trendRes->free();
@@ -82,7 +79,7 @@ for ($offset = 29; $offset >= 0; $offset--) {
     $d = (clone $today)->sub(new DateInterval('P' . $offset . 'D'));
     $dayKey = $d->format('Y-m-d');
     $trendLabels[] = $d->format('m-d');
-    $trendValues[] = isset($trendByDate[$dayKey]) ? (int)$trendByDate[$dayKey] : 0;
+    $trendValues[] = isset($trendByDate[$dayKey]) ? $trendByDate[$dayKey] : 0;
 }
 $trendMaxValue = max(1, !empty($trendValues) ? max($trendValues) : 0);
 
@@ -164,7 +161,7 @@ ob_start();
                         <div class="card border-primary h-100">
                             <div class="card-body">
                                 <div class="text-muted small mb-1">Total Applications ｜ 总申请数</div>
-                                <div class="h3 mb-0 text-primary"><?php echo (int)$totalApplications; ?></div>
+                                <div class="h3 mb-0 text-primary"><?php echo $totalApplications; ?></div>
                             </div>
                         </div>
                     </div>
@@ -172,7 +169,7 @@ ob_start();
                         <div class="card border-warning h-100">
                             <div class="card-body">
                                 <div class="text-muted small mb-1">Pending Applications ｜ 待审核数</div>
-                                <div class="h3 mb-0 text-warning"><?php echo (int)$pendingApplications; ?></div>
+                                <div class="h3 mb-0 text-warning"><?php echo $pendingApplications; ?></div>
                             </div>
                         </div>
                     </div>
@@ -180,7 +177,7 @@ ob_start();
                         <div class="card border-success h-100">
                             <div class="card-body">
                                 <div class="text-muted small mb-1">Approved Authors ｜ 已通过作者</div>
-                                <div class="h3 mb-0 text-success"><?php echo (int)$approvedAuthors; ?></div>
+                                <div class="h3 mb-0 text-success"><?php echo $approvedAuthors; ?></div>
                             </div>
                         </div>
                     </div>
@@ -188,7 +185,7 @@ ob_start();
                         <div class="card border-danger h-100">
                             <div class="card-body">
                                 <div class="text-muted small mb-1">Rejected Applications ｜ 已拒绝数</div>
-                                <div class="h3 mb-0 text-danger"><?php echo (int)$rejectedApplications; ?></div>
+                                <div class="h3 mb-0 text-danger"><?php echo $rejectedApplications; ?></div>
                             </div>
                         </div>
                     </div>
@@ -196,7 +193,7 @@ ob_start();
                         <div class="card border-info h-100">
                             <div class="card-body">
                                 <div class="text-muted small mb-1">Emails Sent Today ｜ 今日发送邮件数</div>
-                                <div class="h3 mb-0 text-info"><?php echo (int)$emailsSentToday; ?></div>
+                                <div class="h3 mb-0 text-info"><?php echo $emailsSentToday; ?></div>
                             </div>
                         </div>
                     </div>
@@ -209,7 +206,7 @@ ob_start();
                             <div class="card-body">
                                 <div class="d-flex align-items-end justify-content-between" style="height: 140px; gap: 4px;">
                                     <?php foreach ($trendValues as $idx => $v): ?>
-                                        <?php $barHeight = $v > 0 ? max(6, (int)round(($v / $trendMaxValue) * 120)) : 4; ?>
+                                        <?php $barHeight = $v > 0 ? max(6, round(($v / $trendMaxValue) * 120)) : 4; ?>
                                         <div class="bg-primary" title="<?php echo htmlspecialchars($trendLabels[$idx] . ': ' . $v); ?>" style="width: 100%; max-width: 16px; height: <?php echo $barHeight; ?>px; border-radius: 3px;"></div>
                                     <?php endforeach; ?>
                                 </div>
@@ -225,7 +222,7 @@ ob_start();
                             <div class="card-header bg-light">Approval Rate ｜ 通过率</div>
                             <div class="card-body d-flex flex-column justify-content-center">
                                 <div class="h2 mb-2 text-success"><?php echo number_format($approvalRate, 1); ?>%</div>
-                                <div class="progress" role="progressbar" aria-label="Approval Rate" aria-valuenow="<?php echo (int)$approvalRate; ?>" aria-valuemin="0" aria-valuemax="100">
+                                <div class="progress" role="progressbar" aria-label="Approval Rate" aria-valuenow="<?php echo $approvalRate; ?>" aria-valuemin="0" aria-valuemax="100">
                                     <div class="progress-bar bg-success" style="width: <?php echo min(100, max(0, $approvalRate)); ?>%"></div>
                                 </div>
                             </div>
@@ -236,7 +233,7 @@ ob_start();
                             <div class="card-header bg-light">Rejection Rate ｜ 拒绝率</div>
                             <div class="card-body d-flex flex-column justify-content-center">
                                 <div class="h2 mb-2 text-danger"><?php echo number_format($rejectionRate, 1); ?>%</div>
-                                <div class="progress" role="progressbar" aria-label="Rejection Rate" aria-valuenow="<?php echo (int)$rejectionRate; ?>" aria-valuemin="0" aria-valuemax="100">
+                                <div class="progress" role="progressbar" aria-label="Rejection Rate" aria-valuenow="<?php echo $rejectionRate; ?>" aria-valuemin="0" aria-valuemax="100">
                                     <div class="progress-bar bg-danger" style="width: <?php echo min(100, max(0, $rejectionRate)); ?>%"></div>
                                 </div>
                             </div>

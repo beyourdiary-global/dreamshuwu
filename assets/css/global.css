@@ -9,28 +9,57 @@ body {
 }
 
 /* 2. Form Elements (Generic) */
+.form-label {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  display: block;
+}
+
 .form-control,
 input[type="text"],
 input[type="email"],
 input[type="password"],
 input[type="date"],
-select {
+textarea.form-control,
+select.form-control,
+.form-select {
   width: 100%;
-  padding: 12px;
+  padding: 12px 16px; /* [FIX] Unified padding */
   border: 1px solid #e0e0e0;
   border-radius: 8px;
   background-color: #fff;
+  color: #212529 !important;
   box-sizing: border-box;
   font-size: 14px;
-  transition: all 0.2s;
+  transition: all 0.2s ease-in-out;
+}
+
+::placeholder {
+  color: #adb5bd !important;
+  font-size: 13px;
+  opacity: 1;
 }
 
 .form-control:focus,
 input:focus,
-select:focus {
-  border-color: #233dd2;
-  box-shadow: 0 0 0 3.2px rgba(35, 61, 210, 0.15);
+select:focus,
+.form-select:focus {
+  border-color: var(--btn-color, #233dd2) !important;
+  box-shadow: 0 0 0 3.2px rgba(35, 61, 210, 0.15) !important; /* [FIX] Unified focus state */
   outline: none;
+}
+
+/* Form Label Responsiveness */
+@media (max-width: 767px) {
+  .form-label {
+    text-align: left !important;
+  }
+}
+@media (min-width: 768px) and (max-width: 1199px) {
+  .form-label {
+    font-size: 13px;
+  }
 }
 
 input[type="password"]::-ms-reveal,
@@ -473,17 +502,22 @@ input[type="password"]::-ms-clear {
 /* Tag/Category: Keep action buttons aligned on tablet/desktop */
 .tag-container #tagTable tbody td:last-child:not(.dataTables_empty),
 .category-container #categoryTable tbody td:last-child:not(.dataTables_empty) {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  flex-wrap: nowrap;
+  text-align: center;
+  vertical-align: middle;
   white-space: nowrap;
 }
 
-.tag-container #tagTable tbody td:last-child .btn-action,
-.category-container #categoryTable tbody td:last-child .btn-action {
-  margin-right: 0 !important;
+.tag-container #tagTable tbody td:last-child:not(.dataTables_empty) > div,
+.category-container
+  #categoryTable
+  tbody
+  td:last-child:not(.dataTables_empty)
+  > div {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  white-space: nowrap;
 }
 
 /* Tag & Category Table Search Alignment */
@@ -514,8 +548,16 @@ input[type="password"]::-ms-clear {
   vertical-align: middle;
 }
 
-/* 6. Desktop View (Min Width 768px) */
-@media screen and (min-width: 768px) {
+.category-container #categoryTable tbody td:nth-child(3) .badge {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+/* 6. Desktop View (Min Width 1024px) */
+@media screen and (min-width: 1024px) {
   /* Search Bar - Right Align */
   .dataTables_wrapper .row:first-child {
     display: flex !important;
@@ -604,6 +646,45 @@ input[type="password"]::-ms-clear {
     display: block !important;
   }
 
+  /* Tag/Category: keep page size + search on one line */
+  .tag-container .dataTables_wrapper .row:first-child,
+  .category-container .dataTables_wrapper .row:first-child {
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    flex-wrap: nowrap !important;
+    gap: 8px !important;
+  }
+
+  .tag-container .dataTables_wrapper .row:first-child > [class*="col-"],
+  .category-container .dataTables_wrapper .row:first-child > [class*="col-"] {
+    width: auto !important;
+    max-width: none !important;
+    flex: 0 0 auto !important;
+  }
+
+  .tag-container .dataTables_wrapper .dataTables_length,
+  .category-container .dataTables_wrapper .dataTables_length {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    margin-right: 6px;
+  }
+
+  .tag-container .dataTables_wrapper .dataTables_filter,
+  .category-container .dataTables_wrapper .dataTables_filter {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .tag-container .dataTables_wrapper .dataTables_filter label,
+  .category-container .dataTables_wrapper .dataTables_filter label {
+    width: 100% !important;
+    max-width: 280px !important;
+    min-width: 120px;
+  }
+
   /* 3. TABLE: Horizontal Scroll */
   .card-body {
     padding: 10px !important;
@@ -614,7 +695,8 @@ input[type="password"]::-ms-clear {
   }
 
   table.dataTable {
-    min-width: 600px !important;
+    min-width: 100% !important;
+    table-layout: auto !important;
   }
 
   table.dataTable tbody td {
@@ -632,23 +714,112 @@ input[type="password"]::-ms-clear {
   .tag-container table.dataTable,
   .category-container table.dataTable {
     min-width: 100% !important;
+    width: 100% !important;
+    table-layout: fixed;
   }
 
-  .tag-container table.dataTable tbody td:last-child:not(.dataTables_empty),
-  .category-container
-    table.dataTable
-    tbody
-    td:last-child:not(.dataTables_empty) {
-    display: flex;
-    justify-content: flex-start;
+  #authorVerificationTable {
+    min-width: 880px !important;
+  }
+
+  #emailTemplateTable {
+    min-width: 760px !important;
+  }
+
+  .table-responsive {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tag-container table.dataTable th,
+  .tag-container table.dataTable td,
+  .category-container table.dataTable th,
+  .category-container table.dataTable td,
+  #authorVerificationTable th,
+  #authorVerificationTable td,
+  #emailTemplateTable th,
+  #emailTemplateTable td {
+    white-space: nowrap;
+    vertical-align: middle;
+  }
+
+  .tag-container table.dataTable th:last-child,
+  .tag-container table.dataTable td:last-child,
+  .category-container table.dataTable th:last-child,
+  .category-container table.dataTable td:last-child {
+    width: 90px !important;
+    min-width: 90px !important;
+    max-width: 90px !important;
+    text-align: center !important;
+  }
+
+  /* Keep action buttons visible without horizontal scrolling */
+  .tag-container table.dataTable th:nth-child(1),
+  .tag-container table.dataTable td:nth-child(1),
+  .category-container table.dataTable th:nth-child(1),
+  .category-container table.dataTable td:nth-child(1),
+  .category-container table.dataTable th:nth-child(3),
+  .category-container table.dataTable td:nth-child(3) {
+    display: none !important;
+  }
+
+  .tag-container table.dataTable td:nth-child(2),
+  .category-container table.dataTable td:nth-child(2) {
+    width: auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  #authorVerificationTable th:last-child,
+  #authorVerificationTable td:last-child,
+  #emailTemplateTable th:last-child,
+  #emailTemplateTable td:last-child {
+    width: 170px !important;
+    min-width: 170px !important;
+    text-align: center !important;
+  }
+
+  .tag-container table.dataTable td:last-child > div,
+  .category-container table.dataTable td:last-child > div,
+  #authorVerificationTable td:last-child > div,
+  #emailTemplateTable td:last-child > div {
+    display: inline-flex !important;
     align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px;
+    white-space: nowrap;
   }
 
-  .tag-container table.dataTable tbody td.dataTables_empty,
-  .category-container table.dataTable tbody td.dataTables_empty {
-    display: table-cell !important;
+  /* Filter form stacking for author verification / email template */
+  #authorVerifyFilterForm,
+  #emailTemplateFilterForm {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+  }
+
+  #authorVerifyFilterForm > div,
+  #emailTemplateFilterForm > div {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  #authorVerifyFilterForm .d-flex,
+  #emailTemplateFilterForm .d-flex {
+    flex-wrap: wrap !important;
+  }
+
+  #authorVerifyFilterForm select,
+  #authorVerifyFilterForm input,
+  #emailTemplateFilterForm select,
+  #emailTemplateFilterForm input {
+    max-width: 100% !important;
+  }
+
+  /* Container padding on mobile */
+  .container.mt-4 {
+    padding-left: 10px !important;
+    padding-right: 10px !important;
   }
 }
 
@@ -669,6 +840,250 @@ input[type="password"]::-ms-clear {
     padding: 4px 8px;
     font-size: 12px;
   }
+
+  .tag-container .dataTables_wrapper .dataTables_length,
+  .category-container .dataTables_wrapper .dataTables_length {
+    font-size: 13px;
+    margin-right: 4px;
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  .tag-container .dataTables_wrapper .dataTables_length select,
+  .category-container .dataTables_wrapper .dataTables_length select {
+    width: 56px !important;
+    min-width: 56px !important;
+    padding: 6px 6px !important;
+  }
+
+  .tag-container .dataTables_wrapper .dataTables_filter,
+  .category-container .dataTables_wrapper .dataTables_filter {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+  }
+
+  .tag-container .dataTables_wrapper .dataTables_filter label,
+  .category-container .dataTables_wrapper .dataTables_filter label {
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+  }
+
+  .tag-container .dataTables_wrapper .dataTables_filter input,
+  .category-container .dataTables_wrapper .dataTables_filter input {
+    padding: 8px 10px !important;
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+
+  .tag-container .dataTables_wrapper .row:first-child,
+  .category-container .dataTables_wrapper .row:first-child {
+    gap: 4px !important;
+  }
+
+  /* Smaller action buttons on ultra-small screens */
+  .btn-action {
+    padding: 4px 6px !important;
+    font-size: 12px !important;
+    min-width: 28px !important;
+    min-height: 28px !important;
+  }
+
+  .tag-container table.dataTable,
+  .category-container table.dataTable {
+    min-width: 100% !important;
+  }
+
+  #authorVerificationTable,
+  #emailTemplateTable {
+    min-width: 640px !important;
+  }
+
+  .category-container table.dataTable th:last-child,
+  .category-container table.dataTable td:last-child,
+  .tag-container table.dataTable th:last-child,
+  .tag-container table.dataTable td:last-child {
+    width: 82px !important;
+    min-width: 82px !important;
+    max-width: 82px !important;
+  }
+
+  /* Hide non-essential columns on ultra-small screens */
+  #authorVerificationTable thead th:nth-child(6),
+  #authorVerificationTable tbody td:nth-child(6),
+  #authorVerificationTable thead th:nth-child(7),
+  #authorVerificationTable tbody td:nth-child(7),
+  #authorVerificationTable thead th:nth-child(8),
+  #authorVerificationTable tbody td:nth-child(8) {
+    display: none !important;
+  }
+
+  #emailTemplateTable thead th:nth-child(4),
+  #emailTemplateTable tbody td:nth-child(4),
+  #emailTemplateTable thead th:nth-child(6),
+  #emailTemplateTable tbody td:nth-child(6) {
+    display: none !important;
+  }
+}
+
+/* 8.1 Category tag area: auto expand on mobile */
+.tag-checkbox-area {
+  max-height: none !important;
+  overflow-y: visible !important;
+}
+
+/* Category form: prevent long tag labels from overflowing */
+.category-container .tag-checkbox-area .row > [class*="col-"] {
+  min-width: 0;
+}
+
+.category-container .tag-checkbox-area .form-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+}
+
+.category-container .tag-checkbox-area .form-check-input {
+  flex: 0 0 auto;
+  margin-top: 0.25rem;
+}
+
+.category-container .tag-checkbox-area .form-check-label {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  line-height: 1.35;
+}
+
+/* 8.2 Tablet View (768px - 1023px) */
+@media screen and (min-width: 768px) and (max-width: 1023px) {
+  .tag-container .card-header,
+  .category-container .card-header {
+    flex-wrap: wrap !important;
+    gap: 10px;
+  }
+
+  .tag-container .desktop-add-btn,
+  .category-container .desktop-add-btn {
+    margin-left: auto;
+  }
+
+  .tag-container .dataTables_wrapper .row:first-child,
+  .category-container .dataTables_wrapper .row:first-child {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    flex-wrap: nowrap !important;
+    gap: 10px !important;
+    margin: 0 !important;
+  }
+
+  .tag-container .dataTables_wrapper .row:first-child > [class*="col-"],
+  .category-container .dataTables_wrapper .row:first-child > [class*="col-"] {
+    width: auto !important;
+    max-width: none !important;
+    flex: 0 0 auto !important;
+  }
+
+  .tag-container .dataTables_wrapper .dataTables_length,
+  .tag-container .dataTables_wrapper .dataTables_filter,
+  .category-container .dataTables_wrapper .dataTables_length,
+  .category-container .dataTables_wrapper .dataTables_filter {
+    width: auto !important;
+    margin: 0 !important;
+    text-align: inherit !important;
+    float: none !important;
+  }
+
+  .tag-container .dataTables_wrapper .dataTables_length,
+  .category-container .dataTables_wrapper .dataTables_length {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  .tag-container .dataTables_wrapper .dataTables_filter,
+  .category-container .dataTables_wrapper .dataTables_filter {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .tag-container .dataTables_wrapper .dataTables_filter label,
+  .category-container .dataTables_wrapper .dataTables_filter label {
+    width: 100% !important;
+    max-width: 340px !important;
+    display: flex !important;
+  }
+
+  .tag-container .dataTables_wrapper .dataTables_filter input,
+  .category-container .dataTables_wrapper .dataTables_filter input {
+    width: 100% !important;
+    margin-left: 0 !important;
+  }
+
+  .table-responsive {
+    overflow-x: auto !important;
+  }
+
+  .tag-container table.dataTable,
+  .category-container table.dataTable {
+    min-width: 100% !important;
+    width: 100% !important;
+    table-layout: fixed;
+  }
+
+  .tag-container table.dataTable th:last-child,
+  .tag-container table.dataTable td:last-child,
+  .category-container table.dataTable th:last-child,
+  .category-container table.dataTable td:last-child {
+    width: 94px !important;
+    min-width: 94px !important;
+    max-width: 94px !important;
+  }
+
+  /* Tablet compact layout: hide ID to prevent table breakage */
+  .tag-container table.dataTable th:nth-child(1),
+  .tag-container table.dataTable td:nth-child(1),
+  .category-container table.dataTable th:nth-child(1),
+  .category-container table.dataTable td:nth-child(1) {
+    display: none !important;
+  }
+
+  .category-container table.dataTable td:nth-child(3) {
+    white-space: normal !important;
+    overflow-wrap: anywhere;
+  }
+
+  #authorVerificationTable {
+    min-width: 960px !important;
+  }
+
+  #emailTemplateTable {
+    min-width: 840px !important;
+  }
+
+  #authorVerificationTable tbody td,
+  #emailTemplateTable tbody td {
+    max-width: 220px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  #authorVerificationTable tbody td:last-child,
+  #emailTemplateTable tbody td:last-child {
+    width: 170px !important;
+    min-width: 170px !important;
+    max-width: 170px !important;
+    white-space: nowrap;
+    overflow: visible;
+  }
 }
 
 /* --- 404 Error Page Responsive Image --- */
@@ -688,6 +1103,65 @@ input[type="password"]::-ms-clear {
 @media screen and (max-width: 480px) {
   .container .text-center img[alt="404 Error"] {
     max-width: 100%;
+  }
+}
+
+/* --- Final Safety Rules: Tag/Category action buttons always visible (<=1023px) --- */
+@media screen and (max-width: 1023px) {
+  .tag-container #tagTable,
+  .category-container #categoryTable {
+    width: 100% !important;
+    table-layout: fixed !important;
+  }
+
+  .tag-container #tagTable thead th:nth-child(1),
+  .tag-container #tagTable tbody td:nth-child(1),
+  .category-container #categoryTable thead th:nth-child(1),
+  .category-container #categoryTable tbody td:nth-child(1),
+  .category-container #categoryTable thead th:nth-child(3),
+  .category-container #categoryTable tbody td:nth-child(3) {
+    display: none !important;
+  }
+
+  .tag-container #tagTable thead th:last-child,
+  .tag-container #tagTable tbody td:last-child,
+  .category-container #categoryTable thead th:last-child,
+  .category-container #categoryTable tbody td:last-child {
+    width: 86px !important;
+    min-width: 86px !important;
+    max-width: 86px !important;
+    text-align: center !important;
+    white-space: nowrap !important;
+  }
+
+  .tag-container #tagTable thead th:nth-child(2),
+  .category-container #categoryTable thead th:nth-child(2) {
+    width: calc(100% - 86px) !important;
+  }
+
+  .tag-container #tagTable tbody td:nth-child(2),
+  .category-container #categoryTable tbody td:nth-child(2) {
+    width: calc(100% - 86px) !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  .tag-container #tagTable tbody td:last-child > div,
+  .category-container #categoryTable tbody td:last-child > div {
+    width: auto !important;
+    min-width: 0 !important;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+
+  .tag-container .card-body,
+  .category-container .card-body,
+  .tag-container .dataTables_wrapper,
+  .category-container .dataTables_wrapper {
+    overflow-x: hidden !important;
   }
 }
 
@@ -769,5 +1243,214 @@ input[type="password"]::-ms-clear {
   .page-action-desktop-table th:first-child,
   .page-action-desktop-table td:first-child {
     display: none;
+  }
+}
+
+/* ======================================================== */
+/* [FIX] GLOBAL THEME OVERRIDES (Moved from webSetting.css) */
+/* ======================================================== */
+:root {
+  --header-default-hover-color: #80aaff;
+}
+
+body {
+  background-color: var(--page-bg-color) !important;
+  color: var(--theme-text-color) !important;
+}
+
+.site-header {
+  background: var(--theme-bg-color) !important;
+}
+
+.site-header::after {
+  display: none !important;
+  background: transparent !important;
+}
+
+.site-header a,
+.site-header .nav-link,
+.site-header .author-link,
+.site-header .logo-text,
+.site-header .auth-buttons a,
+.mobile-top-bar .user-trigger {
+  color: var(--theme-text-color) !important;
+}
+
+.site-header .nav-link:not(.active):hover,
+.site-header .author-link:not(.active):hover,
+.site-header .auth-buttons a:not(.active):hover,
+.site-header .user-name-link:not(.active):hover,
+.site-header .user-name-link:not(.active):hover i,
+.mobile-top-bar .user-trigger:hover {
+  color: var(--header-default-hover-color) !important;
+}
+
+.nav-link.active::after,
+.author-link.active::after,
+.user-name-link.active::after {
+  background-color: var(--btn-color) !important;
+}
+
+.nav-link.active,
+.author-link.active,
+.user-name-link.active {
+  color: var(--btn-color) !important;
+}
+
+.sidebar-menu a {
+  color: var(--theme-text-color) !important;
+}
+
+.sidebar-menu a:hover:not(.active) {
+  color: var(--btn-color) !important;
+  background-color: rgba(0, 0, 0, 0.03);
+}
+
+.sidebar-menu a.active {
+  background-color: var(--btn-color) !important;
+  color: var(--btn-text-color) !important;
+  border-radius: 8px;
+  font-weight: 600;
+}
+.sidebar-menu a.active i {
+  color: var(--btn-text-color) !important;
+}
+
+.btn-primary,
+.btn-save,
+.btn-reg,
+.btn-success,
+.desktop-add-btn,
+.btn-add-mobile {
+  background-color: var(--btn-color) !important;
+  color: var(--btn-text-color) !important;
+  border-color: var(--btn-color) !important;
+}
+
+.btn-primary:hover,
+.btn-save:hover,
+.btn-reg:hover,
+.btn-success:hover,
+.desktop-add-btn:hover {
+  opacity: 0.9;
+}
+
+.btn-outline-primary {
+  color: var(--btn-color) !important;
+  border-color: var(--btn-color) !important;
+}
+.btn-outline-primary:hover {
+  background-color: var(--btn-color) !important;
+  color: var(--btn-text-color) !important;
+}
+
+.text-primary,
+.header-title i,
+.card-header i {
+  color: var(--btn-color) !important;
+}
+
+.dataTables_wrapper .dataTables_paginate .paginate_button.current {
+  background-color: var(--btn-color) !important;
+  border-color: var(--btn-color) !important;
+  color: var(--btn-text-color) !important;
+}
+
+.dashboard-main,
+.dashboard-container {
+  background-color: var(--page-bg-color) !important;
+  color: var(--theme-text-color) !important;
+}
+
+/* Theme Text Color Overrides for Cards/Tables */
+.card-header h4,
+.card-header h5,
+.header-title,
+.section-header h2,
+.form-title,
+.meta-card-header h4,
+.meta-card-header .header-title,
+.header-subtitle,
+.meta-card-header .header-subtitle,
+.table th,
+.table td,
+table.dataTable thead th,
+table.dataTable tbody td,
+.dataTables_wrapper .dataTables_info,
+.dataTables_wrapper .dataTables_length,
+.dataTables_wrapper .dataTables_length label,
+.dataTables_wrapper .dataTables_filter label,
+.table .text-muted,
+table.dataTable .text-muted,
+.form-label,
+.col-form-label,
+.form-group label,
+small.text-muted,
+.form-text,
+.nav-pills .nav-link,
+.nav-pills .nav-link.active,
+h5.text-primary,
+.category-container,
+.tag-container,
+.audit-container,
+.meta-card,
+.web-settings-container,
+.profile-container h2,
+.profile-form-card .form-title,
+.page-select-toggle,
+.page-select-item,
+.card-body,
+.meta-card-body,
+.text-center p,
+.text-center h5 {
+  color: var(--theme-text-color) !important;
+}
+
+.dataTables_wrapper .dataTables_paginate .paginate_button {
+  color: var(--btn-color) !important;
+}
+
+.card-header .desktop-add-btn {
+  padding: 12px 20px;
+  padding-left: 12px;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition:
+    opacity 0.2s,
+    box-shadow 0.2s;
+}
+
+.card-header .desktop-add-btn:hover {
+  opacity: 0.92;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+@media (max-width: 767px) {
+  .card-header {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 15px !important;
+    padding: 15px !important;
+  }
+  .card-header h4 {
+    text-align: center;
+    margin-bottom: 5px;
+    width: 100%;
+  }
+  .card-header .desktop-add-btn {
+    width: 100% !important;
+    display: flex !important;
+    justify-content: center !important;
+    margin-left: 0 !important;
+    margin-top: 0 !important;
+  }
+  .mobile-full-width {
+    width: 100% !important;
+    display: block;
   }
 }

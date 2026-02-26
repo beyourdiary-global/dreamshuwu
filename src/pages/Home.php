@@ -1,7 +1,7 @@
 <?php
 require_once dirname(__DIR__, 2) . '/common.php';
 
-// --- [BUG FIX] Session Integrity Check ---
+// --- Session Integrity Check ---
 if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
     
     $sessionUserId = $_SESSION['user_id'] ?? 0;

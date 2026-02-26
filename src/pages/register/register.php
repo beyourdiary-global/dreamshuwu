@@ -105,7 +105,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     session_start();
                 }
                 
-                $_SESSION['user_id'] = $newUserId ? (int)$newUserId : null;
+                $_SESSION['user_id'] = $newUserId ? $newUserId : null;
                 $_SESSION['user_name'] = $name;
                 $_SESSION['role_id'] = $defaultRoleId; // Save Role ID to session
                 $_SESSION['logged_in'] = true;
@@ -148,10 +148,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
                 <div class="auth-field">
                     <label class="form-label" for="password">密码</label>
-                    <div style="position: relative;">
-                        <input type="password" class="form-control" name="password" id="password" placeholder="请输入密码" required style="padding-right: 45px;">
-                        <button type="button" id="togglePassword" style="position: absolute; right: 20px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; padding: 0; color: #666; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;" title="显示/隐藏密码">
-                            <i class="fa fa-eye" style="font-size: 16px;"></i>
+                    <div class="password-field">
+                        <input type="password" class="form-control" name="password" id="password" placeholder="请输入密码" required>
+                        <button type="button" id="togglePassword" class="toggle-password" title="显示/隐藏密码">
+                            <i class="fa fa-eye"></i>
                         </button>
                     </div>
                     <div id="strength-meter">密码强度提示: <span id="strength-text">未填写</span></div>

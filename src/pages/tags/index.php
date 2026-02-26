@@ -2,13 +2,16 @@
 // Path: src/pages/tags/index.php
 require_once dirname(__DIR__, 3) . '/common.php';
 
+// Auth Check
+requireLogin();
+
 // 1. Identify this specific view's URL as registered in your DB
 $currentUrl = '/dashboard.php?view=tags'; 
 
 // [ADDED] Fetch the dynamic permission object for this page
 $perm = hasPagePermission($conn, $currentUrl);
 
-checkPermissionError('view', $perm, '标签管理页面');
+checkPermissionError('view', $perm);
 
 $tagTable = NOVEL_TAGS;
 $auditPage = 'Tag Management';
@@ -22,22 +25,6 @@ $pageActionMode = ($tagMode === QUERY_FORM_MODE) ? QUERY_FORM_MODE : 'list';
 $isAjaxRequest = isset($_GET['mode']) && $_GET['mode'] === 'data';
 $isDeleteRequest = isset($_POST['mode']) && $_POST['mode'] === 'delete';
 
-// 1. Auth Check
-if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
-    if ($isAjaxRequest || $isDeleteRequest) {
-        header('Content-Type: application/json');
-        echo json_encode([
-            'draw' => intval($_GET['draw'] ?? 0),
-            'recordsTotal' => 0,
-            'recordsFiltered' => 0,
-            'data' => [],
-            'error' => 'Session expired. Please login again.'
-        ]);
-        exit();
-    }
-    header("Location: " . URL_LOGIN); 
-    exit();
-}
 
 if ($isEmbeddedInDashboard && $pageActionMode === 'form') {
     $EMBED_TAG_FORM_PAGE = true;
@@ -55,7 +42,7 @@ if (!function_exists('jsonEncodeWrapper')) {
 
 if (!function_exists('sendTagTableError')) {
     function sendTagTableError($message) {
-        $draw = isset($_GET['draw']) ? (int) $_GET['draw'] : 0;
+        $draw = isset($_GET['draw']) ? $_GET['draw'] : 0;
         echo safeJsonEncode([
             "draw" => $draw,
             "recordsTotal" => 0,
@@ -158,7 +145,7 @@ if ($isAjaxRequest) {
 
     $data = [];
     while ($stmt->fetch()) {
-        $editUrl = URL_NOVEL_TAGS_FORM . '&id=' . (int) $id;
+        $editUrl = URL_NOVEL_TAGS_FORM . '&id=' . $id;
         
         $actionsHtml = '';
         // 1. Check dynamic permission properties
@@ -179,8 +166,8 @@ if ($isAjaxRequest) {
 
     echo safeJsonEncode([
         "draw" => intval($_GET['draw'] ?? 0),
-        "recordsTotal" => (int) $totalRecords,
-        "recordsFiltered" => (int) $totalRecords,
+        "recordsTotal" => $totalRecords,
+        "recordsFiltered" => $totalRecords,
         "data" => $data
     ]);
     exit();
@@ -189,7 +176,7 @@ if ($isAjaxRequest) {
 // 4. API: Delete (POST)
 if ($isDeleteRequest) {
     // [ADDED] Secure the Delete API
-    $deleteError = checkPermissionError('delete', $perm, '标签');
+    $deleteError = checkPermissionError('delete', $perm);
     if ($deleteError) {
         sendDeleteError($deleteError);
     }
@@ -299,7 +286,10 @@ if (function_exists('logAudit')) {
     ]);
 }
 
-if ($isEmbeddedInDashboard): ?>
+if ($isEmbeddedInDashboard):
+    $pageScripts = ['jquery.dataTables.min.js', 'dataTables.bootstrap.min.js', 'tag.js'];
+?>
+    <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/dataTables.bootstrap.min.css">
     <div class="tag-container">
         <div class="card tag-card">
             <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">

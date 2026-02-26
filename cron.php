@@ -45,7 +45,7 @@ $uniqueAuthorIds = [];
 // Collect chapters and unique author IDs
 while ($row = $result->fetch_assoc()) {
     $chaptersToProcess[] = $row;
-    $uniqueAuthorIds[(int)$row['author_id']] = true;
+    $uniqueAuthorIds[$row['author_id']] = true;
 }
 $result->free();
 
@@ -58,7 +58,7 @@ if (!empty($uniqueAuthorIds)) {
     $userSql = "SELECT id, email, name FROM " . USR_LOGIN . " WHERE id IN ($safeIds)";
     if ($uResult = $conn->query($userSql)) {
         while ($uRow = $uResult->fetch_assoc()) {
-            $authorsMap[(int)$uRow['id']] = [
+            $authorsMap[$uRow['id']] = [
                 'email' => $uRow['email'],
                 'name'  => $uRow['name']
             ];
@@ -72,8 +72,8 @@ $failedCount = 0;
 
 // 5. Process each scheduled chapter using the mapped data
 foreach ($chaptersToProcess as $chapter) {
-    $chapterId = (int)$chapter['id'];
-    $authorId = (int)$chapter['author_id'];
+    $chapterId = $chapter['id'];
+    $authorId = $chapter['author_id'];
     $content = $chapter['content'];
     $title = $chapter['title'];
     

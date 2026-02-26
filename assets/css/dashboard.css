@@ -220,6 +220,31 @@
   display: block;
 }
 
+@media (min-width: 768px) and (max-width: 1023px) {
+  .dashboard-container {
+    max-width: 100%;
+    padding: 0 12px;
+    gap: 14px;
+    margin-top: 20px;
+    box-sizing: border-box;
+  }
+
+  .dashboard-sidebar {
+    width: 190px;
+    padding: 14px;
+  }
+
+  .sidebar-menu a {
+    padding: 10px 12px;
+    font-size: 15px;
+  }
+
+  .dashboard-main {
+    min-width: 0;
+    overflow-x: hidden;
+  }
+}
+
 /* --- Mobile Responsive Rules (Unified) --- */
 @media (max-width: 767px) {
   /* Layout Changes */

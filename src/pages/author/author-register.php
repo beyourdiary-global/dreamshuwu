@@ -3,14 +3,11 @@
 require_once dirname(__DIR__, 3) . '/common.php';
 
 // Auth Check
-if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
-    header("Location: " . URL_LOGIN);
-    exit();
-}
+requireLogin();
 
 $currentUrl = '/author/author-register.php';
 $perm = hasPagePermission($conn, $currentUrl);
-checkPermissionError('view', $perm, '作者注册页面');
+checkPermissionError('view', $perm);
 
 $userId = $_SESSION['user_id'];
 $auditPage = 'Author Registration';
@@ -41,7 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $errorMsg = "";
 
     // 1. Fetch existing using reusable query
-    $safeUserId = (int)$userId;
+    $safeUserId = $userId;
     $eRes = $conn->query(sprintf($sqlGetProfileByUserId, $safeUserId));
     $existingData = $eRes && $eRes->num_rows > 0 ? $eRes->fetch_assoc() : [];
     if ($eRes) $eRes->free();
@@ -135,7 +132,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // 2. Fetch Old Data for Audit using reusable query
         $oldData = null;
         if ($isEditMode) {
-            $safeRecordId = (int)$recordId;
+            $safeRecordId = $recordId;
             $oRes = $conn->query(sprintf($sqlGetProfileById, $safeRecordId));
             if ($oRes && $oRes->num_rows > 0) $oldData = $oRes->fetch_assoc();
             if ($oRes) $oRes->free();
@@ -177,7 +174,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             // 3. Fetch New Data for Audit using reusable query
             $newData = null;
-            $safeTargetId = (int)$targetId;
+            $safeTargetId = $targetId;
             $nRes = $conn->query(sprintf($sqlGetProfileById, $safeTargetId));
             if ($nRes && $nRes->num_rows > 0) $newData = $nRes->fetch_assoc();
             if ($nRes) $nRes->free();
@@ -216,7 +213,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // 4. Simplify GET data load using reusable query
-$safeUserIdGet = (int)$userId;
+$safeUserIdGet = $userId;
 $queryGet = sprintf($sqlGetProfileByUserId, $safeUserIdGet); // Format it once
 $resGet = $conn->query($queryGet); // Execute it
 $authorData = $resGet && $resGet->num_rows > 0 ? $resGet->fetch_assoc() : [];

@@ -5,6 +5,139 @@
  */
 
 /**
+ * Safely retrieve POST data.
+ */
+/**
+ * Strictly checks if the user is logged in.
+ * Handles standard redirects, AJAX requests, and headers_sent() scenarios.
+ */
+function requireLogin() {
+    if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
+        $loginUrl = defined('URL_LOGIN') ? URL_LOGIN : '/login.php';
+
+        // 1. Handle JSON/AJAX/API requests (e.g., DataTables or background saves)
+        $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest');
+        $isApiMode = isset($_REQUEST['mode']);
+        
+        if ($isAjax || $isApiMode) {
+            if (!headers_sent()) {
+                header('Content-Type: application/json; charset=utf-8');
+            }
+            // DataTables sometimes expects 'error' instead of 'message', so we provide both
+            echo safeJsonEncode([
+                'success' => false, 
+                'error' => 'Unauthorized: 会话已过期，请重新登录。', 
+                'message' => '会话已过期，请重新登录。'
+            ]);
+            exit();
+        }
+
+        // 2. Handle standard HTML page redirects
+        if (headers_sent()) {
+            // If HTML is already partially rendering, fallback to a JavaScript redirect
+            echo "<script>window.location.href='" . $loginUrl . "';</script>";
+        } else {
+            // Standard HTTP Redirect
+            header("Location: " . $loginUrl);
+        }
+        exit();
+    }
+    // If an Admin upgrades this user, this instantly updates their active session 
+    // so they don't have to log out and log back in
+    if (isset($_SESSION['user_id']) && !empty($conn)) {
+        $usersTable = defined('USR_LOGIN') ? USR_LOGIN : 'users';
+        $uid = (int)$_SESSION['user_id'];
+        $res = $conn->query("SELECT user_role_id FROM {$usersTable} WHERE id = $uid LIMIT 1");
+        if ($res && $res->num_rows > 0) {
+            $row = $res->fetch_assoc();
+            $_SESSION['role_id'] = (int)$row['user_role_id'];
+        }
+    }
+}
+
+function post($key) {
+    return $_POST[$key] ?? '';
+}
+
+/**
+ * Safely retrieve POST data and trim whitespace. 
+ * Handles both strings and arrays.
+ */
+function postSpaceFilter($key) {
+    if (!isset($_POST[$key])) {
+        return '';
+    }
+    
+    if (is_string($_POST[$key])) {
+        return trim($_POST[$key]);
+    } else if (is_array($_POST[$key])) {
+        return array_map('trim', $_POST[$key]);
+    }
+    
+    return $_POST[$key];
+}
+
+/**
+ * Retrieve GET data with a basic length limit and XSS filtering.
+ */
+function input($key) {
+    $val = $_GET[$key] ?? '';
+    
+    // Prevent PHP warnings if someone passes an array via GET (e.g., ?key[]=1)
+    if (is_array($val)) {
+        return ''; 
+    }
+    
+    $results = (strlen($val) <= 256) ? $val : '';
+    return xssFilter($results);
+}
+
+/**
+ * Clean search inputs by aggressively stripping tags and special characters.
+ */
+function searchInput($key) {
+    $input = input($key);
+    
+    // Check if the input query string contains script tags; return empty if true
+    if (preg_match("/<script(.*?)>(.*?)<\/script>/is", $input) || preg_match("/<script(.*?)>/is", $input)) {
+        return '';
+    }
+    
+    $input = strip_tags($input);
+    return trim(preg_replace('/[^(a-zA-Z0-9.()\-,\/)\&\'\"]+/i', ' ', $input));
+}
+
+/**
+ * Retrieve GET data and ensure it is strictly numeric.
+ */
+function numberInput($key) {
+    $val = input($key);
+    return isNumber($val) ? $val : '';
+}
+
+/**
+ * Check if a string contains only numeric digits.
+ */
+function isNumber($str) {
+    return preg_match("/^[0-9]+$/", (string)$str);
+}
+
+/**
+ * Basic blacklist-based XSS Filter.
+ * Note: For rendering HTML safely on the frontend, continue using htmlspecialchars().
+ */
+function xssFilter($url) {
+    $pattern = "/(<script|<\/script|onstart|onfocus|onerror|onload|onmouseover|iframe|onblur|payload|onmousemove|prompt|\")/i";
+    $url = urldecode((string)$url);
+    
+    while (preg_match($pattern, $url)) {
+        $url = preg_replace($pattern, '', $url);
+    }
+    
+    return $url;
+}
+
+/**
  * Encode data as JSON even when the json extension is disabled.
  */
 function safeJsonEncode($data) {
@@ -204,8 +337,8 @@ function isUserActive($user) {
     $invalidStatuses = ['disabled', 'inactive', 'blocked', 'suspended', '0'];
 
     // Check all common status field variations
-    if (isset($user['is_active']) && (int)$user['is_active'] === 0) return false;
-    if (isset($user['disabled']) && (int)$user['disabled'] === 1) return false;
+    if (isset($user['is_active']) && $user['is_active'] === 0) return false;
+    if (isset($user['disabled']) && $user['disabled'] === 1) return false;
     
     if (isset($user['status']) && in_array(strtolower((string)$user['status']), $invalidStatuses, true)) return false;
     if (isset($user['account_status']) && in_array(strtolower((string)$user['account_status']), $invalidStatuses, true)) return false;
@@ -318,7 +451,7 @@ function processAuthorVerificationEmail($conn, $userId, $actionType, $rejectReas
         return ['success' => false, 'message' => '数据库连接失败'];
     }
 
-    $safeUserId = (int)$userId;
+    $safeUserId = $userId;
     if ($safeUserId <= 0) {
         return ['success' => false, 'message' => '无效用户ID'];
     }
@@ -483,7 +616,7 @@ function processAuthorVerificationEmail($conn, $userId, $actionType, $rejectReas
 
     $sentStatus = 'failed';
     $errorMessage = '';
-    
+
     $safeRecipientEmail = filter_var((string)$recipientEmail, FILTER_VALIDATE_EMAIL);
     if ($safeRecipientEmail === false || preg_match('/[\r\n]/', $safeRecipientEmail)) {
         $sendResult = false;
@@ -580,7 +713,7 @@ function fetchAuditRow($conn, $table, $recordId) {
     if (empty($table) || empty($recordId)) return null;
         
         // Safety: Force ID to be an integer
-        $safeId = (int) $recordId;
+        $safeId = $recordId;
         
         // Direct Query
         $sql = "SELECT * FROM {$table} WHERE id = $safeId LIMIT 1";
@@ -622,10 +755,10 @@ function logAudit($params) {
     // B. Auto-Fetch Missing Data
     // Note: fetchAuditRow now properly frees memory, so this won't block the INSERT below
     if (($action === 'A' || $action === 'E') && empty($newData) && !empty($recordId) && !empty($table)) {
-        $newData = fetchAuditRow($conn, $table, (int) $recordId);
+        $newData = fetchAuditRow($conn, $table, $recordId);
     }
     if (($action === 'E' || $action === 'D') && empty($oldData) && !empty($recordId) && !empty($table)) {
-        $oldData = fetchAuditRow($conn, $table, (int) $recordId);
+        $oldData = fetchAuditRow($conn, $table, $recordId);
     }
 
     // C. Fallback to ensure NO NULLS in DB
@@ -1052,8 +1185,8 @@ function fetchRolePermissions($conn, $roleId) {
 
     while ($stmt->fetch()) {
         $perms[] = [
-            'page_id' => (int)$pageId,
-            'action_id' => (int)$actionId,
+            'page_id' => $pageId,
+            'action_id' => $actionId,
         ];
     }
     $stmt->close();
@@ -1132,7 +1265,7 @@ function getDefaultUserRoleId($conn) {
             $stmt->bind_result($roleId);
             $stmt->fetch();
             $stmt->close();
-            return (int)$roleId;
+            return $roleId;
         }
 
         $stmt->close();
@@ -1175,7 +1308,7 @@ function getAdministratorRoleId($conn) {
             $stmt->bind_result($roleId);
             $stmt->fetch();
             $stmt->close();
-            return (int)$roleId;
+            return $roleId;
         }
 
         $stmt->close();
@@ -1204,7 +1337,7 @@ function hasPagePermission($conn, $pageUrl) {
         while ($row = $allActionsRes->fetch_assoc()) {
             $key = strtolower($row['name']);
             $perm->$key = false; 
-            $actionMap[(int)$row['id']] = $key;
+            $actionMap[$row['id']] = $key;
         }
         $allActionsRes->free();
     }
@@ -1212,17 +1345,23 @@ function hasPagePermission($conn, $pageUrl) {
     if (empty($pageUrl)) return $perm;
 
     // 2. Get Role ID from Session
-    $roleId = isset($_SESSION['role_id']) ? (int)$_SESSION['role_id'] : 0;
+    $roleId = isset($_SESSION['role_id']) ? $_SESSION['role_id'] : 0;
     if ($roleId <= 0) return $perm;
 
     // 3. Get Page ID
     $pageId = 0;
-    $stmt = $conn->prepare("SELECT id FROM " . PAGE_INFO_LIST . " WHERE public_url = ? AND status = 'A' LIMIT 1");
+    $stmt = $conn->prepare("SELECT id, name_cn FROM " . PAGE_INFO_LIST . " WHERE public_url = ? AND status = 'A' LIMIT 1");
     if ($stmt) {
         $stmt->bind_param("s", $pageUrl);
         $stmt->execute();
-        $stmt->bind_result($pageId);
-        $stmt->fetch();
+        $dbPageName = null;
+        $stmt->bind_result($pageId, $dbPageName);
+        if ($stmt->fetch()) {
+            // Save the dynamic database name into the permission object
+            if (!empty($dbPageName)) {
+                $perm->page_name = $dbPageName; 
+            }
+        }
         $stmt->close();
     }
     if (empty($pageId)) return $perm;
@@ -1236,7 +1375,7 @@ function hasPagePermission($conn, $pageUrl) {
         $aId = null;
         $stmt->bind_result($aId);
         while ($stmt->fetch()) {
-            $roleActionIds[] = (int)$aId;
+            $roleActionIds[] = $aId;
         }
         $stmt->close();
     }
@@ -1253,7 +1392,7 @@ function hasPagePermission($conn, $pageUrl) {
         $mId = null;
         $stmt->bind_result($mId);
         while ($stmt->fetch()) {
-            $masterActionIds[] = (int)$mId;
+            $masterActionIds[] = $mId;
         }
         $stmt->close();
     }
@@ -1285,69 +1424,60 @@ function renderTableActions($htmlString) {
 // Unified permission error handler (with forced redirection to dashboard home)
 // @param string $actionType Operation type ('view', 'add', 'edit', 'delete')
 // @param object $perm Permission object
-// @param string $moduleName Module name for the error message
-// @param bool $redirect Whether to redirect directly when access is denied
-function checkPermissionError($actionType, $perm, $moduleName = '数据', $redirect = true) {
-    
+// Unified permission error handler (Dynamic Database Name Lookup)
+function checkPermissionError($actionType, $perm) {
     $errorMessage = null;
+
+    // Resolve name from dynamic DB name, OR fallback
+    $resolvedName = !empty($perm->page_name) ? $perm->page_name : '该页面';
 
     // Check if the permission object exists
     if (empty($perm)) {
-        $errorMessage = "系统错误：无法获取 {$moduleName} 的权限信息。";
+        $errorMessage = "系统错误：无法获取 {$resolvedName} 的权限信息。";
     } else {
         // Check specific permission based on the action type
         switch ($actionType) {
             case 'view':
-                if (empty($perm->view)) $errorMessage = "权限不足：您没有访问 {$moduleName} 的权限。";
+                if (empty($perm->view)) $errorMessage = "权限不足：您没有访问 {$resolvedName} 的权限。";
                 break;
             case 'add':
-                if (empty($perm->add)) $errorMessage = "权限不足：您没有新增 {$moduleName} 的权限。";
+                if (empty($perm->add)) $errorMessage = "权限不足：您没有新增 {$resolvedName} 的权限。";
                 break;
             case 'edit':
-                if (empty($perm->edit)) $errorMessage = "权限不足：您没有编辑 {$moduleName} 的权限。";
+                if (empty($perm->edit)) $errorMessage = "权限不足：您没有编辑 {$resolvedName} 的权限。";
                 break;
             case 'delete':
-                if (empty($perm->delete)) $errorMessage = "权限不足：您没有删除 {$moduleName} 的权限。";
+                if (empty($perm->delete)) $errorMessage = "权限不足：您没有删除 {$resolvedName} 的权限。";
                 break;
             default:
                 $errorMessage = "权限不足：未知的操作类型。";
         }
     }
 
-    // If an error occurred and redirection is enabled
-    if ($errorMessage && $redirect) {
+    // If an error occurred, redirect
+    if ($errorMessage) {
         
-        // If it's an AJAX request (e.g., DataTables), return JSON
         if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
             header('Content-Type: application/json');
             echo safeJsonEncode(['success' => false, 'message' => $errorMessage]);
             exit();
         }
 
-        // Set the flash message so it displays on the next page
         if (session_status() === PHP_SESSION_NONE) session_start();
         $_SESSION['flash_msg'] = $errorMessage;
         $_SESSION['flash_type'] = 'danger';
 
-        // Check if we are currently on the Dashboard Home
         $currentView = $_GET['view'] ?? '';
         $isDashboardHome = (strpos($_SERVER['SCRIPT_NAME'], 'dashboard.php') !== false) && empty($currentView);
 
-        // Determine fallback URL to prevent infinite redirect loops.
-        // If they lack permission for the Dashboard itself, send them to the public Home page.
-        // Otherwise, send them back to their Dashboard home.
-        $targetRedirectUrl = ($isDashboardHome || $moduleName === '仪表盘首页') ? URL_HOME : URL_USER_DASHBOARD;
+        $targetRedirectUrl = ($isDashboardHome || $resolvedName === '仪表盘首页') ? (defined('URL_HOME') ? URL_HOME : '/index.php') : (defined('URL_USER_DASHBOARD') ? URL_USER_DASHBOARD : '/dashboard.php');
         
-        // Execute Redirect
         if (!headers_sent()) {
             header("Location: " . $targetRedirectUrl);
         } else {
-            // Output a full-screen overlay to hide the broken layout before JS redirects
             echo '<div style="position:fixed; top:0; left:0; width:100vw; height:100vh; background:#ffffff; z-index:999999; display:flex; justify-content:center; align-items:center;">';
             echo '<h4 style="color:#dc3545;">权限不足，正在跳转...</h4>';
             echo '</div>';
-            
-            // Use replace() so users cannot click 'Back' into the forbidden page
             echo "<script>window.location.replace('" . $targetRedirectUrl . "');</script>";
         }
         exit();
@@ -1488,7 +1618,7 @@ function getAuthorRoleId($conn) {
             $stmt->bind_result($roleId);
             $stmt->fetch();
             $stmt->close();
-            return (int)$roleId;
+            return $roleId;
         }
         $stmt->close();
     }
@@ -1513,7 +1643,7 @@ function upgradeUserToAuthorRole($conn, $userId, $adminId) {
     if (!$oldUser) return false;
 
     // Prevent redundant updates if they are already an author
-    if ((int)$oldUser['user_role_id'] === $authorRoleId) {
+    if ($oldUser['user_role_id'] === $authorRoleId) {
         return true; 
     }
 

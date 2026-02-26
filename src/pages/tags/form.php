@@ -1,23 +1,15 @@
 <?php
 require_once dirname(__DIR__, 3) . '/common.php';
 
+requireLogin();
+
 // 1. Use parent list page URL (single-page mode with tag_mode=form)
 $currentUrl = '/dashboard.php?view=tags'; 
 
 // [ADDED] Fetch dynamic permission object
 $perm = hasPagePermission($conn, $currentUrl);
 
-checkPermissionError('view', $perm, '标签表单');
-
-// 1. Auth Check
-if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
-    if (headers_sent()) {
-        echo "<script>window.location.href='" . URL_LOGIN . "';</script>";
-    } else {
-        header("Location: " . URL_LOGIN);
-    }
-    exit();
-}
+checkPermissionError('view', $perm);
 
 $tagTable = NOVEL_TAGS;
 $auditPage = 'Tag Management';
@@ -28,13 +20,13 @@ $updateQuery = "UPDATE $tagTable SET name = ?, updated_by = ? WHERE id = ?";
 $isEmbeddedTagForm = isset($EMBED_TAG_FORM_PAGE) && $EMBED_TAG_FORM_PAGE === true;
 
 $tagId = $_GET['id'] ?? null;
-$tagId = $tagId !== null ? (int) $tagId : null;
+$tagId = $tagId !== null ? $tagId : null;
 $isEditMode = !empty($tagId);
 
 // [ADDED] Specific Action Permission Check
 // If Edit Mode: must have 'edit' permission. If Add Mode: must have 'add' permission.
 $actionToCheck = $isEditMode ? 'edit' : 'add';
-checkPermissionError($actionToCheck, $perm, '标签');
+checkPermissionError($actionToCheck, $perm);
 
 if ($isEmbeddedTagForm) {
     $listPageUrl = URL_NOVEL_TAGS;
@@ -107,20 +99,20 @@ try {
     if ($_SERVER["REQUEST_METHOD"] === "POST") {
         // [ADDED] Re-verify strict permissions before DB transaction
     $submitAction = $isEditMode ? 'edit' : 'add';
-    $submitError = checkPermissionError($submitAction, $perm, '标签');
+    $submitError = checkPermissionError($submitAction, $perm);
     
     if ($submitError) {
         $message = $submitError;
         $msgType = "danger";
     } else {
         $tagName = trim($_POST['tag_name'] ?? '');
-        $postedTagId = isset($_POST['tag_id']) ? (int) $_POST['tag_id'] : null;
+        $postedTagId = isset($_POST['tag_id']) ? $_POST['tag_id'] : null;
         
         if ($postedTagId) {
             $tagId = $postedTagId;
             $isEditMode = true;
         }
-        $currentUserId = isset($_SESSION['user_id']) ? (int) $_SESSION['user_id'] : 0;
+        $currentUserId = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : 0;
 
         if (!$conn || !($conn instanceof mysqli)) throw new Exception('Database connection is not available.');
 
@@ -264,7 +256,7 @@ if ($isEmbeddedTagForm): ?>
                 <?php endif; ?>
                 <form method="POST" action="<?php echo htmlspecialchars($formActionUrl); ?>" autocomplete="off" class="check-changes">
                     <?php if ($isEditMode): ?>
-                        <input type="hidden" name="tag_id" value="<?php echo (int) $tagId; ?>">
+                        <input type="hidden" name="tag_id" value="<?php echo $tagId; ?>">
                     <?php endif; ?>
                     <div class="mb-4">
                         <label class="form-label text-muted">标签名称</label>
@@ -307,7 +299,7 @@ if ($isEmbeddedTagForm): ?>
             <?php endif; ?>
             <form method="POST" autocomplete="off" class="check-changes">
                 <?php if ($isEditMode): ?>
-                    <input type="hidden" name="tag_id" value="<?php echo (int) $tagId; ?>">
+                    <input type="hidden" name="tag_id" value="<?php echo $tagId; ?>">
                 <?php endif; ?>
                 <div class="mb-4">
                     <label class="form-label text-muted">标签名称</label>

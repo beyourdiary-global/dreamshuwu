@@ -86,20 +86,24 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $validToken) {
             <p class="subtext">请为您的账号设置新密码</p>
 
             <form id="resetForm" method="POST">
-                <div class="auth-field mb-3 password-field position-relative">
+                <div class="auth-field mb-3">
                     <label class="form-label">新密码</label>
-                    <input type="password" class="form-control" id="password" name="new_password" required>
-                    <button type="button" class="toggle-password" data-target="password">
-                        <i class="fa fa-eye"></i>
-                    </button>
+                    <div class="password-field">
+                        <input type="password" class="form-control" id="password" name="new_password" required>
+                        <button type="button" class="toggle-password" data-target="password">
+                            <i class="fa fa-eye"></i>
+                        </button>
+                    </div>
                 </div>
 
-                <div class="auth-field mb-3 password-field position-relative">
+                <div class="auth-field mb-3">
                     <label class="form-label">确认新密码</label>
-                    <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
-                    <button type="button" class="toggle-password" data-target="confirm_password">
-                        <i class="fa fa-eye"></i>
-                    </button>
+                    <div class="password-field">
+                        <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
+                        <button type="button" class="toggle-password" data-target="confirm_password">
+                            <i class="fa fa-eye"></i>
+                        </button>
+                    </div>
                 </div>
 
                 <div class="password-hints mb-4">

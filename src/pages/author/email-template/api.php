@@ -8,11 +8,9 @@ try {
     if (ob_get_length()) ob_clean();
     header('Content-Type: application/json; charset=utf-8');
 
-    if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
-        throw new Exception('会话已过期，请重新登录。');
-    }
+    requireLogin();
 
-    $currentUserId = isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : (isset($_SESSION['userid']) ? (int)$_SESSION['userid'] : 0);
+    $currentUserId = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : (isset($_SESSION['userid']) ? $_SESSION['userid'] : 0);
     $currentUrl = '/author/email-template.php';
     $perm = hasPagePermission($conn, $currentUrl);
     
@@ -53,7 +51,7 @@ try {
             $row = null;
             if ($stmt->fetch()) {
                 $row = [
-                    'id' => (int)$r_id,
+                    'id' => $r_id,
                     'template_code' => (string)$r_code,
                     'template_name' => (string)$r_name,
                     'subject' => (string)$r_subject,
@@ -61,8 +59,8 @@ try {
                     'status' => (string)$r_status,
                     'created_at' => (string)$r_created,
                     'updated_at' => (string)$r_updated,
-                    'created_by' => (int)$r_createdBy,
-                    'updated_by' => (int)$r_updatedBy
+                    'created_by' => $r_createdBy,
+                    'updated_by' => $r_updatedBy
                 ];
             }
             $stmt->close();
@@ -78,12 +76,11 @@ try {
     // MODE: DATA (Fetch DataTables)
     // ==========================================
     if ($mode === 'data') {
-        $viewError = checkPermissionError('view', $perm, '邮件模板管理', false);
-        if ($viewError) throw new Exception($viewError);
+        checkPermissionError('view', $perm);
 
-        $draw = (int)($_REQUEST['draw'] ?? 1);
-        $start = max(0, (int)($_REQUEST['start'] ?? 0));
-        $length = max(1, min(100, (int)($_REQUEST['length'] ?? 10)));
+        $draw = ($_REQUEST['draw'] ?? 1);
+        $start = max(0, ($_REQUEST['start'] ?? 0));
+        $length = max(1, min(100, ($_REQUEST['length'] ?? 10)));
         
         // Safely extract search value to prevent PHP 8 Array Warning
         $searchData = $_REQUEST['search'] ?? [];
@@ -146,7 +143,7 @@ try {
         $rows = [];
         while ($stmtData->fetch()) {
             $rows[] = [
-                'id' => (int)$d_id,
+                'id' => $d_id,
                 'template_code' => (string)$d_code,
                 'template_name' => (string)$d_name,
                 'subject' => (string)$d_subject,
@@ -161,8 +158,8 @@ try {
 
         echo safeJsonEncode([
             'draw' => $draw,
-            'recordsTotal' => (int)$recordsTotal,
-            'recordsFiltered' => (int)$recordsFiltered,
+            'recordsTotal' => $recordsTotal,
+            'recordsFiltered' => $recordsFiltered,
             'data' => $rows
         ]);
         exit();
@@ -172,8 +169,7 @@ try {
     // MODE: CREATE
     // ==========================================
     if ($mode === 'create') {
-        $addError = checkPermissionError('add', $perm, '邮件模板管理', false);
-        if ($addError) throw new Exception($addError);
+        checkPermissionError('add', $perm);
 
         $templateCode = strtoupper(trim((string)($_POST['template_code'] ?? '')));
         $templateName = trim((string)($_POST['template_name'] ?? ''));
@@ -249,10 +245,9 @@ try {
     // MODE: UPDATE
     // ==========================================
     if ($mode === 'update') {
-        $editError = checkPermissionError('edit', $perm, '邮件模板管理', false);
-        if ($editError) throw new Exception($editError);
+        checkPermissionError('edit', $perm);
 
-        $id = (int)($_POST['id'] ?? 0);
+        $id = ($_POST['id'] ?? 0);
         $templateCode = strtoupper(trim((string)($_POST['template_code'] ?? '')));
         $templateName = trim((string)($_POST['template_name'] ?? ''));
         $subject = trim((string)($_POST['subject'] ?? ''));
@@ -349,10 +344,9 @@ try {
     // MODE: DELETE
     // ==========================================
     if ($mode === 'delete') {
-        $deleteError = checkPermissionError('delete', $perm, '邮件模板管理', false);
-        if ($deleteError) throw new Exception($deleteError);
+        checkPermissionError('delete', $perm);
 
-        $id = (int)($_POST['id'] ?? 0);
+        $id = ($_POST['id'] ?? 0);
         if ($id <= 0) throw new Exception('无效ID');
 
         $oldRow = fetchEmailTemplateRowById($conn, $id);

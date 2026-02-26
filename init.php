@@ -38,6 +38,11 @@ define('time_dis', date("G:i:s"));
 define('yearMonth', strtolower(date('YM')));
 define('comYMD', strtolower(date('Ymd')));
 define('GlobalPin', isset($_SESSION['usr_pin']) ? $_SESSION['usr_pin'] : '');
+
+// 1. Define the PATTERNS (Rules for formatting )
+defined('DATE_FORMAT')     || define('DATE_FORMAT', 'Y-m-d');
+defined('TIME_FORMAT')     || define('TIME_FORMAT', 'G:i:s');
+
 // define('memberImportDetail', yearMonth.'_importInfo');
 
 $email_collect = '';

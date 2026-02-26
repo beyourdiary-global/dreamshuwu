@@ -1,16 +1,12 @@
 <?php
 require_once dirname(__DIR__, 3) . '/common.php';
-
-// 1. Auth Check
-if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
-    header("Location: " . URL_LOGIN);
-    exit();
-}
+// Auth Check
+requireLogin();
 
 $currentUrl = '/dashboard.php?view=profile';
 $perm = hasPagePermission($conn, $currentUrl);
 
-checkPermissionError('view', $perm, '个人资料页面');
+checkPermissionError('view', $perm);
 
 $userId = $_SESSION['user_id'];
 $message = "";
@@ -31,7 +27,7 @@ if (isset($_SESSION['flash_msg'])) {
 
 // --- HANDLE FORM A: UPDATE INFO ---
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['action']) && $_POST['action'] === 'update_info') {
-    checkPermissionError('edit', $perm, '个人资料');
+    checkPermissionError('edit', $perm);
 
     $name = trim($_POST['display_name']);
     $email = trim($_POST['email']);
@@ -155,7 +151,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['action']) && $_POST['
 
 // --- HANDLE FORM B: CHANGE PASSWORD ---
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['action']) && $_POST['action'] === 'change_pwd') {
-    checkPermissionError('edit', $perm, '密码');
+    checkPermissionError('edit', $perm);
 
     $currentPwd = $_POST['current_password'];
     $newPwd = $_POST['new_password'];
@@ -250,6 +246,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && function_exists('logAudit') && !defi
         'user_id'        => $userId
     ]);
 }
+
+$pageScripts = ['user-profile.js?v=' . filemtime(BASE_PATH . 'assets/js/user-profile.js')];
 ?>
 
 <div class="profile-container">
@@ -257,7 +255,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && function_exists('logAudit') && !defi
         <div class="header-text-content">
             <?php echo generateBreadcrumb($conn, $currentUrl); ?>
             <h2>个人资料设置</h2>
-            <small class="text-muted">User ID: <?php echo $userId; ?></small>
         </div>
     </div>
 

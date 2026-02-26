@@ -3,12 +3,9 @@
 require_once dirname(__DIR__, 3) . '/common.php';
 
 // 1. Basic login check
-if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
-    header("Location: " . URL_LOGIN);
-    exit();
-}
+requireLogin();
 
-$currentUserId = (int)$_SESSION['user_id'];
+$currentUserId = $_SESSION['user_id'];
 $currentUrl = '/author/dashboard.php';
 $auditPage = 'Author Dashboard';
 
@@ -18,16 +15,24 @@ requireApprovedAuthor($conn, $currentUserId);
 
 // 3. System Permission Check for the dashboard itself (RBAC Fallback)
 $perm = hasPagePermission($conn, $currentUrl);
-checkPermissionError('view', $perm, '作者后台');
+checkPermissionError('view', $perm);
 
-// 4. Log the visit
-if (function_exists('logAudit')) {
-    logAudit([
-        'page'           => $auditPage,
-        'action'         => 'V',
-        'action_message' => 'User accessed Author Dashboard',
-        'user_id'        => $currentUserId
-    ]);
+// 4. Define a logical view query for the audit log (Checking Author Profile)
+$dashboardTable = defined('AUTHOR_PROFILE') ? AUTHOR_PROFILE : 'author_profile';
+$viewQuery = "SELECT id, user_id, pen_name, verification_status FROM {$dashboardTable} WHERE user_id = ? LIMIT 1";
+
+if (!defined('AUTHOR_DASHBOARD_VIEW_LOGGED')) {
+    define('AUTHOR_DASHBOARD_VIEW_LOGGED', true);
+    if (function_exists('logAudit')) {
+        logAudit([
+            'page'           => $auditPage,
+            'action'         => 'V',
+            'action_message' => 'User accessed Author Dashboard',
+            'query'          => $viewQuery,
+            'query_table'    => $dashboardTable,
+            'user_id'        => $currentUserId
+        ]);
+    }
 }
 
 // 5. Fetch permissions for child modules to determine menu visibility

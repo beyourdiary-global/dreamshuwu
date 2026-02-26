@@ -4,6 +4,9 @@
 try {
     require_once dirname(__DIR__, 4) . '/common.php';
     
+    // Session & Authentication Check
+    requireLogin();
+    
     // Clear any stray output from common files
     if (ob_get_length()) ob_clean();
     header('Content-Type: application/json; charset=utf-8');
@@ -12,12 +15,7 @@ try {
     $authorProfileTable = defined('AUTHOR_PROFILE') ? AUTHOR_PROFILE : 'author_profile';
     $usersTable = defined('USR_LOGIN') ? USR_LOGIN : 'users';
 
-    // Session & Authentication Check
-    if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
-        throw new Exception('会话已过期，请重新登录。');
-    }
-
-    $currentUserId = isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : (isset($_SESSION['userid']) ? (int)$_SESSION['userid'] : 0);
+    $currentUserId = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : (isset($_SESSION['userid']) ? $_SESSION['userid'] : 0);
     $currentUrl = '/author/author-verification.php';
     
     $perm = hasPagePermission($conn, $currentUrl);
@@ -33,7 +31,7 @@ try {
     // Helper Function
     if (!function_exists('authorVerificationFetchRow')) {
         function authorVerificationFetchRow($conn, $authorId, $authorProfileTable, $usersTable) {
-            $safeId = (int)$authorId;
+            $safeId = $authorId;
             $hasRejectReason = function_exists('columnExists') ? columnExists($conn, $authorProfileTable, 'reject_reason') : false;
             $hasEmailNotifiedAt = function_exists('columnExists') ? columnExists($conn, $authorProfileTable, 'email_notified_at') : false;
             $hasEmailNotifyCount = function_exists('columnExists') ? columnExists($conn, $authorProfileTable, 'email_notify_count') : false;
@@ -68,15 +66,15 @@ try {
 
             if ($stmt->fetch()) {
                 $row = [
-                    'id' => (int)$r_id,
-                    'user_id' => (int)$r_uid,
+                    'id' => $r_id,
+                    'user_id' => $r_uid,
                     'real_name' => (string)($r_realName ?? ''),
                     'pen_name' => (string)($r_penName ?? ''),
                     'contact_email' => (string)($r_email ?? ''),
                     'verification_status' => (string)($r_verificationStatus ?? ''),
                     'reject_reason' => (string)($r_rejectReason ?? ''),
                     'email_notified_at' => (string)($r_emailNotifiedAt ?? ''),
-                    'email_notify_count' => (int)($r_emailNotifyCount ?? 0),
+                    'email_notify_count' => ($r_emailNotifyCount ?? 0),
                     'updated_at' => (string)($r_updatedAt ?? ''),
                     'status' => (string)($r_status ?? ''),
                     'user_name' => '' // Default to empty, will populate below
@@ -142,12 +140,11 @@ try {
     // MODE: DATA (DataTables) 
     // =========================================================================
     if ($mode === 'data') {
-        $viewError = checkPermissionError('view', $perm, '作者审核管理', false);
-        if ($viewError) throw new Exception($viewError); 
+        checkPermissionError('view', $perm);
 
-        $draw = (int)($_REQUEST['draw'] ?? 1);
-        $start = max(0, (int)($_REQUEST['start'] ?? 0));
-        $length = max(1, min(100, (int)($_REQUEST['length'] ?? 10)));
+        $draw = ($_REQUEST['draw'] ?? 1);
+        $start = max(0, ($_REQUEST['start'] ?? 0));
+        $length = max(1, min(100, ($_REQUEST['length'] ?? 10)));
 
         $statusFilterRaw = trim((string)($_REQUEST['status_filter'] ?? 'pending,rejected'));
         $searchData = $_REQUEST['search'] ?? [];
@@ -182,14 +179,14 @@ try {
         $countTotalSql = "SELECT COUNT(id) AS total FROM {$authorProfileTable}" . $baseWhere;
         $resTotal = $conn->query($countTotalSql);
         if (!$resTotal) throw new Exception('Total count failed: ' . $conn->error);
-        $recordsTotal = (int)($resTotal->fetch_assoc()['total'] ?? 0);
+        $recordsTotal = ($resTotal->fetch_assoc()['total'] ?? 0);
         $resTotal->free();
 
         // 4. Execute Filtered Count Query (No JOIN needed)
         $countFilteredSql = "SELECT COUNT(id) AS total FROM {$authorProfileTable}" . $baseWhere . $searchWhere;
         $resFiltered = $conn->query($countFilteredSql);
         if (!$resFiltered) throw new Exception('Filter count failed: ' . $conn->error);
-        $recordsFiltered = (int)($resFiltered->fetch_assoc()['total'] ?? 0);
+        $recordsFiltered = ($resFiltered->fetch_assoc()['total'] ?? 0);
         $resFiltered->free();
 
         // 5. Execute Data Query (Prepared Statement for LIMIT, No JOIN)
@@ -216,20 +213,20 @@ try {
         $userIds = [];
         while ($stmtData->fetch()) {
             $rows[] = [
-                'id' => (int)$d_id,
-                'user_id' => (int)$d_uid,
+                'id' => $d_id,
+                'user_id' => $d_uid,
                 'user_name' => '', // Will populate in the separated query below
                 'real_name' => (string)($d_realName ?? ''),
                 'pen_name' => (string)($d_penName ?? ''),
                 'verification_status' => (string)($d_vStatus ?? ''),
                 'reject_reason' => (string)($d_reject ?? ''),
-                'email_notify_count' => (int)($d_notify ?? 0),
+                'email_notify_count' => ($d_notify ?? 0),
                 'updated_at' => (string)($d_updated ?? '')
             ];
             
             // Collect unique user_ids
-            if (!in_array((int)$d_uid, $userIds)) {
-                $userIds[] = (int)$d_uid;
+            if (!in_array($d_uid, $userIds)) {
+                $userIds[] = $d_uid;
             }
         }
         $stmtData->close();
@@ -247,8 +244,9 @@ try {
                 
                 // Map the names back into the dataset using reference (&)
                 foreach ($rows as &$r) {
-                    if (isset($userMap[$r['user_id']])) {
-                        $r['user_name'] = $userMap[$r['user_id']];
+                    $userKey = isset($r['user_id']) ? $r['user_id'] : '';
+                    if ($userKey !== '' && isset($userMap[$userKey])) {
+                        $r['user_name'] = $userMap[$userKey];
                     }
                 }
             }
@@ -268,7 +266,7 @@ try {
     // =========================================================================
     if ($mode === 'verify') {
         $actionType = strtolower(trim((string)($_POST['action_type'] ?? '')));
-        
+        $updateSql = '';
         // [FIX] Strictly verify custom permissions without falling back to "edit"
         if ($actionType === 'approve' && empty($perm->approve)) {
             throw new Exception('权限不足：您没有执行【通过】操作的权限。');
@@ -280,7 +278,7 @@ try {
             throw new Exception('权限不足：您没有执行【重发】操作的权限。');
         }
 
-        $id = (int)($_POST['id'] ?? 0);
+        $id = ($_POST['id'] ?? 0);
         $rejectReason = trim((string)($_POST['reject_reason'] ?? ''));
         
         if ($id <= 0) throw new Exception('无效记录ID');
@@ -290,13 +288,17 @@ try {
         $oldRow = authorVerificationFetchRow($conn, $id, $authorProfileTable, $usersTable);
         if (!$oldRow || $oldRow['status'] !== 'A') throw new Exception('记录不存在或已删除');
 
-        $authorUserId = (int)$oldRow['user_id'];
+        $authorUserId = $oldRow['user_id'];
+        $authorUserIdInt = filter_var($authorUserId, FILTER_VALIDATE_INT);
+        if ($authorUserIdInt === false || $authorUserIdInt <= 0) {
+            throw new Exception('用户ID无效，无法完成审核操作');
+        }
         $conn->begin_transaction();
         
         $messageText = '';
         $emailResult = ['success' => true, 'message' => ''];
-        $escId = (int)$id;
-        $escUser = (int)$currentUserId;
+        $escId = $id;
+        $escUser = $currentUserId;
 
         $hasUpdatedBy = function_exists('columnExists') && columnExists($conn, $authorProfileTable, 'updated_by');
         $hasReject = function_exists('columnExists') && columnExists($conn, $authorProfileTable, 'reject_reason');
@@ -311,14 +313,14 @@ try {
                 
                 // [NEW] Upgrade the user to the Author role
                 if (function_exists('upgradeUserToAuthorRole')) {
-                    $roleUpdated = upgradeUserToAuthorRole($conn, $authorUserId, $currentUserId);
+                    $roleUpdated = upgradeUserToAuthorRole($conn, $authorUserIdInt, $currentUserId);
                     if (!$roleUpdated) {
                     throw new Exception('角色分配失败：系统缺少“Author/作者”角色。');
                     }
                 }
 
                 if (function_exists('processAuthorVerificationEmail')) {
-                    $emailResult = processAuthorVerificationEmail($conn, $authorUserId, 'approved', '');
+                    $emailResult = processAuthorVerificationEmail($conn, $authorUserIdInt, 'approved', '');
                 }
                 $messageText = '作者审核通过';
             } elseif ($actionType === 'reject') {
@@ -330,12 +332,12 @@ try {
                 if (!$conn->query($updateSql)) throw new Exception('审核更新失败: ' . $conn->error);
                 
                 if (function_exists('processAuthorVerificationEmail')) {
-                    $emailResult = processAuthorVerificationEmail($conn, $authorUserId, 'rejected', $rejectReason);
+                    $emailResult = processAuthorVerificationEmail($conn, $authorUserIdInt, 'rejected', $rejectReason);
                 }
                 $messageText = '作者审核驳回';
             } else {
                 if (function_exists('processAuthorVerificationEmail')) {
-                    $emailResult = processAuthorVerificationEmail($conn, $authorUserId, 'resend', '');
+                    $emailResult = processAuthorVerificationEmail($conn, $authorUserIdInt, 'resend', '');
                 }
                 $messageText = '重发作者审核通知';
             }
@@ -346,7 +348,7 @@ try {
                     'page' => $auditPage,
                     'action' => 'E',
                     'action_message' => $messageText,
-                    'query' => 'Author verification action via API',
+                    'query' => $updateSql ?: 'Action: ' . $actionType, // Use the variable directly,
                     'query_table' => $authorProfileTable,
                     'user_id' => $currentUserId,
                     'record_id' => $id,
@@ -374,17 +376,16 @@ try {
     // MODE: DELETE
     // =========================================================================
     if ($mode === 'delete') {
-        $deleteError = checkPermissionError('delete', $perm, '作者审核管理', false);
-        if ($deleteError) throw new Exception($deleteError);
+        checkPermissionError('delete', $perm);
 
-        $id = (int)($_POST['id'] ?? 0);
+        $id = ($_POST['id'] ?? 0);
         if ($id <= 0) throw new Exception('无效记录ID');
 
         $oldRow = authorVerificationFetchRow($conn, $id, $authorProfileTable, $usersTable);
         if (!$oldRow || $oldRow['status'] !== 'A') throw new Exception('记录不存在或已删除');
 
-        $escId = (int)$id;
-        $escUser = (int)$currentUserId;
+        $escId = $id;
+        $escUser = $currentUserId;
         $hasUpdatedBy = function_exists('columnExists') && columnExists($conn, $authorProfileTable, 'updated_by');
 
         $sqlDelete = "UPDATE {$authorProfileTable} SET status = 'D', updated_at = NOW()";

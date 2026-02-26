@@ -1,7 +1,8 @@
 <?php
 // Path: src/pages/admin/page-information-list/form.php
 
-$recordId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+requireLogin();
+$recordId = isset($_GET['id']) ? $_GET['id'] : 0;
 $isEditMode = $recordId > 0;
 $formRow = [
     'id' => 0,
@@ -14,21 +15,21 @@ $formRow = [
 $boundActions = [];
 
 // 1. Check View Permission for the form page
-checkPermissionError('view', $perm, '页面信息表单');
+checkPermissionError('view', $perm);
 
 // 2. Check Add/Edit Permission for loading the form
 $actionToCheck = $isEditMode ? 'edit' : 'add';
-checkPermissionError($actionToCheck, $perm, '页面信息');
+checkPermissionError($actionToCheck, $perm);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['mode'])) {
     $formAction = $_POST['action_type'] ?? '';
     if ($formAction === 'save') {
-        $recordId = isset($_POST['id']) ? (int)$_POST['id'] : 0;
+        $recordId = isset($_POST['id']) ? $_POST['id'] : 0;
         $isEditMode = $recordId > 0;
 
 // 3. Check Add/Edit Permission again for the POST submission
         $submitActionToCheck = $isEditMode ? 'edit' : 'add';
-    checkPermissionError($submitActionToCheck, $perm, '页面信息');
+    checkPermissionError($submitActionToCheck, $perm);
 
         $name_en = trim($_POST['name_en'] ?? '');
         $name_cn = trim($_POST['name_cn'] ?? '');
@@ -96,7 +97,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['mode'])) {
                 $oldActStmt->execute();
                 $oldActStmt->bind_result($aid);
                 while ($oldActStmt->fetch()) {
-                    $oldActionIds[] = (int)$aid;
+                    $oldActionIds[] = $aid;
                 }
                 $oldActStmt->close();
                 sort($oldActionIds);
@@ -129,7 +130,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['mode'])) {
                 $stmt = $conn->prepare($executedSql);
                 $stmt->bind_param('sssssii', $name_en, $name_cn, $description, $public_url, $file_path, $currentUserId, $currentUserId);
                 $stmt->execute();
-                $targetId = (int)$conn->insert_id;
+                $targetId = $conn->insert_id;
                 $stmt->close();
                 $mainActionType = 'A';
             }
@@ -138,7 +139,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['mode'])) {
                 $bindSql = "INSERT INTO {$tableMaster} (page_id, action_id, created_by) VALUES (?, ?, ?)";
                 $bindStmt = $conn->prepare($bindSql);
                 foreach ($selectedActions as $actId) {
-                    $actIdInt = (int)$actId;
+                    $actIdInt = $actId;
                     $bindStmt->bind_param('iii', $targetId, $actIdInt, $currentUserId);
                     $bindStmt->execute();
                 }
@@ -241,9 +242,9 @@ if ($res) {
                 <?php unset($_SESSION['flash_msg'], $_SESSION['flash_type']); ?>
             <?php endif; ?>
 
-            <form method="POST" action="<?php echo htmlspecialchars($formBaseUrl . ($isEditMode ? '&id=' . $recordId : '')); ?>" class="<?php echo $isEditMode ? 'check-changes' : ''; ?>">
+            <form id="pageInfoForm" method="POST" action="<?php echo htmlspecialchars($formBaseUrl . ($isEditMode ? '&id=' . $recordId : '')); ?>" class="<?php echo $isEditMode ? 'check-changes' : ''; ?>">
                 <input type="hidden" name="action_type" value="save">
-                <?php if ($isEditMode): ?><input type="hidden" name="id" value="<?php echo (int)$recordId; ?>"><?php endif; ?>
+                <?php if ($isEditMode): ?><input type="hidden" name="id" value="<?php echo $recordId; ?>"><?php endif; ?>
 
                 <div class="row">
                     <div class="col-md-6">
@@ -292,11 +293,11 @@ if ($res) {
                                         class="form-check-input"
                                         type="checkbox"
                                         name="action_ids[]"
-                                        value="<?php echo (int)$act['id']; ?>"
-                                        id="act_<?php echo (int)$act['id']; ?>"
+                                        value="<?php echo $act['id']; ?>"
+                                        id="act_<?php echo $act['id']; ?>"
                                         <?php echo in_array((int)$act['id'], $boundActions, true) ? 'checked' : ''; ?>
                                     >
-                                    <label class="form-check-label user-select-none" for="act_<?php echo (int)$act['id']; ?>">
+                                    <label class="form-check-label user-select-none" for="act_<?php echo $act['id']; ?>">
                                         <?php echo htmlspecialchars($act['name']); ?>
                                     </label>
                                 </div>

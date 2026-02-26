@@ -1,10 +1,7 @@
 <?php
 require_once dirname(__DIR__, 3) . '/common.php';
-// 1. Auth Check
-if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
-    header("Location: " . URL_LOGIN);
-    exit();
-}
+// Auth Check
+requireLogin();
 
 $currentUserId = $_SESSION['user_id'];
 $userTable = USR_LOGIN;
@@ -20,7 +17,7 @@ $catMode         = isset($_GET[QUERY_CAT_MODE]) ? trim((string)$_GET[QUERY_CAT_M
 if ($currentView === 'tag_form') {
     $redirectUrl = URL_NOVEL_TAGS_FORM;
     if (!empty($_GET['id'])) {
-        $redirectUrl .= '&id=' . (int)$_GET['id'];
+        $redirectUrl .= '&id=' . $_GET['id'];
     }
     header('Location: ' . $redirectUrl);
     exit();
@@ -29,7 +26,7 @@ if ($currentView === 'tag_form') {
 if ($currentView === 'cat_form') {
     $redirectUrl = URL_NOVEL_CATS_FORM;
     if (!empty($_GET['id'])) {
-        $redirectUrl .= '&id=' . (int)$_GET['id'];
+        $redirectUrl .= '&id=' . $_GET['id'];
     }
     header('Location: ' . $redirectUrl);
     exit();
@@ -70,22 +67,22 @@ $permPageInfo   = hasPagePermission($conn, $baseViewPath . 'page_info');
 $permUserRole   = hasPagePermission($conn, $baseViewPath . 'user_role');
 
 if (!$isTagSection && !$isCatSection && !$isProfileView && !$isMetaView && !$isWebSettingView && !$isAdminSection) {
-    checkPermissionError('view', $permDashboard, '仪表盘首页');
+    checkPermissionError('view', $permDashboard);
 }
 
 if ($isTagSection) {
-    checkPermissionError('view', $permTags, '小说标签');
+    checkPermissionError('view', $permTags);
     if ($isTagFormView) {
         $tagFormActionToCheck = !empty($_GET['id']) ? 'edit' : 'add';
-        checkPermissionError($tagFormActionToCheck, $permTags, '标签表单');
+        checkPermissionError($tagFormActionToCheck, $permTags);
     }
 }
 
 if ($isCatSection) {
-    checkPermissionError('view', $permCategories, '小说分类');
+    checkPermissionError('view', $permCategories);
     if ($isCatFormView) {
         $catFormActionToCheck = !empty($_GET['id']) ? 'edit' : 'add';
-        checkPermissionError($catFormActionToCheck, $permCategories, '分类表单');
+        checkPermissionError($catFormActionToCheck, $permCategories);
     }
 }
 
@@ -158,8 +155,6 @@ $quickActions = [
     ['label' => '写小说',   'url' => URL_AUTHOR_DASHBOARD, 'icon' => 'fa-solid fa-feather-pointed',      'style' => '']
 ];
 
-if ($isTagListView || $isCatListView || $isPageActionView || $isPageInfoView || $isUserRoleView) $customCSS[] = 'dataTables.bootstrap.min.css';
-if ($isMetaView) $customCSS[] = 'meta.css';
 $customCSS[] = 'dashboard.css';
 
 // Page Meta Key Setting
@@ -300,26 +295,10 @@ $pageMetaKey = ($currentView === 'home' || empty($currentView)) ? '/dashboard.ph
 <script src="<?php echo URL_ASSETS; ?>/js/bootstrap.bundle.min.js"></script>
 <script src="<?php echo URL_ASSETS; ?>/js/sweetalert2@11.js"></script>
 
-<?php if ($isProfileView): ?>
-    <script src="<?php echo URL_ASSETS; ?>/js/user-profile.js?v=<?php echo filemtime(BASE_PATH . 'assets/js/user-profile.js'); ?>"></script>
-<?php endif; ?>
-
-<?php if ($isTagListView): ?>
-    <script src="<?php echo URL_ASSETS; ?>/js/jquery.dataTables.min.js"></script>
-    <script src="<?php echo URL_ASSETS; ?>/js/dataTables.bootstrap.min.js"></script>
-    <script src="<?php echo URL_ASSETS; ?>/js/tag.js"></script>
-<?php elseif ($isCatListView): ?>
-    <script src="<?php echo URL_ASSETS; ?>/js/jquery.dataTables.min.js"></script>
-    <script src="<?php echo URL_ASSETS; ?>/js/dataTables.bootstrap.min.js"></script>
-    <script src="<?php echo URL_ASSETS; ?>/js/category.js"></script>
-<?php elseif ($isMetaView): ?>
-    <script src="<?php echo URL_ASSETS; ?>/js/meta.js"></script>
-<?php elseif ($isAdminHome || $isPageActionView || $isPageInfoView || $isUserRoleView): ?>
-    <?php if ($isPageActionView || $isPageInfoView || $isUserRoleView): ?>
-    <script src="<?php echo URL_ASSETS; ?>/js/jquery.dataTables.min.js"></script>
-    <script src="<?php echo URL_ASSETS; ?>/js/dataTables.bootstrap.min.js"></script>
-    <?php endif; ?>
-    <script src="<?php echo URL_ASSETS; ?>/js/admin.js"></script>
+<?php if (!empty($pageScripts)): ?>
+    <?php foreach ($pageScripts as $__script): ?>
+    <script src="<?php echo URL_ASSETS; ?>/js/<?php echo $__script; ?>"></script>
+    <?php endforeach; ?>
 <?php endif; ?>
 <script src="<?php echo URL_ASSETS; ?>/js/auth.js"></script>
 <script src="<?php echo URL_ASSETS; ?>/js/logout-handler.js"></script>

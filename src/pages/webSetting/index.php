@@ -3,15 +3,15 @@
 require_once dirname(__DIR__, 3) . '/common.php';
 
 // Auth Check
-if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
-    header("Location: " . URL_LOGIN);
-    exit();
-}
+requireLogin();
 
 $currentUrl = '/dashboard.php?view=web_settings';
 $perm = hasPagePermission($conn, $currentUrl);
 
-checkPermissionError('view', $perm, '网站设置页面');
+// Get the dynamic page name straight from the DB permission object
+$pageName = !empty($perm->page_name) ? $perm->page_name : '系统设置';
+
+checkPermissionError('view', $perm);
 
 $auditPage = 'Web Settings';
 $auditUserId = $_SESSION['user_id'] ?? 0;
@@ -20,35 +20,8 @@ $table = WEB_SETTINGS;
 $message = ""; 
 $msgType = "";
 
-// --- DEFINED QUERIES ---
-$sqlWebSettingsUpdate = "UPDATE $table SET 
-    website_name = ?, website_logo = ?, website_favicon = ?, 
-    theme_bg_color = ?, theme_text_color = ?, 
-    button_color = ?, button_text_color = ?, background_color = ? 
-    WHERE id = 1";
-
-$sqlWebSettingsInsert = "INSERT INTO $table 
-    (website_name, website_logo, website_favicon, theme_bg_color, theme_text_color, button_color, button_text_color, background_color, id) 
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)";
-
-// Query to Remove Logo
-$sqlRemoveLogo = "UPDATE $table SET website_logo = '' WHERE id = 1";
-
-// Query to Remove Favicon
-$sqlRemoveFavicon = "UPDATE $table SET website_favicon = '' WHERE id = 1";
-
-// Query to Reset Defaults
-$sqlResetDefaults = "UPDATE $table SET 
-    website_name = 'Website Name', 
-    website_logo = '', 
-    website_favicon = '', 
-    theme_bg_color = '#ffffff', 
-    theme_text_color = '#333333', 
-    button_color = '#233dd2', 
-    button_text_color = '#ffffff', 
-    background_color = '#f4f7f6' 
-    WHERE id = 1";
-// -----------------------
+// Removed all hardcoded DEFINED QUERIES.
+// We will dynamically build the query based on changed fields below!
 
 // Flash Message Check
 if (isset($_SESSION['flash_msg'])) {
@@ -79,134 +52,112 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST' && function_exists('logAudit') && !def
     ]);
 }
 
-// Context Detection
-$isEmbeddedWebSetting = isset($EMBED_WEB_SETTING_PAGE) && $EMBED_WEB_SETTING_PAGE === true;
-$webBaseUrl = $isEmbeddedWebSetting ? URL_WEB_SETTINGS : '?';
+$webBaseUrl = URL_WEB_SETTINGS ?? '?';
 
 // ========== HANDLE POST REQUESTS ==========
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
-    $actionType = $_POST['action_type'] ?? 'save'; 
-    $redirectNeeded = false;
-    $logActionCode = 'E';
-    $logMessage = '';
-    $logQuery = '';
-
-    if ($actionType === 'reset_defaults') {
-    checkPermissionError('delete', $perm, '网站设置');
-    }
-
-    if (($actionType === 'remove_logo' || $actionType === 'remove_favicon')) {
-    checkPermissionError('edit', $perm, '网站设置');
-   }
-
-    // [NEW] Sanitize and Validate Website Name length
-    $rawWebsiteName = $_POST['website_name'] ?? '';
-    $sanitizedWebsiteName = trim($rawWebsiteName);
-    $maxWebsiteNameLength = 255;
-
-    if (function_exists('mb_strlen') && function_exists('mb_substr')) {
-        if (mb_strlen($sanitizedWebsiteName, 'UTF-8') > $maxWebsiteNameLength) {
-            $sanitizedWebsiteName = mb_substr($sanitizedWebsiteName, 0, $maxWebsiteNameLength, 'UTF-8');
+    // 1. Fetch allowed actions dynamically from the Database
+    $validActions = [];
+    $actionQuery = "SELECT name FROM " . PAGE_ACTION . " WHERE status = 'A'";
+    $actionRes = $conn->query($actionQuery);
+    if ($actionRes) {
+        while ($row = $actionRes->fetch_assoc()) {
+            $dbName = strtolower(trim($row['name']));
+            $validActions[$dbName] = $dbName;
         }
-    } else {
-        if (strlen($sanitizedWebsiteName) > $maxWebsiteNameLength) {
-            $sanitizedWebsiteName = substr($sanitizedWebsiteName, 0, $maxWebsiteNameLength);
-        }
+        $actionRes->free();
     }
+    
+    // 2. Map Database actions to Variables
+    $ACTION_SAVE    = $validActions['save'] ?? 'save'; 
+    $ACTION_RESET   = $validActions['reset_defaults'] ?? null;
+    $ACTION_RM_LOGO = $validActions['remove_logo'] ?? null;
+    $ACTION_RM_FAV  = $validActions['remove_favicon'] ?? null;
 
-    // [NEW] 2. Validate Hex Color helper function
-    $validateHex = function($value, $default) {
-    if (!is_string($value)) return $default;
-    // Matches #RRGGBB format
-    return preg_match('/^#[0-9A-Fa-f]{6}$/', $value) ? $value : $default;
-   };
-
-    // --- 1. RESET DEFAULTS ---
-    if ($actionType === 'reset_defaults') {
-        // [UPDATED] Use prepared statement for consistency
-        $stmt = $conn->prepare($sqlResetDefaults);
-        if ($stmt->execute()) {
-            $_SESSION['flash_msg'] = "系统设置已重置为默认值！";
-            $_SESSION['flash_type'] = "warning";
-            $redirectNeeded = true;
-            $logActionCode = 'D'; 
-            $logMessage = 'Reset Website Settings to Default';
-            $logQuery = $sqlResetDefaults;
+    // 3. Get submitted action and Recheck/Validate it against the DB list
+    $rawAction = strtolower(trim($_POST['action_type'] ?? $ACTION_SAVE)); 
+    if (!isset($validActions[$rawAction])) {
+        $_SESSION['flash_msg'] = "操作被拒绝：数据库页面权限 (Page Action) 中未定义此操作 ({$rawAction})。";
+        $_SESSION['flash_type'] = "danger";
+        
+        if (!headers_sent()) {
+            header("Location: " . $webBaseUrl);
         } else {
-            $message = "重置系统设置为默认值时发生错误，请稍后重试。";
-            $msgType = "error";
+            echo "<script>window.location.href = '" . $webBaseUrl . "';</script>";
         }
+        exit();
+    }
+    
+    $actionType = $rawAction;
+
+    // 4. Dynamic Role Permission Check
+    if (empty($perm->$actionType)) {
+        $_SESSION['flash_msg'] = "权限不足：您的角色没有执行此操作的权限。";
+        $_SESSION['flash_type'] = "danger";
         
-        $stmt->close();
+        if (!headers_sent()) {
+            header("Location: " . $webBaseUrl);
+        } else {
+            echo "<script>window.location.href = '" . $webBaseUrl . "';</script>";
+        }
+        exit();
     }
-    // --- 2. REMOVE LOGO ---
-    elseif ($actionType === 'remove_logo') {
-        // [SECURE DELETE] Delete physical file with path validation
-        if (!empty($current['website_logo'])) {
-            $fileToDelete = $uploadDir . $current['website_logo'];
-            $realBase = realpath($uploadDir);
-            $realFile = realpath($fileToDelete);
 
-            // Validate path traversal protection
-            if ($realFile && strpos($realFile, $realBase) === 0 && file_exists($realFile)) {
-                unlink($realFile);
-            }
-        }
+    // 5. Setup Action Variables
+    $newDataToSave = [];
+    $uploadErrors = [];
+    $logMessage = '';
+    $actionTitle = '';
+    $flashType = 'success';
+    $logActionCode = 'E';
 
-        // [UPDATED] Use prepared statement
-        $stmt = $conn->prepare($sqlRemoveLogo);
-        if ($stmt->execute()) {
-            $_SESSION['flash_msg'] = "网站 Logo 已移除！";
-            $_SESSION['flash_type'] = "success";
-            $redirectNeeded = true;
-            $logMessage = 'Removed Website Logo';
-            $logQuery = $sqlRemoveLogo;
-        }else {
-            $_SESSION['flash_msg'] = "移除网站 Logo 失败，请稍后重试。";
-            $_SESSION['flash_type'] = "danger";
-        }
+    // Validate Hex Color helper function
+    $validateHex = function($value, $default) {
+        if (!is_string($value)) return $default;
+        return preg_match('/^#[0-9A-Fa-f]{6}$/', $value) ? $value : $default;
+    };
 
-        $stmt->close();
-    }
-    // --- 3. REMOVE FAVICON ---
-    elseif ($actionType === 'remove_favicon') {
-        // [SECURE DELETE] Delete physical file with path validation
-        if (!empty($current['website_favicon'])) {
-            $fileToDelete = $uploadDir . $current['website_favicon'];
-            $realBase = realpath($uploadDir);
-            $realFile = realpath($fileToDelete);
-
-            if ($realFile && strpos($realFile, $realBase) === 0 && file_exists($realFile)) {
-                unlink($realFile);
-            }
-        }
-
-        // [UPDATED] Use prepared statement
-        $stmt = $conn->prepare($sqlRemoveFavicon);
-        if ($stmt->execute()) {
-            $_SESSION['flash_msg'] = "网站 Favicon 已移除！";
-            $_SESSION['flash_type'] = "success";
-            $redirectNeeded = true;
-            $logMessage = 'Removed Website Favicon';
-            $logQuery = $sqlRemoveFavicon;
-        }else {
-            $_SESSION['flash_msg'] = "移除网站 Favicon 时出错，请稍后重试。";
-            $_SESSION['flash_type'] = "danger";
-        }
+    // --- DETERMINE DATA PAYLOAD BASED ON ACTION ---
+    
+    if ($actionType === $ACTION_RESET && $ACTION_RESET !== null) {
+        $newDataToSave = [
+            'website_name' => 'Website Name',
+            'website_logo' => '',
+            'website_favicon' => '',
+            'theme_bg_color' => '#ffffff',
+            'theme_text_color' => '#333333',
+            'button_color' => '#233dd2',
+            'button_text_color' => '#ffffff',
+            'background_color' => '#f4f7f6'
+        ];
         
-        $stmt->close();
-    }
+        // Clean up physical files safely
+        if (!empty($current['website_logo'])) @unlink($uploadDir . $current['website_logo']);
+        if (!empty($current['website_favicon'])) @unlink($uploadDir . $current['website_favicon']);
 
-    // --- 4. SAVE SETTINGS (Default) ---
-    else {
-        $existingRes = $conn->query("SELECT id FROM $table WHERE id = 1");
-        $isEditMode = ($existingRes && $existingRes->num_rows > 0);
-        $submitAction = $isEditMode ? 'edit' : 'add';
-        checkPermissionError($submitAction, $perm, '网站设置');
+        $logMessage = 'Reset Website Settings to Default';
+        $actionTitle = "{$pageName}已重置为默认值！";
+        $flashType = 'warning';
+        $logActionCode = 'D';
 
-        // Prepare Data
-        $newData = [
+    } elseif ($actionType === $ACTION_RM_LOGO && $ACTION_RM_LOGO !== null) {
+        if (!empty($current['website_logo'])) @unlink($uploadDir . $current['website_logo']);
+        $newDataToSave = ['website_logo' => ''];
+        $logMessage = 'Removed Website Logo';
+        $actionTitle = "网站 Logo 已移除！";
+
+    } elseif ($actionType === $ACTION_RM_FAV && $ACTION_RM_FAV !== null) {
+        if (!empty($current['website_favicon'])) @unlink($uploadDir . $current['website_favicon']);
+        $newDataToSave = ['website_favicon' => ''];
+        $logMessage = 'Removed Website Favicon';
+        $actionTitle = "网站 Favicon 已移除！";
+
+    } else {
+        // DEFAULT SAVE ACTION
+        $sanitizedWebsiteName = mb_substr(trim($_POST['website_name'] ?? ''), 0, 255, 'UTF-8');
+        
+        $newDataToSave = [
             'website_name'     => $sanitizedWebsiteName,
             'theme_bg_color'   => $validateHex($_POST['theme_bg_color'] ?? '', '#ffffff'),
             'theme_text_color' => $validateHex($_POST['theme_text_color'] ?? '', '#333333'),
@@ -215,177 +166,159 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'background_color' => $validateHex($_POST['background_color'] ?? '', '#f4f7f6'),
         ];
 
-        // Check for changes (Logic: If text changed OR any file uploaded)
-        $hasFile = (!empty($_FILES['website_logo']['name']) || !empty($_FILES['website_favicon']['name']));
-        
-        if (!$hasFile) {
-            checkNoChangesAndRedirect($newData, $current, null);
-        }
-
-        // Handle File Uploads
-        $logoName = $current['website_logo'];
-        $favName = $current['website_favicon'];
-        
-        // [NEW] Array to collect all upload errors gracefully
-        $uploadErrors = [];
-
-        // Handle Logo Upload
+        // Process Uploads
         if (!empty($_FILES['website_logo']['name'])) {
             $upRes = uploadImage($_FILES['website_logo'], $uploadDir);
             if ($upRes['success']) {
-                if (!empty($current['website_logo'])) {
-                    $realBase = realpath($uploadDir);
-                    $realOld = realpath($uploadDir . $current['website_logo']);
-                    if ($realOld && strpos($realOld, $realBase) === 0 && file_exists($realOld)) {
-                        unlink($realOld);
-                    }
-                }
-                $logoName = $upRes['filename'];
+                if (!empty($current['website_logo'])) @unlink($uploadDir . $current['website_logo']);
+                $newDataToSave['website_logo'] = $upRes['filename'];
             } else {
                 $uploadErrors[] = "Logo Error: " . $upRes['message']; 
             }
         }
 
-        // Handle Favicon Upload
         if (!empty($_FILES['website_favicon']['name'])) {
             $upRes = uploadImage($_FILES['website_favicon'], $uploadDir);
             if ($upRes['success']) {
-                if (!empty($current['website_favicon'])) {
-                    $realBase = realpath($uploadDir);
-                    $realOld = realpath($uploadDir . $current['website_favicon']);
-                    if ($realOld && strpos($realOld, $realBase) === 0 && file_exists($realOld)) {
-                        unlink($realOld);
-                    }
-                }
-                $favName = $upRes['filename'];
+                if (!empty($current['website_favicon'])) @unlink($uploadDir . $current['website_favicon']);
+                $newDataToSave['website_favicon'] = $upRes['filename'];
             } else { 
                 $uploadErrors[] = "Favicon Error: " . $upRes['message']; 
             }
         }
 
-        // [NEW] Graceful Error Display
-        if (!empty($uploadErrors)) {
-            $message = implode("<br>", $uploadErrors);
-            $msgType = "danger";
-        }
+        $logMessage = 'Updated Website Settings';
+        $actionTitle = "{$pageName}已更新！";
+    }
 
-        if (empty($uploadErrors)) {
-            // Check row existence
-            $check = $conn->query("SELECT id FROM $table WHERE id = 1");
-            $sql = ($check && $check->num_rows > 0) ? $sqlWebSettingsUpdate : $sqlWebSettingsInsert;
-            
-            $stmt = $conn->prepare($sql);
-            $stmt->bind_param("ssssssss", 
-                $newData['website_name'], $logoName, $favName, 
-                $newData['theme_bg_color'], $newData['theme_text_color'], 
-                $newData['button_color'], $newData['button_text_color'], 
-                $newData['background_color']
-            );
+    // --- DYNAMIC QUERY BUILDER & EXECUTION ---
+    
+    if (!empty($uploadErrors)) {
+        $_SESSION['flash_msg'] = implode("<br>", $uploadErrors);
+        $_SESSION['flash_type'] = "danger";
+    } else {
+        
+        $fieldsToUpdate = [];
+        $values = [];
+        $types = '';
 
-            if ($stmt->execute()) {
-                $_SESSION['flash_msg'] = "网站设置已更新！";
-                $_SESSION['flash_type'] = "success";
-                $redirectNeeded = true;
-                $logMessage = 'Updated Website Settings';
-                $logQuery = $sql;
-                
-                // Update new data with filenames for audit log
-                $newData['website_logo'] = $logoName;
-                $newData['website_favicon'] = $favName;
-            } else {
-                $message = "Save Failed: " . $conn->error;
-                $msgType = "danger";
+        foreach ($newDataToSave as $col => $val) {
+            if (!array_key_exists($col, $current) || (string)$current[$col] !== (string)$val) {
+                $fieldsToUpdate[] = "`{$col}` = ?";
+                $values[] = $val;
+                $types .= 's';
             }
-            $stmt->close();
-        }
-    }
-
-    // --- COMMON POST-PROCESSING ---
-    if ($redirectNeeded) {
-        if (function_exists('logAudit')) {
-            logAudit([
-                'page'           => $auditPage,
-                'action'         => $logActionCode,
-                'action_message' => $logMessage,
-                'query'          => $logQuery,
-                'query_table'    => $table,
-                'user_id'        => $auditUserId,
-                'record_id'      => 1,
-                'record_name'    => 'Global Settings',
-                'old_value'      => $current,
-                'new_value'      => isset($newData) ? $newData : null 
-            ]);
         }
 
-        if (!headers_sent()) {
-            header("Location: " . $webBaseUrl);
+        $check = $conn->query("SELECT id FROM $table WHERE id = 1");
+        $isEditMode = ($check && $check->num_rows > 0);
+
+        if ($isEditMode && empty($fieldsToUpdate)) {
+
+        $_SESSION['flash_msg'] = "没有修改，无需保存";
+            $_SESSION['flash_type'] = "warning";
         } else {
-            echo "<script>window.location.href = '" . $webBaseUrl . "';</script>";
+            $success = false;
+            $executedQuery = "";
+
+            if ($isEditMode) {
+                // Generate Dynamic UPDATE Query
+                $sql = "UPDATE {$table} SET " . implode(', ', $fieldsToUpdate) . " WHERE id = 1";
+                $executedQuery = $sql;
+                
+                $stmt = $conn->prepare($sql);
+                if ($stmt) {
+                    $stmt->bind_param($types, ...$values);
+                    $success = $stmt->execute();
+                    $stmt->close();
+                }
+            } else {
+                // Generate Dynamic Initial INSERT Query
+                $insertData = array_merge($current, $newDataToSave); // Fill missing fields with defaults
+                $cols = array_keys($insertData);
+                $placeholders = array_fill(0, count($cols), '?');
+                
+                $sql = "INSERT INTO {$table} (" . implode(', ', $cols) . ", id) VALUES (" . implode(', ', $placeholders) . ", 1)";
+                $executedQuery = $sql;
+                
+                $stmt = $conn->prepare($sql);
+                if ($stmt) {
+                    $insertVals = array_values($insertData);
+                    $insertTypes = str_repeat('s', count($insertVals));
+                    $stmt->bind_param($insertTypes, ...$insertVals);
+                    $success = $stmt->execute();
+                    $stmt->close();
+                }
+            }
+
+            // --- FINALIZATION ---
+            if ($success) {
+                $_SESSION['flash_msg'] = $actionTitle;
+                $_SESSION['flash_type'] = $flashType;
+
+                if (function_exists('logAudit')) {
+                    $auditNewData = array_merge($current, $newDataToSave);
+                    logAudit([
+                        'page'           => $auditPage,
+                        'action'         => $logActionCode,
+                        'action_message' => $logMessage,
+                        'query'          => $executedQuery,
+                        'query_table'    => $table,
+                        'user_id'        => $auditUserId,
+                        'record_id'      => 1,
+                        'record_name'    => 'Global Settings',
+                        'old_value'      => $current,
+                        'new_value'      => $auditNewData 
+                    ]);
+                }
+            } else {
+                $_SESSION['flash_msg'] = "保存失败: " . $conn->error;
+                $_SESSION['flash_type'] = "danger";
+            }
         }
-        exit();
     }
+
+    if (!headers_sent()) {
+        header("Location: " . $webBaseUrl);
+    } else {
+        echo "<script>window.location.href = '" . $webBaseUrl . "';</script>";
+    }
+    exit();
 }
 
 // ========== RENDER ==========
-if ($isEmbeddedWebSetting): ?>
- <?php echo generateBreadcrumb($conn, $currentUrl); ?>
-    <div class="web-settings-container" style="max-width: 1000px; margin: 0 auto;">
-        <div class="row justify-content-center">
-            <div class="col-12">
-                <div class="card meta-card">
-                    <div class="card-header meta-card-header">
-                        <h4 class="header-title"><i class="fa-solid fa-paintbrush"></i> Website Settings</h4>
-                        <p class="header-subtitle">Customize the global appearance and branding of your site.</p>
-                    </div>
-                    <div class="card-body meta-card-body">
-                        <?php if ($message): ?>
-                            <div class="alert alert-<?php echo $msgType; ?> alert-dismissible fade show">
-                                <?php echo $message; ?>
-                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                            </div>
-                        <?php endif; ?>
-                        <?php require __DIR__ . '/form.php'; ?>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <script src="<?php echo URL_ASSETS; ?>/js/webSetting.js"></script>
+?>
 
-<?php else: ?>
-    <!DOCTYPE html>
-    <html lang="zh-CN">
-    <head>
-        <?php require_once BASE_PATH . 'include/header.php'; ?>
-        <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/meta.css">
-    </head>
-    <body>
-    <?php require_once BASE_PATH . 'common/menu/header.php'; ?>
-    <div class="container mt-4" style="max-width: 1000px;">
-        <div class="row justify-content-center">
-            <div class="col-12">
-                <div class="card meta-card">
-                    <div class="card-header meta-card-header">
-                        <?php echo generateBreadcrumb($conn, $currentUrl); ?>
-                        <h4 class="header-title"><i class="fa-solid fa-paintbrush"></i> Website Settings</h4>
-                        <p class="header-subtitle">Customize the global appearance and branding of your site.</p>
-                    </div>
-                    <div class="card-body meta-card-body">
-                        <?php if ($message): ?>
-                            <div class="alert alert-<?php echo $msgType; ?> alert-dismissible fade show">
-                                <?php echo $message; ?>
-                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                            </div>
-                        <?php endif; ?>
-                        <?php require __DIR__ . '/form.php'; ?>
-                    </div>
+<link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/webSetting.css">
+<div class="web-settings-container mt-4" style="max-width: 1000px; margin: 0 auto;">
+    
+    <div class="mb-3">
+        <?php echo generateBreadcrumb($conn, $currentUrl); ?>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-12">
+            <div class="card shadow-sm border-0 mb-4" style="border-radius: 12px;">
+                <div class="card-header bg-white border-bottom-0 pt-4 pb-3 px-4">
+                    <h4 class="header-title m-0 fw-bold"><i class="fa-solid fa-paintbrush me-2"></i> <?php echo htmlspecialchars($pageName); ?></h4>
+                    <p class="header-subtitle mt-1 mb-0 text-muted">Customize the global appearance and branding of your site.</p>
+                </div>
+                <div class="card-body p-4">
+                    
+                    <?php if ($message): ?>
+                        <div class="alert alert-<?php echo htmlspecialchars($msgType); ?> alert-dismissible fade show">
+                            <i class="fa-solid fa-circle-exclamation me-2"></i>
+                            <?php echo $message; ?>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    <?php endif; ?>
+                    
+                    <?php require __DIR__ . '/form.php'; ?>
+                    
                 </div>
             </div>
         </div>
     </div>
-    <script src="<?php echo URL_ASSETS; ?>/js/sweetalert2@11.js"></script>
-    <script src="<?php echo URL_ASSETS; ?>/js/bootstrap.bundle.min.js"></script>
-    <script src="<?php echo URL_ASSETS; ?>/js/webSetting.js"></script>
-    </body>
-    </html>
-<?php endif; ?>
+</div>
+
+<script src="<?php echo URL_ASSETS; ?>/js/webSetting.js"></script>

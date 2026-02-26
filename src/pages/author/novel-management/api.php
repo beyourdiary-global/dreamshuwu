@@ -3,17 +3,15 @@
 
 try {
     require_once dirname(__DIR__, 4) . '/common.php';
+
+    // Basic Auth Check
+    requireLogin();
     
     // Clear any accidental output before sending JSON
     if (ob_get_length()) ob_clean();
     header('Content-Type: application/json; charset=utf-8');
 
-    // Basic Auth Check
-    if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
-        throw new Exception('会话已过期，请重新登录。');
-    }
-
-    $currentUserId = (int)$_SESSION['user_id'];
+    $currentUserId = $_SESSION['user_id'];
     
     // Strict Author Profile Check (Must be Verified Author)
     $authorSql = "SELECT verification_status FROM " . AUTHOR_PROFILE . " WHERE user_id = ? AND status = 'A' LIMIT 1";
@@ -45,32 +43,29 @@ try {
     
     // Check specific operation permissions based on the current request mode
     if (in_array($mode, ['data', 'stats', 'get_tags', 'get_novel'])) {
-        $viewError = checkPermissionError('view', $perm, '我的小说', false);
-        if ($viewError) throw new Exception($viewError);
+        checkPermissionError('view', $perm);
     }
     if ($mode === 'create') {
-        $addError = checkPermissionError('add', $perm, '我的小说', false);
-        if ($addError) throw new Exception($addError);
+        checkPermissionError('add', $perm);
     }
     if ($mode === 'update') {
-        $editError = checkPermissionError('edit', $perm, '我的小说', false);
-        if ($editError) throw new Exception($editError);
+        checkPermissionError('edit', $perm);
     }
     if ($mode === 'delete') {
-        $deleteError = checkPermissionError('delete', $perm, '我的小说', false);
-        if ($deleteError) throw new Exception($deleteError);
+        checkPermissionError('delete', $perm);
     }
 
     $novelTable = defined('NOVEL') ? NOVEL : 'novel';
     $categoryTable = defined('NOVEL_CATEGORY') ? NOVEL_CATEGORY : 'novel_category';
     $tagTable = defined('NOVEL_TAG') ? NOVEL_TAG : 'novel_tag';
     $catTagTable = defined('CATEGORY_TAG') ? CATEGORY_TAG : 'category_tag';
+    $auditPage = 'Author Novel Management';
 
     // ==========================================
     // GET SINGLE NOVEL (For Modal Populating)
     // ==========================================
     if ($mode === 'get_novel') {
-        $novelId = (int)($_GET['id'] ?? 0);
+        $novelId = ($_GET['id'] ?? 0);
         if ($novelId <= 0) throw new Exception('无效的小说ID');
 
         $sql = "SELECT id, title, category_id, tags, introduction, cover_image, completion_status FROM {$novelTable} WHERE id = ? AND author_id = ? AND status = 'A' LIMIT 1";
@@ -88,7 +83,7 @@ try {
         $stmt->fetch();
         $stmt->close();
 
-        $tagsArray = array_map('trim', explode(',', $rTags));
+        $tagsArray = array_map('intval', explode(',', $rTags));
 
         echo safeJsonEncode([
             'success' => true,
@@ -106,10 +101,10 @@ try {
     }
 
     // ==========================================
-    // DYNAMIC TAGS FETCHING (No JOINs)
+    // DYNAMIC TAGS FETCHING
     // ==========================================
     if ($mode === 'get_tags') {
-        $catId = (int)($_GET['category_id'] ?? 0);
+        $catId = ($_GET['category_id'] ?? 0);
         $tags = [];
         $tagIds = [];
         
@@ -169,12 +164,12 @@ try {
     }
 
     // ==========================================
-    // DATATABLES LIST (No JOINs)
+    // DATATABLES LIST
     // ==========================================
     if ($mode === 'data') {
-        $draw = (int)($_REQUEST['draw'] ?? 1);
-        $start = max(0, (int)($_REQUEST['start'] ?? 0));
-        $length = max(1, min(100, (int)($_REQUEST['length'] ?? 10)));
+        $draw = ($_REQUEST['draw'] ?? 1);
+        $start = max(0, ($_REQUEST['start'] ?? 0));
+        $length = max(1, min(100, ($_REQUEST['length'] ?? 10)));
         $searchValue = trim((string)($_REQUEST['search']['value'] ?? ''));
 
         $baseWhere = " author_id = ? AND status = 'A' ";
@@ -183,7 +178,6 @@ try {
 
         if ($searchValue !== '') {
             $searchWildcard = "%{$searchValue}%";
-            
             $matchedCatIds = [];
             $catSearchSql = "SELECT id FROM {$categoryTable} WHERE name LIKE ?";
             $stmtCat = $conn->prepare($catSearchSql);
@@ -274,8 +268,9 @@ try {
             }
 
             foreach ($rows as &$row) {
-                if (isset($catMap[$row['category_id']])) {
-                    $row['category_name'] = $catMap[$row['category_id']];
+                $categoryKey = isset($row['category_id']) ? $row['category_id'] : '';
+                if ($categoryKey !== '' && isset($catMap[$categoryKey])) {
+                    $row['category_name'] = $catMap[$categoryKey];
                 }
                 unset($row['category_id']); 
             }
@@ -300,19 +295,22 @@ try {
     // CREATE NOVEL
     // ==========================================
     if ($mode === 'create') {
+        // [REF] Define the INSERT query at the top for both execution and logging
+        $insertSql = "INSERT INTO {$novelTable} (author_id, title, category_id, tags, introduction, cover_image, completion_status, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'A', NOW(), NOW())";
+
         $title = trim($_POST['title'] ?? '');
-        $categoryId = (int)($_POST['category_id'] ?? 0);
+        $categoryId = ($_POST['category_id'] ?? 0);
         $tagsArray = $_POST['tags'] ?? [];
         $intro = trim($_POST['introduction'] ?? '');
         $completionStatus = trim($_POST['completion_status'] ?? 'ongoing');
-        $copyright = (int)($_POST['copyright_declaration'] ?? 0);
+        $copyright = ($_POST['copyright_declaration'] ?? 0);
 
         if ($title === '') throw new Exception('书名不能为空');
         if ($categoryId <= 0) throw new Exception('请选择分类');
         if (empty($tagsArray)) throw new Exception('请至少选择一个标签');
         if (count($tagsArray) > 10) throw new Exception('最多只能选择10个标签');
         if ($intro === '') throw new Exception('简介不能为空');
-        if ($copyright !== 1) throw new Exception('必须勾选版权声明');
+        if ($copyright != 1) throw new Exception('必须勾选版权声明');
         if (!isset($_FILES['cover_image']) || $_FILES['cover_image']['error'] === UPLOAD_ERR_NO_FILE) {
             throw new Exception('请上传封面图片');
         }
@@ -333,7 +331,6 @@ try {
         if (!$uploadResult['success']) throw new Exception('封面上传失败: ' . $uploadResult['message']);
         $coverFileName = $uploadResult['filename'];
 
-        $insertSql = "INSERT INTO {$novelTable} (author_id, title, category_id, tags, introduction, cover_image, completion_status, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'A', NOW(), NOW())";
         $stmt = $conn->prepare($insertSql);
         if (!$stmt) throw new Exception('数据库准备失败: ' . $conn->error);
 
@@ -348,12 +345,22 @@ try {
 
         if (function_exists('logAudit')) {
             logAudit([
-                'page' => 'Author Novel Management',
-                'action' => 'A',
+                'page'           => $auditPage,
+                'action'         => 'A',
                 'action_message' => 'Author created a new novel',
-                'user_id' => $currentUserId,
-                'record_id' => $newNovelId,
-                'record_name' => $title
+                'query'          => $insertSql,
+                'query_table'    => $novelTable,
+                'user_id'        => $currentUserId,
+                'record_id'      => $newNovelId,
+                'record_name'    => $title,
+                'new_value'      => [
+                    'title' => $title,
+                    'category_id' => $categoryId,
+                    'tags' => $tagsString,
+                    'introduction' => $intro,
+                    'cover_image' => $coverFileName,
+                    'completion_status' => $completionStatus
+                ]
             ]);
         }
         echo safeJsonEncode(['success' => true, 'message' => '小说创建成功！']);
@@ -364,9 +371,12 @@ try {
     // UPDATE NOVEL (Via Modal)
     // ==========================================
     if ($mode === 'update') {
-        $novelId = (int)($_POST['novel_id'] ?? 0);
+        // [REF] Define the UPDATE query at the top for both execution and logging
+        $updateSql = "UPDATE {$novelTable} SET title=?, category_id=?, tags=?, introduction=?, cover_image=?, completion_status=?, updated_at=NOW() WHERE id=?";
+
+        $novelId = ($_POST['novel_id'] ?? 0);
         $title = trim($_POST['title'] ?? '');
-        $categoryId = (int)($_POST['category_id'] ?? 0);
+        $categoryId = ($_POST['category_id'] ?? 0);
         $tagsArray = $_POST['tags'] ?? [];
         $intro = trim($_POST['introduction'] ?? '');
         $completionStatus = trim($_POST['completion_status'] ?? 'ongoing');
@@ -405,7 +415,7 @@ try {
             ];
         }
 
-        // 2. BACKEND CHANGE DETECTION (Mimics checkNoChangesAndRedirect)
+        // 2. BACKEND CHANGE DETECTION
         $newData = [
             'title' => $title,
             'category_id' => $categoryId,
@@ -415,11 +425,9 @@ try {
         ];
         
         $hasChanges = false;
-        // Check if a new file was uploaded
         if (isset($_FILES['cover_image']) && $_FILES['cover_image']['size'] > 0) {
             $hasChanges = true;
         } else {
-            // Check if any text field is different
             foreach ($newData as $key => $newVal) {
                 if ((string)$newVal !== (string)$oldRow[$key]) {
                     $hasChanges = true;
@@ -428,7 +436,6 @@ try {
             }
         }
 
-        // If no changes exist, return early with warning flag
         if (!$hasChanges) {
             echo safeJsonEncode([
                 'success' => false,
@@ -438,7 +445,7 @@ try {
             exit();
         }
 
-        // 3. Uniqueness Check (Exclude current novel ID)
+        // 3. Uniqueness Check
         $uniqSql = "SELECT id FROM {$novelTable} WHERE author_id = ? AND title = ? AND id != ? AND status = 'A' LIMIT 1";
         $stmt = $conn->prepare($uniqSql);
         if ($stmt) {
@@ -457,14 +464,12 @@ try {
             if (!$uploadResult['success']) throw new Exception('封面上传失败: ' . $uploadResult['message']);
             $finalCoverName = $uploadResult['filename'];
             
-            // Delete old cover to save disk space
             if (!empty($oldRow['cover_image']) && file_exists(BASE_PATH . 'assets/uploads/novel_covers/' . $oldRow['cover_image'])) {
                 @unlink(BASE_PATH . 'assets/uploads/novel_covers/' . $oldRow['cover_image']);
             }
         }
 
-        // 5. Update Database
-        $updateSql = "UPDATE {$novelTable} SET title=?, category_id=?, tags=?, introduction=?, cover_image=?, completion_status=?, updated_at=NOW() WHERE id=?";
+        // 5. Update Database using pre-defined query
         $stmt = $conn->prepare($updateSql);
         if (!$stmt) throw new Exception('数据库准备失败: ' . $conn->error);
 
@@ -476,13 +481,20 @@ try {
         $stmt->close();
 
         if (function_exists('logAudit')) {
+            // Append cover image to newData for logging
+            $newData['cover_image'] = $finalCoverName;
+            
             logAudit([
-                'page' => 'Author Novel Management',
-                'action' => 'E',
+                'page'           => $auditPage,
+                'action'         => 'E',
                 'action_message' => 'Author updated novel',
-                'user_id' => $currentUserId,
-                'record_id' => $novelId,
-                'record_name' => $title
+                'query'          => $updateSql,
+                'query_table'    => $novelTable,
+                'user_id'        => $currentUserId,
+                'record_id'      => $novelId,
+                'record_name'    => $title,
+                'old_value'      => $oldRow,
+                'new_value'      => $newData
             ]);
         }
         echo safeJsonEncode(['success' => true, 'message' => '小说更新成功！']);
@@ -493,7 +505,10 @@ try {
     // DELETE NOVEL (Soft Delete)
     // ==========================================
     if ($mode === 'delete') {
-        $novelId = (int)($_POST['id'] ?? 0);
+        // [REF] Define the DELETE query at the top for both execution and logging
+        $delSql = "UPDATE {$novelTable} SET status = 'D', updated_at = NOW() WHERE id = ?";
+
+        $novelId = ($_POST['id'] ?? 0);
         if ($novelId <= 0) throw new Exception('无效的ID');
 
         $checkSql = "SELECT title FROM {$novelTable} WHERE id = ? AND author_id = ? AND status = 'A' LIMIT 1";
@@ -506,7 +521,6 @@ try {
         $stmt->fetch();
         $stmt->close();
 
-        $delSql = "UPDATE {$novelTable} SET status = 'D', updated_at = NOW() WHERE id = ?";
         $stmt = $conn->prepare($delSql);
         $stmt->bind_param("i", $novelId);
         $stmt->execute();
@@ -514,12 +528,14 @@ try {
 
         if (function_exists('logAudit')) {
             logAudit([
-                'page' => 'Author Novel Management',
-                'action' => 'D',
+                'page'           => $auditPage,
+                'action'         => 'D',
                 'action_message' => 'Author soft deleted novel',
-                'user_id' => $currentUserId,
-                'record_id' => $novelId,
-                'record_name' => $novelTitle
+                'query'          => $delSql,
+                'query_table'    => $novelTable,
+                'user_id'        => $currentUserId,
+                'record_id'      => $novelId,
+                'record_name'    => $novelTitle
             ]);
         }
         echo safeJsonEncode(['success' => true, 'message' => '小说已删除。']);
@@ -527,30 +543,22 @@ try {
     }
 
 } catch (Throwable $e) {
-    // 1. Log the full, unredacted error to the server logs for the developer/admin
-    // This records the message, file path, and line number securely on the server
     error_log("Novel Management API Error: " . $e->getMessage() . " in " . $e->getFile() . " on line " . $e->getLine());
 
-    // 2. Clear any stray output to ensure a clean JSON response
     if (ob_get_length()) ob_clean(); 
     header('Content-Type: application/json; charset=utf-8');
     
     $modeStr = isset($_REQUEST['mode']) ? $_REQUEST['mode'] : 'data';
-    
     if ($modeStr === 'data') {
-        // Standard response format expected by DataTables when an error occurs
         echo safeJsonEncode([
             'draw' => intval($_REQUEST['draw'] ?? 1),
             'recordsTotal' => 0,
             'recordsFiltered' => 0,
             'data' => [],
-            'error' => '接口错误，请检查系统日志' // Generic message for DataTables
+            'error' => '接口错误，请检查系统日志'
         ]);
     } else {
-        echo safeJsonEncode([
-            'success' => false, 
-            'message' => '系统错误，请稍后再试或联系管理员' 
-        ]);
+        echo safeJsonEncode(['success' => false, 'message' => '系统错误，请稍后再试或联系管理员']);
     }
     exit();
 }

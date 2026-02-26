@@ -7,7 +7,9 @@ if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 
-$currentUserId = isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : 0;
+requireLogin();
+
+$currentUserId = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : 0;
 
 // Verify if the current user is an approved author
 requireApprovedAuthor($conn, $currentUserId);
@@ -23,16 +25,32 @@ if (empty($perm) || (isset($perm->view) && empty($perm->view))) {
 }
 
 // Check for view permission; block and redirect if denied
-checkPermissionError('view', $perm, '我的小说 (Novel Management)');
+checkPermissionError('view', $perm);
 
-// Fetch category list directly from the novel_category table
-$categories = [];
+// [REF] Define view query early for use in execution and logging
 $catSql = "SELECT id, name FROM " . NOVEL_CATEGORY . " ORDER BY name ASC";
+$categories = [];
+
 if ($res = $conn->query($catSql)) {
     while ($row = $res->fetch_assoc()) {
         $categories[] = $row;
     }
     $res->free();
+}
+
+// 🌟 ADDED: Log the "View" action just like the example
+if (!defined('NOVEL_MGMT_VIEW_LOGGED')) {
+    define('NOVEL_MGMT_VIEW_LOGGED', true);
+    if (function_exists('logAudit')) {
+        logAudit([
+            'page'           => $auditPage,
+            'action'         => 'V',
+            'action_message' => 'Viewing Author Novel Management Page',
+            'query'          => $catSql,
+            'query_table'    => NOVEL_CATEGORY,
+            'user_id'        => $currentUserId
+        ]);
+    }
 }
 
 $apiEndpoint = defined('URL_AUTHOR_NOVEL_API') ? URL_AUTHOR_NOVEL_API : SITEURL . '/src/pages/author/novel-management/api.php';

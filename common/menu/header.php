@@ -23,8 +23,8 @@ $authorZoneUrl = URL_LOGIN;
 $isAuthorPage = false;
 
 if ($isLoggedIn) {
-    $currentUserId = isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : 0;
-    $sessionRoleId = isset($_SESSION['role_id']) ? (int)$_SESSION['role_id'] : 0;
+    $currentUserId = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : 0;
+    $sessionRoleId = isset($_SESSION['role_id']) ? $_SESSION['role_id'] : 0;
     $cacheTtlSeconds = 300;
     
     // 1. Check Session Cache to prevent DB hits on every page load
@@ -34,9 +34,9 @@ if ($isLoggedIn) {
 
     $cacheValid = (
         isset($permCache['user_id'], $permCache['role_id'], $permCache['expires_at'], $permCache['url']) &&
-        (int)$permCache['user_id'] === $currentUserId &&
-        (int)$permCache['role_id'] === $sessionRoleId &&
-        (int)$permCache['expires_at'] > time()
+        $permCache['user_id'] === $currentUserId &&
+        $permCache['role_id'] === $sessionRoleId &&
+        $permCache['expires_at'] > time()
     );
 
     if ($cacheValid) {

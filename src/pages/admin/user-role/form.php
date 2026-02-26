@@ -1,9 +1,10 @@
 <?php
 // Path: src/pages/admin/user-role/form.php
 
+requireLogin();
 // 1. Initialization
 // Retrieve record ID from GET request to determine Add vs Edit mode
-$recordId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+$recordId = isset($_GET['id']) ? $_GET['id'] : 0;
 $isEditMode = $recordId > 0;
 
 // Initialize form data structure with defaults
@@ -17,11 +18,11 @@ $formRow = [
 $assignedPerms = [];
 
 // 1. Check View Permission for the form page
-checkPermissionError('view', $perm, '用户角色表单');
+checkPermissionError('view', $perm);
 
 // 2. Check Add/Edit Permission for loading the form
 $actionToCheck = $isEditMode ? 'edit' : 'add';
-checkPermissionError($actionToCheck, $perm, '用户角色');
+checkPermissionError($actionToCheck, $perm);
 
 // 2. Form Submission Handling (POST)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['mode'])) {
@@ -30,11 +31,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['mode'])) {
     // Handle 'save' action
     if ($formAction === 'save') {
         // Collect and sanitize input
-        $recordId = isset($_POST['id']) ? (int)$_POST['id'] : 0;
+        $recordId = isset($_POST['id']) ? $_POST['id'] : 0;
         $isEditMode = $recordId > 0;
         // 3. Check Add/Edit Permission for form submission
         $submitAction = $isEditMode ? 'edit' : 'add';
-        checkPermissionError($submitAction, $perm, '用户角色');
+        checkPermissionError($submitAction, $perm);
 
         $name_cn = trim($_POST['name_cn'] ?? '');
         $name_en = trim($_POST['name_en'] ?? '');
@@ -114,7 +115,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['mode'])) {
                 $stmt = $conn->prepare($executedSql);
                 $stmt->bind_param('sssss', $name_en, $name_cn, $description, $createdBy, $updatedBy);
                 $stmt->execute();
-                $targetId = (int)$conn->insert_id;
+                $targetId = $conn->insert_id;
                 $stmt->close();
                 $mainActionType = 'A'; // Audit: Add
             }
@@ -126,8 +127,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['mode'])) {
                 foreach ($selectedPerms as $permKey) {
                     // Parse "pageId_actionId" string
                     @list($pageId, $actionId) = explode('_', $permKey);
-                    $pageId = (int)$pageId;
-                    $actionId = (int)$actionId;
+                    if (!is_numeric($pageId) || !is_numeric($actionId)) {
+                        continue;
+                    }
                     
                     $bindStmt->bind_param('iiii', $targetId, $pageId, $actionId, $currentUserId);
                     $bindStmt->execute();
@@ -234,7 +236,7 @@ $masterSql = "SELECT page_id, action_id FROM " . ACTION_MASTER;
 $masterRes = $conn->query($masterSql);
 if ($masterRes) {
     while ($row = $masterRes->fetch_assoc()) {
-        $pageActionMaster[(int)$row['page_id']][] = (int)$row['action_id'];
+        $pageActionMaster[$row['page_id']][] = $row['action_id'];
     }
 }
 ?>
@@ -260,7 +262,7 @@ if ($masterRes) {
 
             <form method="POST" action="<?php echo htmlspecialchars($formBaseUrl . ($isEditMode ? '&id=' . $recordId : '')); ?>" class="<?php echo $isEditMode ? 'check-changes' : ''; ?>">
                 <input type="hidden" name="action_type" value="save">
-                <?php if ($isEditMode): ?><input type="hidden" name="id" value="<?php echo (int)$recordId; ?>"><?php endif; ?>
+                <?php if ($isEditMode): ?><input type="hidden" name="id" value="<?php echo $recordId; ?>"><?php endif; ?>
 
                 <div class="row">
                     <div class="col-md-6">
