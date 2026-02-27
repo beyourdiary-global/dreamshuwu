@@ -74,9 +74,7 @@ $stmt->close();
 $coverUrl = $nCover ? (URL_ASSETS . '/uploads/novel_covers/' . htmlspecialchars($nCover)) : (URL_ASSETS . '/images/no-cover.png');
 
 // Log the "View" action dynamically
-if (!defined('CHAPTER_MGMT_VIEW_LOGGED')) {
-    define('CHAPTER_MGMT_VIEW_LOGGED', true);
-    if (function_exists('logAudit')) {
+if (function_exists('logAudit')) {
         logAudit([
             'page'           => $auditPage,
             'action'         => 'V',
@@ -86,7 +84,6 @@ if (!defined('CHAPTER_MGMT_VIEW_LOGGED')) {
             'user_id'        => $currentUserId
         ]);
     }
-}
 
 // Fetch Chapter Statistics
 $statSql = "SELECT 
@@ -115,7 +112,6 @@ $apiEndpoint = SITEURL . '/src/pages/author/chapter-management/api.php';
 $currentUrl = '/author/novel/' . $novelId . '/chapters/';
 ?>
 <!DOCTYPE html>
-<html lang="<?php echo defined('SITE_LANG') ? SITE_LANG : 'zh-CN'; ?>">
 <head>
     <?php require_once BASE_PATH . 'include/header.php'; ?>
     <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/dataTables.bootstrap.min.css">

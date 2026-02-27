@@ -21,8 +21,7 @@ if (empty($perm) || (isset($perm->view) && empty($perm->view))) {
 checkPermissionError('view', $perm);
 $apiEndpoint = defined('URL_EMAIL_TEMPLATE_API') ? URL_EMAIL_TEMPLATE_API : (SITEURL . '/src/pages/author/email-template/api.php');
 
-if (function_exists('logAudit') && !defined('EMAIL_TEMPLATE_VIEW_LOGGED')) {
-    define('EMAIL_TEMPLATE_VIEW_LOGGED', true);
+if (function_exists('logAudit')) {
     logAudit([
         'page' => $auditPage,
         'action' => 'V',

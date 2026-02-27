@@ -946,7 +946,7 @@ input[type="password"]::-ms-clear {
 
 .category-container .tag-checkbox-area .form-check-input {
   flex: 0 0 auto;
-  margin-top: 0.25rem;
+  margin-top: 4px;
 }
 
 .category-container .tag-checkbox-area .form-check-label {

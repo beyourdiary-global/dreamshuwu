@@ -226,8 +226,7 @@ if ($authorStatus === 'approved') {
     exit();
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'GET' && function_exists('logAudit') && !defined('AUTHOR_REG_VIEW_LOGGED')) {
-    define('AUTHOR_REG_VIEW_LOGGED', true);
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && function_exists('logAudit')) {
     logAudit([
         'page'           => $auditPage,
         'action'         => 'V',
@@ -241,7 +240,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && function_exists('logAudit') && !defi
 $pageMetaKey = $currentUrl;
 ?>
 <!DOCTYPE html>
-<html lang="<?php echo defined('SITE_LANG') ? SITE_LANG : 'zh-CN'; ?>">
 <head>
     <?php require_once BASE_PATH . 'include/header.php'; ?>
     <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/author.css?v=<?php echo time(); ?>">

@@ -36,9 +36,11 @@ if ($flashMsg !== '') {
     unset($_SESSION['flash_msg'], $_SESSION['flash_type']);
 }
 
-$pageActionMode = isset($_GET['pa_mode']) && $_GET['pa_mode'] === 'form' ? 'form' : 'list';
+// [FIX] Used input() global function
+$pageActionMode = input('pa_mode') === 'form' ? 'form' : 'list';
 
-if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
+// [FIX] Used input() global function
+if (input('mode') === 'data') {
     header('Content-Type: application/json');
     if (!$hasPermission) {
         http_response_code(403);
@@ -46,9 +48,14 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
         exit();
     }
 
-    $search = trim($_GET['search'] ?? ($_GET['search_name'] ?? ''));
-    $page = max(1, ($_GET['page'] ?? 1));
-    $perPage = ($_GET['per_page'] ?? 10);
+    // [FIX] Used searchInput() global function
+    $searchReq = searchInput('search');
+    $search = $searchReq !== '' ? $searchReq : searchInput('search_name');
+    
+    // [FIX] Used numberInput() global function with strict casting
+    $page = max(1, (int)(numberInput('page') ?: 1));
+    $perPage = (int)(numberInput('per_page') ?: 10);
+    
     $allowedSizes = [10, 20, 50, 100];
     if (!in_array($perPage, $allowedSizes, true)) $perPage = 10;
 
@@ -128,7 +135,8 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
     exit();
 }
 
-if (isset($_POST['mode']) && $_POST['mode'] === 'delete_api') {
+// [FIX] Used post() global function
+if (post('mode') === 'delete_api') {
     header('Content-Type: application/json');
     // 2. Check Delete Permission for API
     $deleteError = checkPermissionError('delete', $perm);
@@ -138,7 +146,8 @@ if (isset($_POST['mode']) && $_POST['mode'] === 'delete_api') {
         exit();
     }
 
-    $deleteId = isset($_POST['id']) ? $_POST['id'] : 0;
+    // [FIX] Used post() global function with strict casting
+    $deleteId = (int)post('id');
     if ($deleteId <= 0) {
         echo safeJsonEncode(['success' => false, 'message' => 'Invalid ID']);
         exit();
@@ -183,16 +192,15 @@ if (function_exists('logAudit') && !defined('PAGE_ACTION_VIEW_LOGGED')) {
     define('PAGE_ACTION_VIEW_LOGGED', true);
     
     if ($pageActionMode === 'form') {
-        // 1. FORM VIEW LOGGING (matching second image)
-        $recordId = isset($_GET['id']) ? $_GET['id'] : 0;
+        // 1. FORM VIEW LOGGING
+        // [FIX] Used numberInput() global function
+        $recordId = (int)numberInput('id');
         $viewQuery = "SELECT id, name, status, created_at, updated_at, created_by, updated_by FROM {$table} WHERE id = ? LIMIT 1";
         
         logAudit([
             'page'           => $auditPage,
             'action'         => 'V',
-            // Display specific ID in the message
             'action_message' => $recordId > 0 ? "Viewing Page Action Form (Edit ID: $recordId)" : "Viewing Page Action Form (Add)",
-            // Pass SQL string with placeholder or actual ID
             'query'          => $viewQuery, 
             'query_table'    => $table,
             'user_id'        => $currentUserId,
@@ -212,9 +220,11 @@ if (function_exists('logAudit') && !defined('PAGE_ACTION_VIEW_LOGGED')) {
     }
 }
 
-$searchName = trim($_GET['search_name'] ?? '');
+// [FIX] Used searchInput() and numberInput() global functions
+$searchName = searchInput('search_name');
 $currentPage = 1;
-$perPage = ($_GET['per_page'] ?? 10);
+$perPage = (int)(numberInput('per_page') ?: 10);
+
 $allowedSizes = [10, 20, 50, 100];
 if (!in_array($perPage, $allowedSizes, true)) $perPage = 10;
 
@@ -389,7 +399,6 @@ if ($isEmbeddedPageAction):
 <?php else: ?>
 <?php $pageMetaKey = 'page_action'; ?>
 <!DOCTYPE html>
-<html lang="<?php echo defined('SITE_LANG') ? SITE_LANG : 'zh-CN'; ?>">
 <head>
     <?php require_once BASE_PATH . 'include/header.php'; ?>
 </head>

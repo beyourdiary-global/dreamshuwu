@@ -40,8 +40,7 @@ if (!$current) {
 $uploadDir = dirname(__DIR__, 3) . '/assets/uploads/settings/';
 
 // [AUDIT] Log View
-if ($_SERVER['REQUEST_METHOD'] !== 'POST' && function_exists('logAudit') && !defined('WEB_SETTINGS_VIEW_LOGGED')) {
-    define('WEB_SETTINGS_VIEW_LOGGED', true);
+if ($_SERVER['REQUEST_METHOD'] !== 'POST' && function_exists('logAudit')) {
     logAudit([
         'page'           => $auditPage,
         'action'         => 'V',

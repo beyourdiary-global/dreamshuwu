@@ -38,10 +38,7 @@ if ($res = $conn->query($catSql)) {
     $res->free();
 }
 
-// 🌟 ADDED: Log the "View" action just like the example
-if (!defined('NOVEL_MGMT_VIEW_LOGGED')) {
-    define('NOVEL_MGMT_VIEW_LOGGED', true);
-    if (function_exists('logAudit')) {
+if (function_exists('logAudit')) {
         logAudit([
             'page'           => $auditPage,
             'action'         => 'V',
@@ -50,7 +47,6 @@ if (!defined('NOVEL_MGMT_VIEW_LOGGED')) {
             'query_table'    => NOVEL_CATEGORY,
             'user_id'        => $currentUserId
         ]);
-    }
 }
 
 $apiEndpoint = defined('URL_AUTHOR_NOVEL_API') ? URL_AUTHOR_NOVEL_API : SITEURL . '/src/pages/author/novel-management/api.php';
@@ -67,7 +63,6 @@ $tableColumns = [
 ];
 ?>
 <!DOCTYPE html>
-<html lang="<?php echo defined('SITE_LANG') ? SITE_LANG : 'zh-CN'; ?>">
 <head>
     <?php require_once BASE_PATH . 'include/header.php'; ?>
     <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/dataTables.bootstrap.min.css">

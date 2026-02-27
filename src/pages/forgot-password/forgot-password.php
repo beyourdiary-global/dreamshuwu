@@ -93,7 +93,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
 <?php $pageMetaKey = '/forgot_password.php'; ?>
 <!DOCTYPE html>
-<html lang="<?php echo defined('SITE_LANG') ? SITE_LANG : 'zh-CN'; ?>">
 <head>
     <?php require_once BASE_PATH . 'include/header.php'; ?>
     <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/auth.css?v=<?php echo time(); ?>">

@@ -1,7 +1,7 @@
 <?php
 requireLogin();
 
-$recordId = isset($_GET['id']) ? $_GET['id'] : 0;
+$recordId = (int)numberInput('id');
 $isEditMode = $recordId > 0;
 $formRow = ['id' => 0, 'name' => '', 'status' => 'A'];
 
@@ -12,17 +12,23 @@ checkPermissionError('view', $perm);
 $actionToCheck = $isEditMode ? 'edit' : 'add';
 checkPermissionError($actionToCheck, $perm);
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['mode'])) {
-    $formAction = $_POST['form_action'] ?? '';
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty(post('mode'))) {
+    
+    // [FIX] Use global post method
+    $formAction = post('form_action');
+    
     if ($formAction === 'save') {
-        $recordId = isset($_POST['id']) ? $_POST['id'] : 0;
+        
+        // [FIX] Use global post method for ID
+        $recordId = (int)post('id');
         $isEditMode = $recordId > 0;
 
         // 3. Check Add/Edit Permission for form submission
         $submitAction = $isEditMode ? 'edit' : 'add';
         checkPermissionError($submitAction, $perm);
 
-        $name = trim($_POST['name'] ?? '');
+        // [FIX] Use global postSpaceFilter to automatically trim inputs
+        $name = postSpaceFilter('name');
         $redirectTo = $recordId > 0 ? ($formBaseUrl . '&id=' . $recordId) : $formBaseUrl;
 
         if ($name === '') {

@@ -25,8 +25,6 @@ $baseListUrl = URL_USER_DASHBOARD . '?view=page_info';
 $formBaseUrl = URL_USER_DASHBOARD . '?view=page_info&mode=form';
 $apiEndpoint = defined('URL_PAGE_INFO_API') ? URL_PAGE_INFO_API : (SITEURL . '/src/pages/admin/page-information-list/index.php');
 
-
-
 $currentUrl = '/dashboard.php?view=page_info';
 $perm = hasPagePermission($conn, $currentUrl);
 
@@ -34,13 +32,15 @@ $perm = hasPagePermission($conn, $currentUrl);
 checkPermissionError('view', $perm);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $actionType = $_POST['action_type'] ?? '';
+    // [FIX] Use global post method
+    $actionType = post('action_type');
 
     if ($actionType === 'delete') {
         // 2. Check Delete Permission
         checkPermissionError('delete', $perm);
 
-        $delId = isset($_POST['id']) ? $_POST['id'] : 0;
+        // [FIX] Use global post method with int casting
+        $delId = (int)post('id');
         if ($delId > 0) {
             $oldValue = fetchPageInfoRowById($conn, $tableInfo, $delId);
 
@@ -81,12 +81,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$viewMode = $_GET['mode'] ?? 'list';
+// [FIX] Use global input method
+$viewMode = input('mode') ?: 'list';
 if (function_exists('logAudit') && !defined('PAGE_INFO_LIST_VIEW_LOGGED')) {
     define('PAGE_INFO_LIST_VIEW_LOGGED', true);
 
     if ($viewMode === 'form') {
-        $idInUrl = isset($_GET['id']) ? $_GET['id'] : 0;
+        // [FIX] Use global numberInput method
+        $idInUrl = (int)numberInput('id');
         $viewQuery = "SELECT * FROM {$tableInfo} WHERE id = ?";
         
         logAudit([
@@ -98,7 +100,7 @@ if (function_exists('logAudit') && !defined('PAGE_INFO_LIST_VIEW_LOGGED')) {
             'user_id'        => $currentUserId,
             'record_id'      => $idInUrl > 0 ? $idInUrl : null
         ]);
-    } else if (!isset($_GET['search']) && !isset($_GET['page'])) {
+    } else if (input('search') === '' && numberInput('page') === '') {
         $viewSql = "SELECT id, name_en, name_cn, public_url, status FROM {$tableInfo} WHERE status = 'A'";
         logAudit([
             'page' => $auditPage,
@@ -111,9 +113,10 @@ if (function_exists('logAudit') && !defined('PAGE_INFO_LIST_VIEW_LOGGED')) {
     }
 }
 
-$search = trim($_GET['search'] ?? '');
+// [FIX] Use global searchInput and numberInput methods
+$search = searchInput('search');
 $page = 1;
-$perPage = ($_GET['per_page'] ?? 10);
+$perPage = (int)(numberInput('per_page') ?: 10);
 $allowedSizes = [10, 20, 50, 100];
 if (!in_array($perPage, $allowedSizes, true)) $perPage = 10;
 
@@ -304,7 +307,6 @@ else:
 ?>
 <?php $pageMetaKey = 'page_info'; ?>
 <!DOCTYPE html>
-<html lang="<?php echo defined('SITE_LANG') ? SITE_LANG : 'zh-CN'; ?>">
 <head>
     <?php require_once BASE_PATH . 'include/header.php'; ?>
 </head>

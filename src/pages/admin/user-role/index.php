@@ -37,13 +37,13 @@ checkPermissionError('view', $perm);
 
 // 3. POST Handling (Delete Action)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $actionType = $_POST['action_type'] ?? '';
+    $actionType = post('action_type');
 
     if ($actionType === 'delete') {
         // Check Delete Permission
         checkPermissionError('delete', $perm);
 
-        $delId = isset($_POST['id']) ? $_POST['id'] : 0;
+        $delId = (int)post('id');
         if ($delId > 0) {
             // Fetch old data for audit
             $oldValue = fetchUserRoleById($conn, $delId);
@@ -89,13 +89,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // 4. View Logging (Updated to include Form View)
-$viewMode = $_GET['mode'] ?? 'list';
+$viewMode = input('mode') ?: 'list';
 if (function_exists('logAudit') && !defined('USER_ROLE_VIEW_LOGGED')) {
     define('USER_ROLE_VIEW_LOGGED', true);
 
     if ($viewMode === 'form') {
         // [New] Log Form Viewing (Add or Edit)
-        $recordId = isset($_GET['id']) ? $_GET['id'] : 0;
+        $recordId = (int)numberInput('id');
         $viewQuery = "SELECT * FROM {$tableRole} WHERE id = ? LIMIT 1";
 
         logAudit([
@@ -107,7 +107,7 @@ if (function_exists('logAudit') && !defined('USER_ROLE_VIEW_LOGGED')) {
             'user_id'        => $currentUserId,
             'record_id'      => $recordId > 0 ? $recordId : null
         ]);
-    } elseif (!isset($_GET['search']) && !isset($_GET['page'])) {
+    } elseif (input('search') === '' && numberInput('page') === '') {
         // Log List View
         $viewSql = "SELECT id, name_en, name_cn, status FROM {$tableRole} WHERE status = 'A'";
         logAudit([
@@ -122,9 +122,9 @@ if (function_exists('logAudit') && !defined('USER_ROLE_VIEW_LOGGED')) {
 }
 
 // 5. Data Fetching (List Mode)
-$search = trim($_GET['search'] ?? '');
+$search = searchInput('search');
 $page = 1;
-$perPage = ($_GET['per_page'] ?? 10);
+$perPage = (int)(numberInput('per_page') ?: 10);
 $allowedSizes = [10, 20, 50, 100];
 if (!in_array($perPage, $allowedSizes, true)) $perPage = 10;
 
@@ -318,7 +318,6 @@ else:
 ?>
 <?php $pageMetaKey = 'user_role'; ?>
 <!DOCTYPE html>
-<html lang="<?php echo defined('SITE_LANG') ? SITE_LANG : 'zh-CN'; ?>">
 <head>
     <?php require_once BASE_PATH . 'include/header.php'; ?>
 </head>

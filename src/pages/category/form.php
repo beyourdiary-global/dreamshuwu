@@ -58,8 +58,6 @@ if (isset($_SESSION['flash_msg'])) {
 
 // [NEW] Log "View" Action (Run only on GET request)
 if ($_SERVER["REQUEST_METHOD"] !== "POST") {
-    if (!defined('CAT_FORM_VIEW_LOGGED')) {
-        define('CAT_FORM_VIEW_LOGGED', true);
         if (function_exists('logAudit')) {
             logAudit([
                 'page'           => $auditPage,
@@ -71,7 +69,6 @@ if ($_SERVER["REQUEST_METHOD"] !== "POST") {
             ]);
         }
     }
-}
 
 // 1. Fetch Data
 if ($isEditMode) {

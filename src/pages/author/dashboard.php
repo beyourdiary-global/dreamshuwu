@@ -21,9 +21,7 @@ checkPermissionError('view', $perm);
 $dashboardTable = defined('AUTHOR_PROFILE') ? AUTHOR_PROFILE : 'author_profile';
 $viewQuery = "SELECT id, user_id, pen_name, verification_status FROM {$dashboardTable} WHERE user_id = ? LIMIT 1";
 
-if (!defined('AUTHOR_DASHBOARD_VIEW_LOGGED')) {
-    define('AUTHOR_DASHBOARD_VIEW_LOGGED', true);
-    if (function_exists('logAudit')) {
+if (function_exists('logAudit')) {
         logAudit([
             'page'           => $auditPage,
             'action'         => 'V',
@@ -32,8 +30,8 @@ if (!defined('AUTHOR_DASHBOARD_VIEW_LOGGED')) {
             'query_table'    => $dashboardTable,
             'user_id'        => $currentUserId
         ]);
-    }
 }
+
 
 // 5. Fetch permissions for child modules to determine menu visibility
 // Dynamically extract the path from the defined URL to ensure it matches the database perfectly
@@ -48,7 +46,6 @@ if (empty($permNovel) || (isset($permNovel->view) && empty($permNovel->view))) {
 
 ?>
 <!DOCTYPE html>
-<html lang="<?php echo defined('SITE_LANG') ? SITE_LANG : 'zh-CN'; ?>">
 <head>
     <?php require_once BASE_PATH . 'include/header.php'; ?>
     <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/author.css">

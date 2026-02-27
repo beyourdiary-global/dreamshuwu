@@ -2,7 +2,9 @@
 // Path: src/pages/admin/page-information-list/form.php
 
 requireLogin();
-$recordId = isset($_GET['id']) ? $_GET['id'] : 0;
+
+// [FIX] Use global numberInput function
+$recordId = (int)numberInput('id');
 $isEditMode = $recordId > 0;
 $formRow = [
     'id' => 0,
@@ -21,25 +23,29 @@ checkPermissionError('view', $perm);
 $actionToCheck = $isEditMode ? 'edit' : 'add';
 checkPermissionError($actionToCheck, $perm);
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['mode'])) {
-    $formAction = $_POST['action_type'] ?? '';
+// [FIX] Use global post method
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty(post('mode'))) {
+    $formAction = post('action_type');
+    
     if ($formAction === 'save') {
-        $recordId = isset($_POST['id']) ? $_POST['id'] : 0;
+        // [FIX] Use global post method with strict int casting
+        $recordId = (int)post('id');
         $isEditMode = $recordId > 0;
 
-// 3. Check Add/Edit Permission again for the POST submission
+        // 3. Check Add/Edit Permission again for the POST submission
         $submitActionToCheck = $isEditMode ? 'edit' : 'add';
-    checkPermissionError($submitActionToCheck, $perm);
+        checkPermissionError($submitActionToCheck, $perm);
 
-        $name_en = trim($_POST['name_en'] ?? '');
-        $name_cn = trim($_POST['name_cn'] ?? '');
-        $public_url = trim($_POST['public_url'] ?? '');
-        $file_path = trim($_POST['file_path'] ?? '');
-        $description = trim($_POST['description'] ?? '');
+        // [FIX] Use global postSpaceFilter method
+        $name_en = postSpaceFilter('name_en');
+        $name_cn = postSpaceFilter('name_cn');
+        $public_url = postSpaceFilter('public_url');
+        $file_path = postSpaceFilter('file_path');
+        $description = postSpaceFilter('description');
 
-        $selectedActions = isset($_POST['action_ids']) && is_array($_POST['action_ids'])
-            ? array_map('intval', $_POST['action_ids'])
-            : [];
+        // [FIX] Use global post method for array retrieval
+        $rawActions = post('action_ids');
+        $selectedActions = is_array($rawActions) ? array_map('intval', $rawActions) : [];
         sort($selectedActions);
 
         $redirectTo = $recordId > 0 ? ($formBaseUrl . '&id=' . $recordId) : $formBaseUrl;
@@ -218,7 +224,6 @@ if ($res) {
     }
     $res->free();
 } else {
-    // Proper error handling
     error_log("Database Error (Fetch Actions): " . $conn->error);
 }
 ?>
@@ -287,21 +292,29 @@ if ($res) {
                         <div class="text-muted small">暂无可用操作。请先在 "页面操作管理" 中添加。</div>
                     <?php else: ?>
                         <div class="d-flex flex-wrap gap-3">
-                            <?php foreach ($allActions as $act): ?>
-                                <div class="form-check">
-                                    <input
-                                        class="form-check-input"
-                                        type="checkbox"
-                                        name="action_ids[]"
-                                        value="<?php echo $act['id']; ?>"
-                                        id="act_<?php echo $act['id']; ?>"
-                                        <?php echo in_array((int)$act['id'], $boundActions, true) ? 'checked' : ''; ?>
-                                    >
-                                    <label class="form-check-label user-select-none" for="act_<?php echo $act['id']; ?>">
-                                        <?php echo htmlspecialchars($act['name']); ?>
-                                    </label>
-                                </div>
-                            <?php endforeach; ?>
+                            <?php 
+                            foreach ($allActions as $act) {
+                                $actId = (int)$act['id'];
+                                $actName = htmlspecialchars($act['name']);
+                                $isChecked = in_array($actId, $boundActions, true) ? 'checked' : '';
+
+                    // [FIX] One single echo for the entire block
+                            echo "
+                            <div class=\"form-check\">
+                            <input 
+                                class=\"form-check-input\" 
+                                type=\"checkbox\" 
+                                name=\"action_ids[]\" 
+                                value=\"{$actId}\" 
+                                id=\"act_{$actId}\" 
+                                {$isChecked}
+                            >
+                            <label class=\"form-check-label user-select-none\" for=\"act_{$actId}\">
+                            {$actName}
+                            </label>
+                        </div>";
+                        } 
+                    ?>
                         </div>
                     <?php endif; ?>
                 </div>

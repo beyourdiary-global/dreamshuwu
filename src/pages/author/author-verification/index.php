@@ -85,8 +85,7 @@ $trendMaxValue = max(1, !empty($trendValues) ? max($trendValues) : 0);
 
 $isDashboardHidden = isset($_COOKIE['hide_author_verify_dashboard']) && $_COOKIE['hide_author_verify_dashboard'] === '1';
 
-if (function_exists('logAudit') && !defined('AUTHOR_VERIFY_VIEW_LOGGED')) {
-    define('AUTHOR_VERIFY_VIEW_LOGGED', true);
+if (function_exists('logAudit')) {
     logAudit([
         'page' => $auditPage,
         'action' => 'V',
@@ -320,7 +319,6 @@ ob_start();
 $pageContent = ob_get_clean();
 ?>
 <!DOCTYPE html>
-<html lang="<?php echo defined('SITE_LANG') ? SITE_LANG : 'zh-CN'; ?>">
 <head>
     <?php require_once BASE_PATH . 'include/header.php'; ?>
 </head>

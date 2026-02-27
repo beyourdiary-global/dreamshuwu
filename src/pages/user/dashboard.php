@@ -163,7 +163,6 @@ $pageMetaKey = ($currentView === 'home' || empty($currentView)) ? '/dashboard.ph
 ?>
 
 <!DOCTYPE html>
-<html lang="<?php echo defined('SITE_LANG') ? SITE_LANG : 'zh-CN'; ?>">
 <head>
     <?php require_once BASE_PATH . 'include/header.php'; ?>
 </head>

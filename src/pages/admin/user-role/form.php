@@ -4,7 +4,7 @@
 requireLogin();
 // 1. Initialization
 // Retrieve record ID from GET request to determine Add vs Edit mode
-$recordId = isset($_GET['id']) ? $_GET['id'] : 0;
+$recordId = (int)numberInput('id');
 $isEditMode = $recordId > 0;
 
 // Initialize form data structure with defaults
@@ -25,24 +25,25 @@ $actionToCheck = $isEditMode ? 'edit' : 'add';
 checkPermissionError($actionToCheck, $perm);
 
 // 2. Form Submission Handling (POST)
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['mode'])) {
-    $formAction = $_POST['action_type'] ?? '';
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty(post('mode'))) {
+    $formAction = post('action_type');
     
     // Handle 'save' action
     if ($formAction === 'save') {
         // Collect and sanitize input
-        $recordId = isset($_POST['id']) ? $_POST['id'] : 0;
+        $recordId = (int)post('id');
         $isEditMode = $recordId > 0;
         // 3. Check Add/Edit Permission for form submission
         $submitAction = $isEditMode ? 'edit' : 'add';
         checkPermissionError($submitAction, $perm);
 
-        $name_cn = trim($_POST['name_cn'] ?? '');
-        $name_en = trim($_POST['name_en'] ?? '');
-        $description = trim($_POST['description'] ?? '');
+        $name_cn = postSpaceFilter('name_cn');
+        $name_en = postSpaceFilter('name_en');
+        $description = postSpaceFilter('description');
 
         // Collect selected permissions (array of strings "pageId_actionId")
-        $selectedPerms = isset($_POST['permissions']) && is_array($_POST['permissions']) ? $_POST['permissions'] : [];
+        $rawPerms = post('permissions');
+        $selectedPerms = is_array($rawPerms) ? $rawPerms : [];
         $selectedPerms = array_filter($selectedPerms); // Remove empty values
 
         // Determine redirect URL (back to edit if editing, else list)

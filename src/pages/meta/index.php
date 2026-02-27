@@ -438,7 +438,6 @@ if ($isEmbeddedMeta):
 
 <?php else: ?>
     <!DOCTYPE html>
-    <html lang="zh-CN">
     <head>
         <?php require_once BASE_PATH . 'include/header.php'; ?>
         <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/meta.css">
