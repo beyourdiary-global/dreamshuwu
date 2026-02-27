@@ -1,39 +1,47 @@
 <?php
-$recordId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+requireLogin();
+
+$recordId = (int)numberInput('id');
 $isEditMode = $recordId > 0;
 $formRow = ['id' => 0, 'name' => '', 'status' => 'A'];
 
 // 1. Check Base View Permission
-checkPermissionError('view', $perm, '页面操作表单');
+checkPermissionError('view', $perm);
 
 // 2. Check Add/Edit Permission for initial load
 $actionToCheck = $isEditMode ? 'edit' : 'add';
-checkPermissionError($actionToCheck, $perm, '页面操作');
+checkPermissionError($actionToCheck, $perm);
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['mode'])) {
-    $formAction = $_POST['form_action'] ?? '';
+if (isPostRequest() && empty(post('mode'))) {
+    
+    // [FIX] Use global post method
+    $formAction = post('form_action');
+    
     if ($formAction === 'save') {
-        $recordId = isset($_POST['id']) ? (int)$_POST['id'] : 0;
+        
+        // [FIX] Use global post method for ID
+        $recordId = (int)post('id');
         $isEditMode = $recordId > 0;
 
         // 3. Check Add/Edit Permission for form submission
         $submitAction = $isEditMode ? 'edit' : 'add';
-        checkPermissionError($submitAction, $perm, '页面操作');
+        checkPermissionError($submitAction, $perm);
 
-        $name = trim($_POST['name'] ?? '');
+        // [FIX] Use global postSpaceFilter to automatically trim inputs
+        $name = postSpaceFilter('name');
         $redirectTo = $recordId > 0 ? ($formBaseUrl . '&id=' . $recordId) : $formBaseUrl;
 
         if ($name === '') {
-            $_SESSION['flash_msg'] = '名称不能为空';
-            $_SESSION['flash_type'] = 'danger';
+            setSession('flash_msg', '名称不能为空');
+            setSession('flash_type', 'danger');
             pageActionRedirect($redirectTo);
         }
 
         if ($recordId > 0) {
             $oldValue = fetchPageActionRowById($conn, $table, $recordId);
             if (!$oldValue || $oldValue['status'] !== 'A') {
-                $_SESSION['flash_msg'] = '记录不存在';
-                $_SESSION['flash_type'] = 'warning';
+                setSession('flash_msg', '记录不存在');
+                setSession('flash_type', 'warning');
                 pageActionRedirect($baseListUrl);
             }
 
@@ -48,8 +56,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['mode'])) {
             $dupStmt->close();
 
             if ($dupExists) {
-                $_SESSION['flash_msg'] = '名称已存在，请使用其他名称';
-                $_SESSION['flash_type'] = 'danger';
+                setSession('flash_msg', '名称已存在，请使用其他名称');
+                setSession('flash_type', 'danger');
                 pageActionRedirect($redirectTo);
             }
 
@@ -75,13 +83,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['mode'])) {
                         'new_value' => $newValue
                     ]);
                 }
-                $_SESSION['flash_msg'] = '保存成功';
-                $_SESSION['flash_type'] = 'success';
+                setSession('flash_msg', '保存成功');
+                setSession('flash_type', 'success');
                 pageActionRedirect($baseListUrl);
             }
 
-            $_SESSION['flash_msg'] = '保存失败，请稍后重试';
-            $_SESSION['flash_type'] = 'danger';
+            setSession('flash_msg', '保存失败，请稍后重试');
+            setSession('flash_type', 'danger');
             pageActionRedirect($redirectTo);
         }
 
@@ -94,8 +102,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['mode'])) {
         $dupStmt->close();
 
         if ($dupExists) {
-            $_SESSION['flash_msg'] = '名称已存在，请使用其他名称';
-            $_SESSION['flash_type'] = 'danger';
+            setSession('flash_msg', '名称已存在，请使用其他名称');
+            setSession('flash_type', 'danger');
             pageActionRedirect($redirectTo);
         }
 
@@ -121,13 +129,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['mode'])) {
                     'new_value' => $newValue
                 ]);
             }
-            $_SESSION['flash_msg'] = '新增成功';
-            $_SESSION['flash_type'] = 'success';
+            setSession('flash_msg', '新增成功');
+            setSession('flash_type', 'success');
             pageActionRedirect($baseListUrl);
         }
 
-        $_SESSION['flash_msg'] = '新增失败，请稍后重试';
-        $_SESSION['flash_type'] = 'danger';
+        setSession('flash_msg', '新增失败，请稍后重试');
+        setSession('flash_type', 'danger');
         pageActionRedirect($redirectTo);
     }
 }
@@ -137,8 +145,8 @@ if ($isEditMode) {
     if ($loaded && $loaded['status'] === 'A') {
         $formRow = $loaded;
     } else {
-        $_SESSION['flash_msg'] = '记录不存在或已删除';
-        $_SESSION['flash_type'] = 'warning';
+        setSession('flash_msg', '记录不存在或已删除');
+        setSession('flash_type', 'warning');
         pageActionRedirect($baseListUrl);
     }
 }
@@ -161,14 +169,14 @@ if ($isEditMode) {
                 </div>
             <?php endif; ?>
 
-            <form method="POST" action="<?php echo htmlspecialchars($formBaseUrl . ($isEditMode ? '&id=' . (int)$formRow['id'] : '')); ?>" autocomplete="off" class="<?php echo $isEditMode ? 'check-changes' : ''; ?>">
+            <form method="POST" action="<?php echo htmlspecialchars($formBaseUrl . ($isEditMode ? '&id=' . $formRow['id'] : '')); ?>" autocomplete="off" class="<?php echo $isEditMode ? 'check-changes' : ''; ?>">
                 <input type="hidden" name="form_action" value="save">
                 <?php if ($isEditMode): ?>
-                    <input type="hidden" name="id" value="<?php echo (int)$formRow['id']; ?>">
+                    <input type="hidden" name="id" value="<?php echo $formRow['id']; ?>">
                    <div class="mb-3 row">
                        <label class="col-md-3 col-form-label text-md-end form-label">ID</label>
                        <div class="col-md-9">
-                           <input type="text" class="form-control" value="<?php echo (int)$formRow['id']; ?>" readonly>
+                           <input type="text" class="form-control" value="<?php echo $formRow['id']; ?>" readonly>
                        </div>
                    </div>
                 <?php endif; ?>

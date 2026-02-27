@@ -3,12 +3,9 @@
 require_once dirname(__DIR__, 3) . '/common.php';
 
 // 1. Basic login check
-if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
-    header("Location: " . URL_LOGIN);
-    exit();
-}
+requireLogin();
 
-$currentUserId = (int)$_SESSION['user_id'];
+$currentUserId = sessionInt('user_id');
 $currentUrl = '/author/dashboard.php';
 $auditPage = 'Author Dashboard';
 
@@ -18,17 +15,23 @@ requireApprovedAuthor($conn, $currentUserId);
 
 // 3. System Permission Check for the dashboard itself (RBAC Fallback)
 $perm = hasPagePermission($conn, $currentUrl);
-checkPermissionError('view', $perm, '作者后台');
+checkPermissionError('view', $perm);
 
-// 4. Log the visit
+// 4. Define a logical view query for the audit log (Checking Author Profile)
+$dashboardTable = defined('AUTHOR_PROFILE') ? AUTHOR_PROFILE : 'author_profile';
+$viewQuery = "SELECT id, user_id, pen_name, verification_status FROM {$dashboardTable} WHERE user_id = ? LIMIT 1";
+
 if (function_exists('logAudit')) {
-    logAudit([
-        'page'           => $auditPage,
-        'action'         => 'V',
-        'action_message' => 'User accessed Author Dashboard',
-        'user_id'        => $currentUserId
-    ]);
+        logAudit([
+            'page'           => $auditPage,
+            'action'         => 'V',
+            'action_message' => 'User accessed Author Dashboard',
+            'query'          => $viewQuery,
+            'query_table'    => $dashboardTable,
+            'user_id'        => $currentUserId
+        ]);
 }
+
 
 // 5. Fetch permissions for child modules to determine menu visibility
 // Dynamically extract the path from the defined URL to ensure it matches the database perfectly
@@ -43,7 +46,6 @@ if (empty($permNovel) || (isset($permNovel->view) && empty($permNovel->view))) {
 
 ?>
 <!DOCTYPE html>
-<html lang="<?php echo defined('SITE_LANG') ? SITE_LANG : 'zh-CN'; ?>">
 <head>
     <?php require_once BASE_PATH . 'include/header.php'; ?>
     <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/author.css">
@@ -56,10 +58,11 @@ if (empty($permNovel) || (isset($permNovel->view) && empty($permNovel->view))) {
     
     <?php 
     // Display flash messages if any exist
-    if (isset($_SESSION['flash_msg'])) {
-        $flashType = $_SESSION['flash_type'] ?? 'info';
-        $flashMsg = $_SESSION['flash_msg'];
-        unset($_SESSION['flash_msg'], $_SESSION['flash_type']);
+    if (hasSession('flash_msg')) {
+        $flashType = session('flash_type') ?: 'info';
+        $flashMsg = session('flash_msg');
+        unsetSession('flash_msg');
+        unsetSession('flash_type');
     ?>
         <div class="alert alert-<?php echo htmlspecialchars($flashType); ?> alert-dismissible fade show shadow-sm" role="alert">
             <i class="fa-solid fa-circle-exclamation me-2"></i>

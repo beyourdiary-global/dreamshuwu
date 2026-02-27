@@ -13,40 +13,35 @@ if (!function_exists('pageActionRedirect')) {
     }
 }
 
+requireLogin();
+
 $table = PAGE_ACTION;
 $auditPage = 'Page Action Management';
 $isEmbeddedPageAction = isset($EMBED_PAGE_ACTION) && $EMBED_PAGE_ACTION === true;
-$currentUserId = isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : (isset($_SESSION['userid']) ? (int)$_SESSION['userid'] : 0);
-
-if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
-    if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
-        header('Content-Type: application/json');
-        http_response_code(401);
-        echo safeJsonEncode(['success' => false, 'message' => 'Unauthorized']);
-        exit();
-    }
-    pageActionRedirect(URL_LOGIN);
-}
+$currentUserId = sessionInt('user_id');
 
 $currentUrl = '/dashboard.php?view=page_action';
 $perm = hasPagePermission($conn, $currentUrl);
 
 // 1. Check View Permission
-checkPermissionError('view', $perm, '页面操作列表');
+checkPermissionError('view', $perm);
 
 $baseListUrl = defined('URL_PAGE_ACTION') ? URL_PAGE_ACTION : (URL_USER_DASHBOARD . '?view=page_action');
 $formBaseUrl = $baseListUrl . '&pa_mode=form';
 $apiEndpoint = defined('URL_PAGE_ACTION_API') ? URL_PAGE_ACTION_API : (SITEURL . '/src/pages/admin/page-action/index.php');
 
-$flashMsg = $_SESSION['flash_msg'] ?? '';
-$flashType = $_SESSION['flash_type'] ?? 'success';
+$flashMsg = session('flash_msg');
+$flashType = session('flash_type') ?: 'success';
 if ($flashMsg !== '') {
-    unset($_SESSION['flash_msg'], $_SESSION['flash_type']);
+    unsetSession('flash_msg');
+    unsetSession('flash_type');
 }
 
-$pageActionMode = isset($_GET['pa_mode']) && $_GET['pa_mode'] === 'form' ? 'form' : 'list';
+// [FIX] Used input() global function
+$pageActionMode = input('pa_mode') === 'form' ? 'form' : 'list';
 
-if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
+// [FIX] Used input() global function
+if (input('mode') === 'data') {
     header('Content-Type: application/json');
     if (!$hasPermission) {
         http_response_code(403);
@@ -54,9 +49,14 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
         exit();
     }
 
-    $search = trim($_GET['search'] ?? ($_GET['search_name'] ?? ''));
-    $page = max(1, (int)($_GET['page'] ?? 1));
-    $perPage = (int)($_GET['per_page'] ?? 10);
+    // [FIX] Used searchInput() global function
+    $searchReq = searchInput('search');
+    $search = $searchReq !== '' ? $searchReq : searchInput('search_name');
+    
+    // [FIX] Used numberInput() global function with strict casting
+    $page = max(1, (int)(numberInput('page') ?: 1));
+    $perPage = (int)(numberInput('per_page') ?: 10);
+    
     $allowedSizes = [10, 20, 50, 100];
     if (!in_array($perPage, $allowedSizes, true)) $perPage = 10;
 
@@ -87,7 +87,7 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
     $countStmt->fetch();
     $countStmt->close();
 
-    $totalPages = max(1, (int)ceil($totalRecords / $perPage));
+    $totalPages = max(1, ceil($totalRecords / $perPage));
     if ($page > $totalPages) $page = $totalPages;
     $offset = ($page - 1) * $perPage;
 
@@ -129,24 +129,26 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
         'pagination' => [
             'page' => $page,
             'per_page' => $perPage,
-            'total_records' => (int)$totalRecords,
+            'total_records' => $totalRecords,
             'total_pages' => $totalPages,
         ]
     ]);
     exit();
 }
 
-if (isset($_POST['mode']) && $_POST['mode'] === 'delete_api') {
+// [FIX] Used post() global function
+if (post('mode') === 'delete_api') {
     header('Content-Type: application/json');
     // 2. Check Delete Permission for API
-    $deleteError = checkPermissionError('delete', $perm, '页面操作');
+    $deleteError = checkPermissionError('delete', $perm);
     if ($deleteError) {
         http_response_code(403);
         echo safeJsonEncode(['success' => false, 'message' => $deleteError]);
         exit();
     }
 
-    $deleteId = isset($_POST['id']) ? (int)$_POST['id'] : 0;
+    // [FIX] Used post() global function with strict casting
+    $deleteId = (int)post('id');
     if ($deleteId <= 0) {
         echo safeJsonEncode(['success' => false, 'message' => 'Invalid ID']);
         exit();
@@ -191,16 +193,15 @@ if (function_exists('logAudit') && !defined('PAGE_ACTION_VIEW_LOGGED')) {
     define('PAGE_ACTION_VIEW_LOGGED', true);
     
     if ($pageActionMode === 'form') {
-        // 1. FORM VIEW LOGGING (matching second image)
-        $recordId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+        // 1. FORM VIEW LOGGING
+        // [FIX] Used numberInput() global function
+        $recordId = (int)numberInput('id');
         $viewQuery = "SELECT id, name, status, created_at, updated_at, created_by, updated_by FROM {$table} WHERE id = ? LIMIT 1";
         
         logAudit([
             'page'           => $auditPage,
             'action'         => 'V',
-            // Display specific ID in the message
             'action_message' => $recordId > 0 ? "Viewing Page Action Form (Edit ID: $recordId)" : "Viewing Page Action Form (Add)",
-            // Pass SQL string with placeholder or actual ID
             'query'          => $viewQuery, 
             'query_table'    => $table,
             'user_id'        => $currentUserId,
@@ -220,9 +221,11 @@ if (function_exists('logAudit') && !defined('PAGE_ACTION_VIEW_LOGGED')) {
     }
 }
 
-$searchName = trim($_GET['search_name'] ?? '');
+// [FIX] Used searchInput() and numberInput() global functions
+$searchName = searchInput('search_name');
 $currentPage = 1;
-$perPage = (int)($_GET['per_page'] ?? 10);
+$perPage = (int)(numberInput('per_page') ?: 10);
+
 $allowedSizes = [10, 20, 50, 100];
 if (!in_array($perPage, $allowedSizes, true)) $perPage = 10;
 
@@ -258,13 +261,17 @@ if ($pageActionMode === 'list') {
 }
 
 if ($isEmbeddedPageAction):
+    $pageScripts = ($pageActionMode === 'list')
+        ? ['jquery.dataTables.min.js', 'dataTables.bootstrap.min.js', 'admin.js']
+        : ['admin.js'];
 ?>
 
 <?php if ($pageActionMode === 'form'): ?>
     <?php require __DIR__ . '/form.php'; ?>
 <?php else: ?>
+<link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/dataTables.bootstrap.min.css">
 <div class="container-fluid px-0" id="pageActionApp" data-delete-api-url="<?php echo htmlspecialchars($apiEndpoint); ?>">
-    <?php $displayIndexStart = ((max(1, (int)$currentPage) - 1) * max(1, (int)$perPage)) + 1; ?>
+    <?php $displayIndexStart = ((max(1, $currentPage) - 1) * max(1, $perPage)) + 1; ?>
     <div class="card page-action-card">
         <div class="card-header bg-white d-flex justify-content-between align-items-center py-3 flex-wrap gap-2">
             <div>
@@ -322,12 +329,12 @@ if ($isEmbeddedPageAction):
                                 <td><span class="badge bg-success">A</span></td>
                                 <td class="text-center">
                                     <?php if (!empty($perm->edit)): ?>
-                                    <a href="<?php echo $formBaseUrl . '&id=' . (int)$item['id']; ?>" class="btn btn-sm btn-outline-primary btn-action" title="编辑">
+                                    <a href="<?php echo $formBaseUrl . '&id=' . $item['id']; ?>" class="btn btn-sm btn-outline-primary btn-action" title="编辑">
                                         <i class="fa-solid fa-pen"></i>
                                     </a>
                                     <?php endif; ?>
                                     <?php if (!empty($perm->delete)): ?>
-                                    <button type="button" class="btn btn-sm btn-outline-danger btn-action page-action-delete-btn" data-id="<?php echo (int)$item['id']; ?>" data-name="<?php echo htmlspecialchars($item['name']); ?>" title="软删除">
+                                    <button type="button" class="btn btn-sm btn-outline-danger btn-action page-action-delete-btn" data-id="<?php echo $item['id']; ?>" data-name="<?php echo htmlspecialchars($item['name']); ?>" title="软删除">
                                         <i class="fa-solid fa-trash"></i>
                                     </button>
                                     <?php endif; ?>
@@ -347,7 +354,7 @@ if ($isEmbeddedPageAction):
                 <?php if (!empty($rows)): ?>
                     <?php $displayIndex = $displayIndexStart; ?>
                     <?php foreach ($rows as $item): ?>
-                        <div class="page-action-mobile-item" data-item="<?php echo (int)$item['id']; ?>">
+                        <div class="page-action-mobile-item" data-item="<?php echo $item['id']; ?>">
                             <div class="page-action-mobile-head">
                                 <div>
                                     <div><strong>#<?php echo $displayIndex++; ?></strong></div>
@@ -358,12 +365,12 @@ if ($isEmbeddedPageAction):
                             <div class="page-action-mobile-body">
                                 <div class="d-flex justify-content-end gap-2">
                                     <?php if (!empty($perm->edit)): ?>
-                                    <a href="<?php echo $formBaseUrl . '&id=' . (int)$item['id']; ?>" class="btn btn-sm btn-outline-primary">
+                                    <a href="<?php echo $formBaseUrl . '&id=' . $item['id']; ?>" class="btn btn-sm btn-outline-primary">
                                         <i class="fa-solid fa-pen"></i> 编辑
                                     </a>
                                     <?php endif; ?>
                                     <?php if (!empty($perm->delete)): ?>
-                                    <button type="button" class="btn btn-sm btn-outline-danger page-action-delete-btn" data-id="<?php echo (int)$item['id']; ?>" data-name="<?php echo htmlspecialchars($item['name']); ?>">
+                                    <button type="button" class="btn btn-sm btn-outline-danger page-action-delete-btn" data-id="<?php echo $item['id']; ?>" data-name="<?php echo htmlspecialchars($item['name']); ?>">
                                         <i class="fa-solid fa-trash"></i> 软删除
                                     </button>
                                     <?php endif; ?>
@@ -388,13 +395,11 @@ if ($isEmbeddedPageAction):
     <input type="hidden" name="id" id="pageActionDeleteId" value="0">
 </form>
 
-<script src="<?php echo URL_ASSETS; ?>/js/admin.js"></script>
 <?php endif; ?>
 
 <?php else: ?>
 <?php $pageMetaKey = 'page_action'; ?>
 <!DOCTYPE html>
-<html lang="<?php echo defined('SITE_LANG') ? SITE_LANG : 'zh-CN'; ?>">
 <head>
     <?php require_once BASE_PATH . 'include/header.php'; ?>
 </head>

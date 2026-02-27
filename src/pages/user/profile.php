@@ -1,18 +1,14 @@
 <?php
 require_once dirname(__DIR__, 3) . '/common.php';
-
-// 1. Auth Check
-if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
-    header("Location: " . URL_LOGIN);
-    exit();
-}
+// Auth Check
+requireLogin();
 
 $currentUrl = '/dashboard.php?view=profile';
 $perm = hasPagePermission($conn, $currentUrl);
 
-checkPermissionError('view', $perm, '个人资料页面');
+checkPermissionError('view', $perm);
 
-$userId = $_SESSION['user_id'];
+$userId = sessionInt('user_id');
 $message = "";
 $msgType = ""; 
 $auditPage = 'User Profile'; 
@@ -23,20 +19,19 @@ $passwordRedirectUrl = '';
 $profileRedirectUrl = defined('PROFILE_EMBEDDED') ? URL_USER_DASHBOARD . '?view=profile' : URL_PROFILE;
 
 // Flash Message Check (This reads the message after redirect)
-if (isset($_SESSION['flash_msg'])) {
-    $message = $_SESSION['flash_msg'];
-    $msgType = $_SESSION['flash_type'];
-    unset($_SESSION['flash_msg'], $_SESSION['flash_type']);
+if (hasSession('flash_msg')) {
+    $message = session('flash_msg');
+    $msgType = session('flash_type');
+    unsetSession('flash_msg');
+    unsetSession('flash_type');
 }
 
 // --- HANDLE FORM A: UPDATE INFO ---
-if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['action']) && $_POST['action'] === 'update_info') {
-    checkPermissionError('edit', $perm, '个人资料');
-
-    $name = trim($_POST['display_name']);
-    $email = trim($_POST['email']);
-    $gender = $_POST['gender'] ?? null;
-    $birthday = $_POST['birth_date'] ?: null; 
+if (post('action') === 'update_info') {
+    $name     = postSpaceFilter('display_name'); // Auto-trims!
+    $email    = postSpaceFilter('email');        // Auto-trims!
+    $gender   = post('gender') ?: null;          // No trim needed
+    $birthday = post('birth_date') ?: null;
 
     if (empty($name) || empty($email)) {
         $message = "昵称和电子邮箱不能为空"; $msgType = "danger";
@@ -71,7 +66,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['action']) && $_POST['
             // --- IMAGE UPLOAD LOGIC ---
             $newAvatarName = null;
             // Check manually for upload logic
-            $hasAvatarUpload = (isset($_FILES['avatar']) && $_FILES['avatar']['size'] > 0);
+            $hasAvatarUpload = hasUploadedFile('avatar');
 
             if ($hasAvatarUpload) {
                 $uploadDir = BASE_PATH . 'assets/uploads/avatars/';
@@ -99,8 +94,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['action']) && $_POST['
                     $oldUserData['avatar'] = $oldRow['avatar'];
                 }
 
-                // Upload New
-                $result = uploadImage($_FILES['avatar'], $uploadDir); 
+                $result = uploadImage(getFile('avatar'), $uploadDir);
 
                 if ($result['success']) {
                     $newAvatarName = $result['filename'];
@@ -138,9 +132,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['action']) && $_POST['
                         ]);
                     }
 
-                    $_SESSION['user_name'] = $name; 
-                    $_SESSION['flash_msg'] = "资料已更新";
-                    $_SESSION['flash_type'] = "success";
+                    setSession('user_name', $name);
+                    setSession('flash_msg', "资料已更新");
+                    setSession('flash_type', "success");
                     if (!headers_sent()) {
                         header("Location: " . $profileRedirectUrl);
                     } else {
@@ -154,12 +148,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['action']) && $_POST['
 }
 
 // --- HANDLE FORM B: CHANGE PASSWORD ---
-if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['action']) && $_POST['action'] === 'change_pwd') {
-    checkPermissionError('edit', $perm, '密码');
+if (post('action') === 'change_pwd') {
+    checkPermissionError('edit', $perm);
 
-    $currentPwd = $_POST['current_password'];
-    $newPwd = $_POST['new_password'];
-    $confirmPwd = $_POST['confirm_password'];
+    $currentPwd = post('current_password');
+    $newPwd = post('new_password');
+    $confirmPwd = post('confirm_password');
 
     $pwdSql = "SELECT password_hash FROM " . USR_LOGIN . " WHERE id = ? LIMIT 1";
     $pwdStmt = $conn->prepare($pwdSql);
@@ -201,7 +195,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['action']) && $_POST['
                 ]);
             }
 
-            $_SESSION = [];
+            setSession('logged_in', false);
+            unsetSession('user_id');
+            unsetSession('role_id');
+
             $message = '密码修改成功，请使用新密码重新登录。';
             $msgType = 'success';
             $passwordChangeSuccess = true;
@@ -239,8 +236,7 @@ $currentUser = array_merge($userRow, $dashRow ?? ['avatar' => null]);
 $avatarUrl = !empty($currentUser['avatar']) ? URL_ASSETS . '/uploads/avatars/' . $currentUser['avatar'] : URL_ASSETS . '/images/default-avatar.png';
 
 // [AUDIT] Log View Action
-if ($_SERVER['REQUEST_METHOD'] === 'GET' && function_exists('logAudit') && !defined('PROFILE_VIEW_LOGGED')) {
-    define('PROFILE_VIEW_LOGGED', true);
+if (getServer('REQUEST_METHOD') === 'GET' && function_exists('logAudit')){
     logAudit([
         'page'           => $auditPage,
         'action'         => 'V',
@@ -250,6 +246,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && function_exists('logAudit') && !defi
         'user_id'        => $userId
     ]);
 }
+
+$pageScripts = ['user-profile.js?v=' . filemtime(BASE_PATH . 'assets/js/user-profile.js')];
 ?>
 
 <div class="profile-container">
@@ -257,7 +255,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && function_exists('logAudit') && !defi
         <div class="header-text-content">
             <?php echo generateBreadcrumb($conn, $currentUrl); ?>
             <h2>个人资料设置</h2>
-            <small class="text-muted">User ID: <?php echo $userId; ?></small>
         </div>
     </div>
 

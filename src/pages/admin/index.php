@@ -1,6 +1,8 @@
 <?php
 // Path: src/pages/admin/index.php
 
+requireLogin();
+
 // 1. Define the base path to prevent redundant hardcoding
 $baseViewPath = '/dashboard.php?view=';
 
@@ -9,7 +11,9 @@ $perm = hasPagePermission($conn, $currentUrl);
 
 // 2. Use the unified helper to handle view permission and redirection
 // This handles the access check and redirects to /dashboard.php if denied
-checkPermissionError('view', $perm, '管理员面板');
+checkPermissionError('view', $perm);
+
+$pageScripts = ['admin.js'];
 
 // 3. Fetch permissions for child cards using the base path
 $permPageAction = hasPagePermission($conn, $baseViewPath . 'page_action');

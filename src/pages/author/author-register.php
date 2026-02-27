@@ -3,16 +3,13 @@
 require_once dirname(__DIR__, 3) . '/common.php';
 
 // Auth Check
-if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
-    header("Location: " . URL_LOGIN);
-    exit();
-}
+requireLogin();
 
 $currentUrl = '/author/author-register.php';
 $perm = hasPagePermission($conn, $currentUrl);
-checkPermissionError('view', $perm, '作者注册页面');
+checkPermissionError('view', $perm);
 
-$userId = $_SESSION['user_id'];
+$userId = sessionInt('user_id');
 $auditPage = 'Author Registration';
 
 $sqlGetProfileByUserId = "SELECT * FROM " . AUTHOR_PROFILE . " WHERE user_id = %d AND status = 'A' LIMIT 1";
@@ -30,7 +27,8 @@ $sqlUpdateProfile = "UPDATE " . AUTHOR_PROFILE . " SET
                      WHERE user_id=?";
 
 // Handle Form Submission
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+// [FIX] Checking action via post() or verifying method without superglobals
+if (isPostRequest()) {
     
     if (empty($perm->add) && empty($perm->edit)) {
         header('Content-Type: application/json; charset=utf-8');
@@ -41,7 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $errorMsg = "";
 
     // 1. Fetch existing using reusable query
-    $safeUserId = (int)$userId;
+    $safeUserId = $userId;
     $eRes = $conn->query(sprintf($sqlGetProfileByUserId, $safeUserId));
     $existingData = $eRes && $eRes->num_rows > 0 ? $eRes->fetch_assoc() : [];
     if ($eRes) $eRes->free();
@@ -49,24 +47,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $isEditMode = !empty($existingData);
     $recordId = $isEditMode ? $existingData['id'] : null;
 
-    $realName = trim($_POST['real_name'] ?? '');
-    $idNumber = trim($_POST['id_number'] ?? '');
-    $contactPhone = trim($_POST['contact_phone'] ?? '');
-    $contactEmail = trim($_POST['contact_email'] ?? '');
-    $penName = trim($_POST['pen_name'] ?? '');
-    if (empty($penName)) $penName = uniqid('Author_'); 
+    // [FIX] Use postSpaceFilter to remove manual trim() calls
+    $realName = postSpaceFilter('real_name');
+    $idNumber = postSpaceFilter('id_number');
+    $contactPhone = postSpaceFilter('contact_phone');
+    $contactEmail = postSpaceFilter('contact_email');
+    $penName = postSpaceFilter('pen_name');
     
-    $bio = trim($_POST['bio'] ?? '');
-    $bankAccountName = trim($_POST['bank_account_name'] ?? '');
-    $bankName = trim($_POST['bank_name'] ?? '');
-    $bankCountry = trim($_POST['bank_country'] ?? '');
-    $bankSwift = trim($_POST['bank_swift_code'] ?? '');
-    $bankAccNum = trim($_POST['bank_account_number'] ?? '');
+    if ($penName === '') $penName = uniqid('Author_'); 
+    
+    $bio = postSpaceFilter('bio');
+    $bankAccountName = postSpaceFilter('bank_account_name');
+    $bankName = postSpaceFilter('bank_name');
+    $bankCountry = postSpaceFilter('bank_country');
+    $bankSwift = postSpaceFilter('bank_swift_code');
+    $bankAccNum = postSpaceFilter('bank_account_number');
 
     if ($isEditMode) {
-        $hasNewFiles = (isset($_FILES['id_photo_front']) && $_FILES['id_photo_front']['size'] > 0) ||
-                       (isset($_FILES['id_photo_back']) && $_FILES['id_photo_back']['size'] > 0) ||
-                       (isset($_FILES['avatar']) && $_FILES['avatar']['size'] > 0);
+        $hasNewFiles = hasUploadedFile('id_photo_front') ||
+                   hasUploadedFile('id_photo_back') ||
+                   hasUploadedFile('avatar');
 
         if (!$hasNewFiles) {
             $newData = [
@@ -96,8 +96,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $idBack  = $existingData['id_photo_back'] ?? '';
     $avatar  = $existingData['avatar'] ?? '';
 
-    if (isset($_FILES['id_photo_front']) && $_FILES['id_photo_front']['size'] > 0) {
-        $res = uploadImage($_FILES['id_photo_front'], $uploadDir);
+    if (hasUploadedFile('id_photo_front')) {
+        $res = uploadImage(getFile('id_photo_front'), $uploadDir);
         if ($res['success']) {
             if (!empty($idFront) && file_exists($uploadDir . $idFront)) @unlink($uploadDir . $idFront);
             $idFront = $res['filename'];
@@ -106,8 +106,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
     
-    if (empty($errorMsg) && isset($_FILES['id_photo_back']) && $_FILES['id_photo_back']['size'] > 0) {
-        $res = uploadImage($_FILES['id_photo_back'], $uploadDir);
+    if (empty($errorMsg) && hasUploadedFile('id_photo_back')) {
+        $res = uploadImage(getFile('id_photo_back'), $uploadDir);
         if ($res['success']) {
             if (!empty($idBack) && file_exists($uploadDir . $idBack)) @unlink($uploadDir . $idBack);
             $idBack = $res['filename'];
@@ -116,8 +116,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
     
-    if (empty($errorMsg) && isset($_FILES['avatar']) && $_FILES['avatar']['size'] > 0) {
-        $res = uploadImage($_FILES['avatar'], $uploadDir);
+    if (empty($errorMsg) && hasUploadedFile('avatar')) {
+        $res = uploadImage(getFile('avatar'), $uploadDir);
         if ($res['success']) {
              if (!empty($avatar) && file_exists($uploadDir . $avatar)) @unlink($uploadDir . $avatar);
             $avatar = $res['filename'];
@@ -126,16 +126,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    if (empty($errorMsg) && (empty($idFront) || empty($idBack))) {
+    if (empty($errorMsg) && ($idFront === '' || $idBack === '')) {
         $errorMsg = "请上传完整的身份证正反面照片。";
     }
 
     if (empty($errorMsg)) {
         
-        // 2. Fetch Old Data for Audit using reusable query
         $oldData = null;
         if ($isEditMode) {
-            $safeRecordId = (int)$recordId;
+            $safeRecordId = $recordId;
             $oRes = $conn->query(sprintf($sqlGetProfileById, $safeRecordId));
             if ($oRes && $oRes->num_rows > 0) $oldData = $oRes->fetch_assoc();
             if ($oRes) $oRes->free();
@@ -175,9 +174,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $executedQuery = $sqlUpdateProfile;
             }
 
-            // 3. Fetch New Data for Audit using reusable query
+            // 3. Fetch New Data for Audit
             $newData = null;
-            $safeTargetId = (int)$targetId;
+            $safeTargetId = $targetId;
             $nRes = $conn->query(sprintf($sqlGetProfileById, $safeTargetId));
             if ($nRes && $nRes->num_rows > 0) $newData = $nRes->fetch_assoc();
             if ($nRes) $nRes->free();
@@ -215,10 +214,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit();
 }
 
-// 4. Simplify GET data load using reusable query
-$safeUserIdGet = (int)$userId;
-$queryGet = sprintf($sqlGetProfileByUserId, $safeUserIdGet); // Format it once
-$resGet = $conn->query($queryGet); // Execute it
+// 4. Simplify GET data load
+$safeUserIdGet = $userId;
+$queryGet = sprintf($sqlGetProfileByUserId, $safeUserIdGet); 
+$resGet = $conn->query($queryGet); 
 $authorData = $resGet && $resGet->num_rows > 0 ? $resGet->fetch_assoc() : [];
 if ($resGet) $resGet->free();
 
@@ -229,8 +228,7 @@ if ($authorStatus === 'approved') {
     exit();
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'GET' && function_exists('logAudit') && !defined('AUTHOR_REG_VIEW_LOGGED')) {
-    define('AUTHOR_REG_VIEW_LOGGED', true);
+if (getServer('REQUEST_METHOD') === 'GET' && function_exists('logAudit')) {
     logAudit([
         'page'           => $auditPage,
         'action'         => 'V',
@@ -244,7 +242,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && function_exists('logAudit') && !defi
 $pageMetaKey = $currentUrl;
 ?>
 <!DOCTYPE html>
-<html lang="<?php echo defined('SITE_LANG') ? SITE_LANG : 'zh-CN'; ?>">
 <head>
     <?php require_once BASE_PATH . 'include/header.php'; ?>
     <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/author.css?v=<?php echo time(); ?>">

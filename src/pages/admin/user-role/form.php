@@ -1,9 +1,10 @@
 <?php
 // Path: src/pages/admin/user-role/form.php
 
+requireLogin();
 // 1. Initialization
 // Retrieve record ID from GET request to determine Add vs Edit mode
-$recordId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+$recordId = (int)numberInput('id');
 $isEditMode = $recordId > 0;
 
 // Initialize form data structure with defaults
@@ -17,31 +18,32 @@ $formRow = [
 $assignedPerms = [];
 
 // 1. Check View Permission for the form page
-checkPermissionError('view', $perm, '用户角色表单');
+checkPermissionError('view', $perm);
 
 // 2. Check Add/Edit Permission for loading the form
 $actionToCheck = $isEditMode ? 'edit' : 'add';
-checkPermissionError($actionToCheck, $perm, '用户角色');
+checkPermissionError($actionToCheck, $perm);
 
 // 2. Form Submission Handling (POST)
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['mode'])) {
-    $formAction = $_POST['action_type'] ?? '';
+if (isPostRequest() && empty(post('mode'))) {
+    $formAction = post('action_type');
     
     // Handle 'save' action
     if ($formAction === 'save') {
         // Collect and sanitize input
-        $recordId = isset($_POST['id']) ? (int)$_POST['id'] : 0;
+        $recordId = (int)post('id');
         $isEditMode = $recordId > 0;
         // 3. Check Add/Edit Permission for form submission
         $submitAction = $isEditMode ? 'edit' : 'add';
-        checkPermissionError($submitAction, $perm, '用户角色');
+        checkPermissionError($submitAction, $perm);
 
-        $name_cn = trim($_POST['name_cn'] ?? '');
-        $name_en = trim($_POST['name_en'] ?? '');
-        $description = trim($_POST['description'] ?? '');
+        $name_cn = postSpaceFilter('name_cn');
+        $name_en = postSpaceFilter('name_en');
+        $description = postSpaceFilter('description');
 
         // Collect selected permissions (array of strings "pageId_actionId")
-        $selectedPerms = isset($_POST['permissions']) && is_array($_POST['permissions']) ? $_POST['permissions'] : [];
+        $rawPerms = post('permissions');
+        $selectedPerms = is_array($rawPerms) ? $rawPerms : [];
         $selectedPerms = array_filter($selectedPerms); // Remove empty values
 
         // Determine redirect URL (back to edit if editing, else list)
@@ -49,15 +51,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['mode'])) {
 
         // Validation: Required fields
         if ($name_cn === '' || $name_en === '') {
-            $_SESSION['flash_msg'] = 'Required fields cannot be empty.';
-            $_SESSION['flash_type'] = 'danger';
+            setSession('flash_msg', 'Required fields cannot be empty.');
+            setSession('flash_type', 'danger');
             userRoleRedirect($redirectTo);
         }
 
         // Validation: Duplicate Name Check
         if (checkRoleNameDuplicate($conn, $name_cn, $name_en, $recordId)) {
-            $_SESSION['flash_msg'] = 'Role name (EN or CN) already exists.';
-            $_SESSION['flash_type'] = 'danger';
+            setSession('flash_msg', 'Role name (EN or CN) already exists.');
+            setSession('flash_type', 'danger');
             userRoleRedirect($redirectTo);
         }
 
@@ -67,8 +69,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['mode'])) {
         if ($recordId > 0) {
             $oldRoleData = fetchUserRoleById($conn, $recordId);
             if (!$oldRoleData || $oldRoleData['status'] !== 'A') {
-                $_SESSION['flash_msg'] = 'Record not found or already deleted.';
-                $_SESSION['flash_type'] = 'warning';
+                setSession('flash_msg', 'Record not found or already deleted.');
+                setSession('flash_type', 'warning');
                 userRoleRedirect($baseListUrl);
             }
 
@@ -114,7 +116,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['mode'])) {
                 $stmt = $conn->prepare($executedSql);
                 $stmt->bind_param('sssss', $name_en, $name_cn, $description, $createdBy, $updatedBy);
                 $stmt->execute();
-                $targetId = (int)$conn->insert_id;
+                $targetId = $conn->insert_id;
                 $stmt->close();
                 $mainActionType = 'A'; // Audit: Add
             }
@@ -126,8 +128,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['mode'])) {
                 foreach ($selectedPerms as $permKey) {
                     // Parse "pageId_actionId" string
                     @list($pageId, $actionId) = explode('_', $permKey);
-                    $pageId = (int)$pageId;
-                    $actionId = (int)$actionId;
+                    if (!isNumber($pageId) || !isNumber($actionId)) {
+                        continue;
+                    }
                     
                     $bindStmt->bind_param('iiii', $targetId, $pageId, $actionId, $currentUserId);
                     $bindStmt->execute();
@@ -178,15 +181,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['mode'])) {
                 }
             }
 
-            $_SESSION['flash_msg'] = '保存成功.';
-            $_SESSION['flash_type'] = 'success';
+            setSession('flash_msg', '保存成功.');
+            setSession('flash_type', 'success');
             userRoleRedirect($baseListUrl);
         } catch (Exception $e) {
             // Rollback on error
             $conn->rollback();
             error_log('Database error in user-role form: ' . $e->getMessage());
-            $_SESSION['flash_msg'] = '数据库错误，请稍后重试或联系管理员。';
-            $_SESSION['flash_type'] = 'danger';
+            setSession('flash_msg', '数据库错误，请稍后重试或联系管理员。');
+            setSession('flash_type', 'danger');
             userRoleRedirect($redirectTo);
         }
     }
@@ -198,8 +201,8 @@ if ($isEditMode) {
     if ($loaded && $loaded['status'] === 'A') {
         $formRow = $loaded;
     } else {
-        $_SESSION['flash_msg'] = 'Record not found.';
-        $_SESSION['flash_type'] = 'warning';
+        setSession('flash_msg', 'Record not found.');
+        setSession('flash_type', 'warning');
         userRoleRedirect($baseListUrl);
     }
 
@@ -234,7 +237,7 @@ $masterSql = "SELECT page_id, action_id FROM " . ACTION_MASTER;
 $masterRes = $conn->query($masterSql);
 if ($masterRes) {
     while ($row = $masterRes->fetch_assoc()) {
-        $pageActionMaster[(int)$row['page_id']][] = (int)$row['action_id'];
+        $pageActionMaster[$row['page_id']][] = $row['action_id'];
     }
 }
 ?>
@@ -250,17 +253,17 @@ if ($masterRes) {
         </div>
 
         <div class="card-body">
-            <?php if (isset($_SESSION['flash_msg'])): ?>
-                <div class="alert alert-<?php echo htmlspecialchars($_SESSION['flash_type'] ?? 'info'); ?> alert-dismissible fade show">
-                    <?php echo htmlspecialchars($_SESSION['flash_msg']); ?>
+            <?php if (hasSession('flash_msg')): ?>
+                <div class="alert alert-<?php echo htmlspecialchars(session('flash_type') ?: 'info'); ?> alert-dismissible fade show">
+                    <?php echo htmlspecialchars(session('flash_msg')); ?>
                     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 </div>
-                <?php unset($_SESSION['flash_msg'], $_SESSION['flash_type']); ?>
+                <?php unsetSession('flash_msg'); unsetSession('flash_type'); ?>
             <?php endif; ?>
 
             <form method="POST" action="<?php echo htmlspecialchars($formBaseUrl . ($isEditMode ? '&id=' . $recordId : '')); ?>" class="<?php echo $isEditMode ? 'check-changes' : ''; ?>">
                 <input type="hidden" name="action_type" value="save">
-                <?php if ($isEditMode): ?><input type="hidden" name="id" value="<?php echo (int)$recordId; ?>"><?php endif; ?>
+                <?php if ($isEditMode): ?><input type="hidden" name="id" value="<?php echo $recordId; ?>"><?php endif; ?>
 
                 <div class="row">
                     <div class="col-md-6">

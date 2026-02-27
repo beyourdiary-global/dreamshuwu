@@ -60,3 +60,43 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   });
 });
+
+const metaForms = document.querySelectorAll("form.check-changes");
+metaForms.forEach((form) => {
+  form.addEventListener("submit", function (e) {
+    // Exclude the 'delete_page' reset form from this validation
+    const formType = form.querySelector("input[name='form_type']");
+    if (formType && formType.value === "delete_page") return;
+
+    const inputs = form.querySelectorAll("input[type='text'], textarea");
+    if (inputs.length === 0) return;
+
+    let emptyCount = 0;
+    inputs.forEach((input) => {
+      if (input.value.trim() === "") {
+        emptyCount++;
+      }
+    });
+
+    // Condition 1: "if no data cannot save"
+    if (emptyCount === inputs.length) {
+      e.preventDefault();
+      Swal.fire({
+        icon: "warning",
+        title: "提交失败 (Save Failed)",
+        text: "不能保存空数据，请填写内容。\n(Cannot save empty data.)",
+        confirmButtonColor: "#4e73df",
+      });
+    }
+    // Condition 2: "once have data, then will become compulsory for all input"
+    else if (emptyCount > 0) {
+      e.preventDefault();
+      Swal.fire({
+        icon: "warning",
+        title: "信息不完整 (Incomplete Data)",
+        text: "所有字段都是必填的。\n(Once you enter data, ALL fields become compulsory.)",
+        confirmButtonColor: "#4e73df",
+      });
+    }
+  });
+});

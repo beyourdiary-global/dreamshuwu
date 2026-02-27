@@ -2,6 +2,9 @@
 // Path: src/pages/category/form.php
 require_once dirname(__DIR__, 3) . '/common.php';
 
+// Auth Check
+requireLogin();
+
 // 1. Use parent list page URL (single-page mode with cat_mode=form)
 $currentUrl = '/dashboard.php?view=categories'; 
 
@@ -9,17 +12,7 @@ $currentUrl = '/dashboard.php?view=categories';
 $perm = hasPagePermission($conn, $currentUrl);
 
 // 1. Check View Permission
-checkPermissionError('view', $perm, '分类表单');
-
-// Auth Check
-if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
-    if (headers_sent()) {
-        echo "<script>window.location.href='" . URL_LOGIN . "';</script>";
-    } else {
-        header("Location: " . URL_LOGIN);
-    }
-    exit();
-}
+checkPermissionError('view', $perm);
 
 $catTable  = NOVEL_CATEGORY;
 $linkTable = CATEGORY_TAG;
@@ -31,12 +24,12 @@ $updateQuery = "UPDATE $catTable SET name = ?, updated_by = ? WHERE id = ?";
 // Context Detection
 $isEmbeddedCatForm = isset($EMBED_CAT_FORM_PAGE) && $EMBED_CAT_FORM_PAGE === true;
 
-$id = $_GET['id'] ?? null;
+$id = (int)numberInput('id');
 $isEditMode = !empty($id);
 
 // 2. Check Add/Edit Permission for initial load
 $actionToCheck = $isEditMode ? 'edit' : 'add';
-checkPermissionError($actionToCheck, $perm, '分类');
+checkPermissionError($actionToCheck, $perm);
 
 if ($isEmbeddedCatForm) {
     $listPageUrl = URL_NOVEL_CATS;
@@ -57,16 +50,15 @@ $message = ""; $msgType = "";
 $existingCatRow = null;
 
 // [NEW] Flash Message Check (Reads message after redirect)
-if (isset($_SESSION['flash_msg'])) {
-    $message = $_SESSION['flash_msg'];
-    $msgType = $_SESSION['flash_type'];
-    unset($_SESSION['flash_msg'], $_SESSION['flash_type']);
+if (hasSession('flash_msg')) {
+    $message = session('flash_msg');
+    $msgType = session('flash_type');
+    unsetSession('flash_msg');
+    unsetSession('flash_type');
 }
 
 // [NEW] Log "View" Action (Run only on GET request)
-if ($_SERVER["REQUEST_METHOD"] !== "POST") {
-    if (!defined('CAT_FORM_VIEW_LOGGED')) {
-        define('CAT_FORM_VIEW_LOGGED', true);
+if (!isPostRequest()) {
         if (function_exists('logAudit')) {
             logAudit([
                 'page'           => $auditPage,
@@ -74,11 +66,10 @@ if ($_SERVER["REQUEST_METHOD"] !== "POST") {
                 'action_message' => $isEditMode ? "Viewing Edit Category Form (ID: $id)" : "Viewing Add Category Form",
                 'query'          => $viewQuery,
                 'query_table'    => $catTable,
-                'user_id'        => $_SESSION['user_id']
+                'user_id'        => sessionInt('user_id')
             ]);
         }
     }
-}
 
 // 1. Fetch Data
 if ($isEditMode) {
@@ -112,23 +103,26 @@ if ($isEditMode) {
 }
 
 // 2. Handle Submit
-if ($_SERVER["REQUEST_METHOD"] === "POST") {
+if (isPostRequest()) {
 
 // Determine action and check permission using the common function
     $submitAction = $isEditMode ? 'edit' : 'add';
-    $submitError = checkPermissionError($submitAction, $perm, '标签');
+    $submitError = checkPermissionError($submitAction, $perm);
     
     if ($submitError) {
         // Instead of throwing an exception, we set the message to show in the UI
         $message = $submitError;
         $msgType = "danger";
     } else {
-    $name = trim($_POST['name'] ?? '');
-    $tagIds = $_POST['tags'] ?? []; 
-    $uid = $_SESSION['user_id'];
+    $name   = postSpaceFilter('name');
+    $tagIds = getArray('tags');
+    $uid    = sessionInt('user_id');
 
     if (empty($name)) {
         $message = "分类名称不能为空"; $msgType = "danger";
+    } elseif (empty($tagIds)) {
+        // [NEW] Backend validation to ensure at least one tag is submitted
+        $message = "请至少选择一个关联标签"; $msgType = "danger";
     } else {
         // Check Duplicates
         $checkSql = $isEditMode ? "SELECT id FROM $catTable WHERE name = ? AND id != ?" : "SELECT id FROM $catTable WHERE name = ?";
@@ -153,7 +147,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 
                 // Count how many of these IDs actually exist in the database
                 $checkTags = $conn->query("SELECT COUNT(*) FROM $tagTable WHERE id IN ($idList)");
-                $foundCount = $checkTags ? (int)$checkTags->fetch_row()[0] : 0;
+                $foundCount = $checkTags ? $checkTags->fetch_row()[0] : 0;
 
                 if ($foundCount < count($safeTagIds)) {
                     $tagsValid = false;
@@ -287,8 +281,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                         ]);
                     }
                     
-                    $_SESSION['flash_msg'] = '分类保存成功！';
-                    $_SESSION['flash_type'] = 'success';
+                    setSession('flash_msg', '分类保存成功！');
+                    setSession('flash_type', 'success');
                     $redirectUrl = $listPageUrl;
                     if ($isEmbeddedCatForm || headers_sent()) {
                         echo "<script>window.location.href='$redirectUrl';</script>";
@@ -335,7 +329,7 @@ if ($isEmbeddedCatForm): ?>
                 </div>
             <?php endif; ?>
             
-            <form method="POST" action="<?php echo htmlspecialchars($formActionUrl); ?>" autocomplete="off" class="<?php echo $isEditMode ? 'check-changes' : ''; ?>">
+            <form id="categoryForm" method="POST" action="<?php echo htmlspecialchars($formActionUrl); ?>" autocomplete="off" class="<?php echo $isEditMode ? 'check-changes' : ''; ?>">
                 <div class="mb-4">
                     <label class="form-label text-muted">分类名称 <span class="text-danger">*</span></label>
                     <input type="text" class="form-control form-control-lg" name="name" 
@@ -344,8 +338,8 @@ if ($isEmbeddedCatForm): ?>
                 </div>
 
                 <div class="mb-4">
-                    <label class="form-label text-muted">关联标签</label>
-                    <div class="border rounded p-2" style="max-height: 200px; overflow-y: auto;">
+                    <label class="form-label text-muted">关联标签 <span class="text-danger">*</span></label>
+                    <div class="border rounded p-2 tag-checkbox-area">
                         <?php if (empty($allTags)): ?>
                             <div class="text-center text-muted py-3">暂无可用标签，请先去标签管理添加。</div>
                         <?php else: ?>

@@ -16,12 +16,12 @@ $gender = "";
 $birthday = "";
 
 // Process Form Submission (POST Request)
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $name = trim($_POST['name']);
-    $email = trim($_POST['email']);
-    $password = $_POST['password'];
-    $gender = $_POST['gender'] ?? "";
-    $birthday = $_POST['birthday'] ?? "";
+if (isPostRequest()) {
+    $name = postSpaceFilter('name');
+    $email = postSpaceFilter('email');
+    $password = post('password');
+    $gender = post('gender') ?? "";
+    $birthday = post('birthday') ?? "";
 
     // Validation Logic
     if (empty($name)) {
@@ -105,10 +105,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     session_start();
                 }
                 
-                $_SESSION['user_id'] = $newUserId ? (int)$newUserId : null;
-                $_SESSION['user_name'] = $name;
-                $_SESSION['role_id'] = $defaultRoleId; // Save Role ID to session
-                $_SESSION['logged_in'] = true;
+                setSession('user_id', $newUserId ? $newUserId : null);
+                setSession('user_name', $name);
+                setSession('role_id', $defaultRoleId); // Save Role ID to session
+                setSession('logged_in', true);
 
                 header("Location: " . URL_HOME);
                 exit();
@@ -122,7 +122,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
 <?php $pageMetaKey = '/register.php'; ?>
 <!DOCTYPE html>
-<html lang="<?php echo defined('SITE_LANG') ? SITE_LANG : 'zh-CN'; ?>">
 <head>
     <?php require_once BASE_PATH . 'include/header.php'; ?>
     <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/auth.css?v=<?php echo time(); ?>">
@@ -148,10 +147,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
                 <div class="auth-field">
                     <label class="form-label" for="password">密码</label>
-                    <div style="position: relative;">
-                        <input type="password" class="form-control" name="password" id="password" placeholder="请输入密码" required style="padding-right: 45px;">
-                        <button type="button" id="togglePassword" style="position: absolute; right: 20px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; padding: 0; color: #666; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;" title="显示/隐藏密码">
-                            <i class="fa fa-eye" style="font-size: 16px;"></i>
+                    <div class="password-field">
+                        <input type="password" class="form-control" name="password" id="password" placeholder="请输入密码" required>
+                        <button type="button" id="togglePassword" class="toggle-password" title="显示/隐藏密码">
+                            <i class="fa fa-eye"></i>
                         </button>
                     </div>
                     <div id="strength-meter">密码强度提示: <span id="strength-text">未填写</span></div>

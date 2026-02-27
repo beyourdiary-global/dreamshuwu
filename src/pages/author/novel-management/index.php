@@ -3,11 +3,13 @@
 require_once dirname(__DIR__, 4) . '/common.php';
 
 // Generate a CSRF token if it doesn't exist in the session
-if (empty($_SESSION['csrf_token'])) {
-    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+if (empty(session('csrf_token'))) {
+    setSession('csrf_token', bin2hex(random_bytes(32)));
 }
 
-$currentUserId = isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : 0;
+requireLogin();
+
+$currentUserId = sessionInt('user_id');
 
 // Verify if the current user is an approved author
 requireApprovedAuthor($conn, $currentUserId);
@@ -23,16 +25,28 @@ if (empty($perm) || (isset($perm->view) && empty($perm->view))) {
 }
 
 // Check for view permission; block and redirect if denied
-checkPermissionError('view', $perm, '我的小说 (Novel Management)');
+checkPermissionError('view', $perm);
 
-// Fetch category list directly from the novel_category table
-$categories = [];
+// [REF] Define view query early for use in execution and logging
 $catSql = "SELECT id, name FROM " . NOVEL_CATEGORY . " ORDER BY name ASC";
+$categories = [];
+
 if ($res = $conn->query($catSql)) {
     while ($row = $res->fetch_assoc()) {
         $categories[] = $row;
     }
     $res->free();
+}
+
+if (function_exists('logAudit')) {
+        logAudit([
+            'page'           => $auditPage,
+            'action'         => 'V',
+            'action_message' => 'Viewing Author Novel Management Page',
+            'query'          => $catSql,
+            'query_table'    => NOVEL_CATEGORY,
+            'user_id'        => $currentUserId
+        ]);
 }
 
 $apiEndpoint = defined('URL_AUTHOR_NOVEL_API') ? URL_AUTHOR_NOVEL_API : SITEURL . '/src/pages/author/novel-management/api.php';
@@ -49,7 +63,6 @@ $tableColumns = [
 ];
 ?>
 <!DOCTYPE html>
-<html lang="<?php echo defined('SITE_LANG') ? SITE_LANG : 'zh-CN'; ?>">
 <head>
     <?php require_once BASE_PATH . 'include/header.php'; ?>
     <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/dataTables.bootstrap.min.css">
@@ -99,7 +112,7 @@ $tableColumns = [
         <div class="card-body p-4">
             <form id="novelForm" enctype="multipart/form-data" novalidate>
                 <input type="hidden" name="mode" value="create">
-                <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
+                <input type="hidden" name="csrf_token" value="<?php echo session('csrf_token'); ?>">
                 
                 <div class="row">
                     <div class="col-lg-8">
@@ -214,7 +227,7 @@ $tableColumns = [
                 <div class="modal-body p-4">
                     <input type="hidden" name="novel_id" id="modal_novel_id" value="0">
                     <input type="hidden" name="mode" value="update">
-                    <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
+                    <input type="hidden" name="csrf_token" value="<?php echo session('csrf_token'); ?>">
                     
                     <div class="row">
                         <div class="col-lg-8">

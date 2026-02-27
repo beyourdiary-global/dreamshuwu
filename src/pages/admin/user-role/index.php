@@ -2,18 +2,6 @@
 // Path: src/pages/admin/user-role/index.php
 require_once dirname(__DIR__, 4) . '/common.php';
 
-// Configuration & Constants
-$tableRole = USER_ROLE;
-$tableRolePermission = USER_ROLE_PERMISSION;
-$auditPage = 'User Role Management';
-$isEmbedded = isset($EMBED_USER_ROLE) && $EMBED_USER_ROLE === true;
-$currentUserId = isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : 0;
-
-// URL Paths
-$baseListUrl = URL_USER_ROLE;
-$formBaseUrl = URL_USER_ROLE . '&mode=form';
-$apiEndpoint = defined('URL_USER_ROLE_API') ? URL_USER_ROLE_API : (SITEURL . '/src/pages/admin/user-role/index.php');
-
 // Redirect Helper
 if (!function_exists('userRoleRedirect')) {
     function userRoleRedirect($url) {
@@ -27,30 +15,35 @@ if (!function_exists('userRoleRedirect')) {
 }
 
 // 1. Auth Check
-if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
-    if (isset($_GET['api_mode'])) {
-        header('Content-Type: application/json');
-        echo safeJsonEncode(['success' => false, 'message' => 'Unauthorized']);
-        exit();
-    }
-    userRoleRedirect(URL_LOGIN);
-}
+requireLogin();
+
+// Configuration & Constants
+$tableRole = USER_ROLE;
+$tableRolePermission = USER_ROLE_PERMISSION;
+$auditPage = 'User Role Management';
+$isEmbedded = isset($EMBED_USER_ROLE) && $EMBED_USER_ROLE === true;
+$currentUserId = sessionInt('user_id');
+
+// URL Paths
+$baseListUrl = URL_USER_ROLE;
+$formBaseUrl = URL_USER_ROLE . '&mode=form';
+$apiEndpoint = defined('URL_USER_ROLE_API') ? URL_USER_ROLE_API : (SITEURL . '/src/pages/admin/user-role/index.php');
 
 // 2. Permission Check
 $currentUrl = '/dashboard.php?view=user_role';
 $perm = hasPagePermission($conn, $currentUrl);
 // Check View Permission for the list
-checkPermissionError('view', $perm, '用户角色管理');
+checkPermissionError('view', $perm);
 
 // 3. POST Handling (Delete Action)
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $actionType = $_POST['action_type'] ?? '';
+if (isPostRequest()) {
+    $actionType = post('action_type');
 
     if ($actionType === 'delete') {
         // Check Delete Permission
-        checkPermissionError('delete', $perm, '用户角色');
+        checkPermissionError('delete', $perm);
 
-        $delId = isset($_POST['id']) ? (int)$_POST['id'] : 0;
+        $delId = (int)post('id');
         if ($delId > 0) {
             // Fetch old data for audit
             $oldValue = fetchUserRoleById($conn, $delId);
@@ -63,8 +56,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt->bind_param('si', $updatedBy, $delId);
                 if ($stmt->execute()) {
                     $newValue = fetchUserRoleById($conn, $delId);
-                    $_SESSION['flash_msg'] = '删除成功';
-                    $_SESSION['flash_type'] = 'success';
+                    setSession('flash_msg', '删除成功');
+                    setSession('flash_type', 'success');
 
                     // Audit Log
                     if (function_exists('logAudit')) {
@@ -81,13 +74,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         ]);
                     }
                 } else {
-                    $_SESSION['flash_msg'] = '删除失败';
-                    $_SESSION['flash_type'] = 'danger';
+                    setSession('flash_msg', '删除失败');
+                    setSession('flash_type', 'danger');
                 }
                 $stmt->close();
             } else {
-                $_SESSION['flash_msg'] = '删除失败';
-                $_SESSION['flash_type'] = 'danger';
+                setSession('flash_msg', '删除失败');
+                setSession('flash_type', 'danger');
             }
         }
 
@@ -96,13 +89,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // 4. View Logging (Updated to include Form View)
-$viewMode = $_GET['mode'] ?? 'list';
+$viewMode = input('mode') ?: 'list';
 if (function_exists('logAudit') && !defined('USER_ROLE_VIEW_LOGGED')) {
     define('USER_ROLE_VIEW_LOGGED', true);
 
     if ($viewMode === 'form') {
         // [New] Log Form Viewing (Add or Edit)
-        $recordId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+        $recordId = (int)numberInput('id');
         $viewQuery = "SELECT * FROM {$tableRole} WHERE id = ? LIMIT 1";
 
         logAudit([
@@ -114,7 +107,7 @@ if (function_exists('logAudit') && !defined('USER_ROLE_VIEW_LOGGED')) {
             'user_id'        => $currentUserId,
             'record_id'      => $recordId > 0 ? $recordId : null
         ]);
-    } elseif (!isset($_GET['search']) && !isset($_GET['page'])) {
+    } elseif (input('search') === '' && numberInput('page') === '') {
         // Log List View
         $viewSql = "SELECT id, name_en, name_cn, status FROM {$tableRole} WHERE status = 'A'";
         logAudit([
@@ -129,17 +122,22 @@ if (function_exists('logAudit') && !defined('USER_ROLE_VIEW_LOGGED')) {
 }
 
 // 5. Data Fetching (List Mode)
-$search = trim($_GET['search'] ?? '');
+$search = searchInput('search');
 $page = 1;
-$perPage = (int)($_GET['per_page'] ?? 10);
+$perPage = (int)(numberInput('per_page') ?: 10);
 $allowedSizes = [10, 20, 50, 100];
 if (!in_array($perPage, $allowedSizes, true)) $perPage = 10;
 
 if ($isEmbedded):
+    $pageScripts = ($viewMode === 'form')
+        ? ['admin.js']
+        : ['jquery.dataTables.min.js', 'dataTables.bootstrap.min.js', 'admin.js'];
+
     // Flash Messages
-    if (isset($_SESSION['flash_msg'])) {
-        echo '<div class="alert alert-' . htmlspecialchars($_SESSION['flash_type'] ?? 'info') . ' alert-dismissible fade show"><button type="button" class="btn-close" data-bs-dismiss="alert"></button>' . htmlspecialchars($_SESSION['flash_msg']) . '</div>';
-        unset($_SESSION['flash_msg'], $_SESSION['flash_type']);
+    if (hasSession('flash_msg')) {
+        echo '<div class="alert alert-' . htmlspecialchars(session('flash_type') ?: 'info') . ' alert-dismissible fade show"><button type="button" class="btn-close" data-bs-dismiss="alert"></button>' . htmlspecialchars(session('flash_msg')) . '</div>';
+        unsetSession('flash_msg');
+        unsetSession('flash_type');
     }
 
     // Router: Show Form or List
@@ -203,8 +201,9 @@ if ($isEmbedded):
             error_log('Failed to prepare user role list statement: ' . $conn->error);
         }
 ?>
+<link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/dataTables.bootstrap.min.css">
 <div class="container-fluid px-0">
-    <?php $displayIndexStart = ((max(1, (int)$page) - 1) * max(1, (int)$perPage)) + 1; ?>
+    <?php $displayIndexStart = ((max(1, $page) - 1) * max(1, $perPage)) + 1; ?>
     <div class="card page-action-card">
         <div class="card-header bg-white d-flex justify-content-between align-items-center py-3 flex-wrap gap-2">
             <div>
@@ -259,10 +258,10 @@ if ($isEmbedded):
                                 <td><span class="badge bg-success">Active</span></td>
                                 <td class="text-center">
                                     <?php if (!empty($perm->edit)): ?>
-                                    <a href="<?php echo $formBaseUrl . '&id=' . (int)$row['id']; ?>" class="btn btn-sm btn-outline-primary me-1"><i class="fa-solid fa-pen"></i></a>
+                                    <a href="<?php echo $formBaseUrl . '&id=' . $row['id']; ?>" class="btn btn-sm btn-outline-primary me-1"><i class="fa-solid fa-pen"></i></a>
                                     <?php endif; ?>
                                     <?php if (!empty($perm->delete)): ?>
-                                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="confirmDelete(<?php echo (int)$row['id']; ?>)"><i class="fa-solid fa-trash"></i></button>
+                                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="confirmDelete(<?php echo $row['id']; ?>)"><i class="fa-solid fa-trash"></i></button>
                                     <?php endif; ?>
                                     <?php if (empty($perm->edit) && empty($perm->delete)): ?>
                                     <?php endif; ?>
@@ -278,7 +277,7 @@ if ($isEmbedded):
                 <?php if (!empty($rows)): ?>
                     <?php $displayIndex = $displayIndexStart; ?>
                     <?php foreach ($rows as $row): ?>
-                        <div class="page-action-mobile-item" data-item="<?php echo (int)$row['id']; ?>">
+                        <div class="page-action-mobile-item" data-item="<?php echo $row['id']; ?>">
                             <div class="page-action-mobile-head">
                                 <div>
                                     <div><strong>#<?php echo $displayIndex++; ?></strong></div>
@@ -289,10 +288,10 @@ if ($isEmbedded):
                             </div>
                             <div class="page-action-mobile-body">
                                 <?php if (!empty($perm->edit)): ?>
-                                <a href="<?php echo $formBaseUrl . '&id=' . (int)$row['id']; ?>" class="btn btn-sm btn-outline-primary me-2"><i class="fa-solid fa-pen"></i> 编辑</a>
+                                <a href="<?php echo $formBaseUrl . '&id=' . $row['id']; ?>" class="btn btn-sm btn-outline-primary me-2"><i class="fa-solid fa-pen"></i> 编辑</a>
                                 <?php endif; ?>
                                 <?php if (!empty($perm->delete)): ?>
-                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="confirmDelete(<?php echo (int)$row['id']; ?>)"><i class="fa-solid fa-trash"></i> 删除</button>
+                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="confirmDelete(<?php echo $row['id']; ?>)"><i class="fa-solid fa-trash"></i> 删除</button>
                                 <?php endif; ?>
                                 <?php if (empty($perm->edit) && empty($perm->delete)): ?>
                                 <span class="text-muted small">无操作权限</span>
@@ -314,14 +313,12 @@ if ($isEmbedded):
     <input type="hidden" name="id" id="deleteId" value="0">
 </form>
 
-<script src="<?php echo URL_ASSETS; ?>/js/admin.js"></script>
 <?php
     }
 else:
 ?>
 <?php $pageMetaKey = 'user_role'; ?>
 <!DOCTYPE html>
-<html lang="<?php echo defined('SITE_LANG') ? SITE_LANG : 'zh-CN'; ?>">
 <head>
     <?php require_once BASE_PATH . 'include/header.php'; ?>
 </head>

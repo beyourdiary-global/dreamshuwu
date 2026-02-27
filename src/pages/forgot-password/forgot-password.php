@@ -3,14 +3,14 @@ require_once dirname(__DIR__, 3) . '/common.php';
 
 $message = "";
 $msgType = ""; // 'success', 'danger', or 'warning'
-$isAjax = isset($_POST['ajax']) && $_POST['ajax'] === '1';
+$isAjax = post('ajax') === '1';
 
 // [FIX] Convert Constant String to Array safely
 $local_whitelist = defined('LOCAL_WHITELIST') ? explode(',', LOCAL_WHITELIST) : ['127.0.0.1', '::1', 'localhost'];
-$isLocal = in_array($_SERVER['SERVER_NAME'], $local_whitelist);
+$isLocal = in_array(input('SERVER_NAME'), $local_whitelist);
 
-if ($_SERVER["REQUEST_METHOD"] === "POST") {
-    $email = trim($_POST['email'] ?? "");
+if (isPostRequest()) {
+    $email = postSpaceFilter('email');
 
     // 1. Validation
     if (empty($email)) {
@@ -93,7 +93,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
 <?php $pageMetaKey = '/forgot_password.php'; ?>
 <!DOCTYPE html>
-<html lang="<?php echo defined('SITE_LANG') ? SITE_LANG : 'zh-CN'; ?>">
 <head>
     <?php require_once BASE_PATH . 'include/header.php'; ?>
     <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/auth.css?v=<?php echo time(); ?>">

@@ -2,12 +2,16 @@
 // Path: src/pages/author/chapter-management/index.php
 require_once dirname(__DIR__, 4) . '/common.php';
 
-if (empty($_SESSION['csrf_token'])) {
-    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+if (empty(session('csrf_token'))) {
+    setSession('csrf_token', bin2hex(random_bytes(32)));
 }
 
-$currentUserId = isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : 0;
+requireLogin();
+
+$currentUserId = sessionInt('user_id');
 requireApprovedAuthor($conn, $currentUserId);
+
+$auditPage = 'Chapter Management';
 
 // Permission Checking Logic
 if (defined('URL_AUTHOR_CHAPTER_MANAGEMENT')) {
@@ -41,12 +45,12 @@ $canAdd = !empty($perm->add);
 $canEdit = !empty($perm->edit);
 $canDelete = !empty($perm->delete);
 
-$novelId = (int)($_GET['novel_id'] ?? 0);
+$novelId = (int)numberInput('novel_id');
 if ($novelId <= 0) {
     die("无效的小说ID (Invalid Novel ID)");
 }
 
-// Verify Ownership & Get Novel Details with Crash Prevention
+// Pre-define view query for execution and audit logging
 $novelSql = "SELECT title, cover_image, completion_status, tags, introduction FROM " . NOVEL . " WHERE id = ? AND author_id = ? AND status = 'A' LIMIT 1";
 $stmt = $conn->prepare($novelSql);
 if (!$stmt) {
@@ -69,7 +73,19 @@ $stmt->close();
 
 $coverUrl = $nCover ? (URL_ASSETS . '/uploads/novel_covers/' . htmlspecialchars($nCover)) : (URL_ASSETS . '/images/no-cover.png');
 
-// Fetch Chapter Statistics with Crash Prevention
+// Log the "View" action dynamically
+if (function_exists('logAudit')) {
+        logAudit([
+            'page'           => $auditPage,
+            'action'         => 'V',
+            'action_message' => "Viewing Chapter Management for Novel ID: $novelId",
+            'query'          => $novelSql,
+            'query_table'    => NOVEL,
+            'user_id'        => $currentUserId
+        ]);
+    }
+
+// Fetch Chapter Statistics
 $statSql = "SELECT 
     COUNT(id) as total_chapters, 
     SUM(word_count) as total_words,
@@ -96,7 +112,6 @@ $apiEndpoint = SITEURL . '/src/pages/author/chapter-management/api.php';
 $currentUrl = '/author/novel/' . $novelId . '/chapters/';
 ?>
 <!DOCTYPE html>
-<html lang="<?php echo defined('SITE_LANG') ? SITE_LANG : 'zh-CN'; ?>">
 <head>
     <?php require_once BASE_PATH . 'include/header.php'; ?>
     <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/dataTables.bootstrap.min.css">
@@ -135,7 +150,7 @@ $currentUrl = '/author/novel/' . $novelId . '/chapters/';
                 </div>
                 <div class="mb-2">
                     <?php 
-                    $tagsArr = explode(',', (string)$nTags); //If $nTags is null (empty), the (string) safely converts it into an empty string.
+                    $tagsArr = explode(',', (string)$nTags);
                     foreach($tagsArr as $tag) {
                         if(trim($tag) !== '') echo '<span class="badge bg-light text-secondary border me-1">'.htmlspecialchars(trim($tag)).'</span>';
                     }
@@ -183,7 +198,7 @@ $currentUrl = '/author/novel/' . $novelId . '/chapters/';
         </div>
         <div class="card-body p-4">
             <form id="chapterForm">
-                <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
+                <input type="hidden" name="csrf_token" value="<?php echo session('csrf_token'); ?>">
                 <input type="hidden" name="novel_id" value="<?php echo $novelId; ?>">
                 <input type="hidden" name="chapter_id" id="edit_chapter_id" value="0">
                 

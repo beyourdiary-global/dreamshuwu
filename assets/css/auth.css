@@ -195,3 +195,56 @@ body.auth-page {
   justify-content: left; /* Centers the items together */
   gap: 8px;
 }
+
+/* --- Auth Page: Password Field Icon Fixes --- */
+/* Wrapper must be relative for icon positioning */
+.auth-page .password-field {
+  position: relative;
+}
+
+/* Input padding for toggle icon */
+.auth-page .password-field .form-control {
+  padding-right: 45px !important;
+}
+
+/* When invalid, make room for BOTH toggle + Bootstrap error icon */
+.auth-page .password-field .form-control.is-invalid {
+  padding-right: 70px !important;
+  background-position: right 12px center !important;
+  background-size: 18px 18px !important;
+}
+
+/* Eye toggle button base (no error state) */
+.auth-page .password-field .toggle-password {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  color: #666;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+  transition: right 0.2s ease;
+}
+
+.auth-page .password-field .toggle-password i {
+  font-size: 15px;
+  line-height: 1;
+}
+
+/* Push eye icon left when error icon is visible */
+.auth-page .password-field .form-control.is-invalid ~ .toggle-password {
+  right: 38px !important;
+}
+
+/* Non-password auth inputs: standardize validation icon size */
+.auth-page .form-control.is-invalid {
+  background-size: 18px 18px !important;
+}

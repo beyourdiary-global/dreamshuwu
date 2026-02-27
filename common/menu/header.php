@@ -13,9 +13,9 @@ if (!isset($webSettings)) {
 $siteName = !empty($webSettings['website_name']) ? $webSettings['website_name'] : 'Logo';
 $siteLogo = !empty($webSettings['website_logo']) ? $webSettings['website_logo'] : '';
 
-$currentPage = basename($_SERVER['PHP_SELF']);
-$requestPath = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH);
-$isLoggedIn = (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true);
+$currentPage = getCurrentPage();
+$requestPath = parse_url(getServer('REQUEST_URI'), PHP_URL_PATH);
+$isLoggedIn = (hasSession('logged_in') && session('logged_in') === true);
 $dashboardPath = parse_url(URL_USER_DASHBOARD, PHP_URL_PATH);
 $isUserDashboardPage = ($dashboardPath && $requestPath === $dashboardPath);
 
@@ -23,20 +23,20 @@ $authorZoneUrl = URL_LOGIN;
 $isAuthorPage = false;
 
 if ($isLoggedIn) {
-    $currentUserId = isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : 0;
-    $sessionRoleId = isset($_SESSION['role_id']) ? (int)$_SESSION['role_id'] : 0;
+    $currentUserId = sessionInt('user_id');
+    $sessionRoleId = sessionInt('role_id');
     $cacheTtlSeconds = 300;
     
     // 1. Check Session Cache to prevent DB hits on every page load
-    $permCache = isset($_SESSION['header_author_route_cache']) && is_array($_SESSION['header_author_route_cache'])
-        ? $_SESSION['header_author_route_cache']
+    $permCache = hasSession('header_author_route_cache') && is_array(session('header_author_route_cache'))
+        ? session('header_author_route_cache')
         : [];
 
     $cacheValid = (
         isset($permCache['user_id'], $permCache['role_id'], $permCache['expires_at'], $permCache['url']) &&
-        (int)$permCache['user_id'] === $currentUserId &&
-        (int)$permCache['role_id'] === $sessionRoleId &&
-        (int)$permCache['expires_at'] > time()
+        $permCache['user_id'] === $currentUserId &&
+        $permCache['role_id'] === $sessionRoleId &&
+        $permCache['expires_at'] > time()
     );
 
     if ($cacheValid) {
@@ -63,12 +63,12 @@ if ($isLoggedIn) {
         }
 
         // 4. Update Cache
-        $_SESSION['header_author_route_cache'] = [
+        setSession('header_author_route_cache', [
             'user_id' => $currentUserId,
             'role_id' => $sessionRoleId,
             'expires_at' => time() + $cacheTtlSeconds,
             'url' => $authorZoneUrl
-        ];
+        ]);
     }
 
     // Active State Check for the Navigation Item
@@ -156,7 +156,7 @@ $navLinks = [
                     <a href="<?php echo URL_USER_DASHBOARD; ?>" class="user-name-link <?php echo $isUserDashboardPage ? 'active' : ''; ?>" title="进入个人后台">
                         <i class="fa-solid fa-circle-user"></i>
                         <span class="user-name-text">
-                            <?php echo htmlspecialchars($_SESSION['user_name'] ?? '用户'); ?>
+                            <?php echo htmlspecialchars(session('user_name') ?: '用户'); ?>
                         </span>
                     </a>
                 </div>

@@ -152,13 +152,9 @@ $(document).ready(function () {
         });
 
       if (!hasFile && originalData === currentData) {
-        Swal.fire({
-          icon: "warning",
-          title: "没有修改",
-          text: "无需保存",
-          timer: 2000,
-          showConfirmButton: false,
-        });
+        if (typeof window.showNoChangeWarning === "function") {
+          window.showNoChangeWarning("无需保存");
+        }
         return;
       }
     }
@@ -245,18 +241,18 @@ $(document).ready(function () {
         if (res.success && res.data.length > 0) {
           let html = "";
           res.data.forEach((tag) => {
-            // Check if tag is in pre-selected array
-            const isChecked = checkedTagsArray.includes(tag.name)
+            const isChecked = checkedTagsArray.includes(parseInt(tag.id))
               ? "checked"
               : "";
             const isDisabled = isViewMode ? "disabled" : "";
+
             // Unique ID to avoid collision between Create and Edit forms
             const uniqueId =
               "tag_" + Math.random().toString(36).substr(2, 9) + "_" + tag.id;
 
             html += `
                 <div class="d-inline-flex align-items-center bg-white border rounded py-1 px-3 me-2 mb-2 hover-shadow-sm transition-all">
-                    <input class="form-check-input m-0 me-2 tag-checkbox flex-shrink-0" type="checkbox" name="tags[]" id="${uniqueId}" value="${tag.name}" ${isChecked} ${isDisabled} style="cursor: pointer;">
+                    <input class="form-check-input m-0 me-2 tag-checkbox flex-shrink-0" type="checkbox" name="tags[]" id="${uniqueId}" value="${tag.id}" ${isChecked} ${isDisabled} style="cursor: pointer;">
                     <label class="form-check-label small user-select-none m-0" for="${uniqueId}" style="cursor: pointer;">${tag.name}</label>
                 </div>
             `;
@@ -675,14 +671,9 @@ $(document).ready(function () {
             if (novelTable) novelTable.ajax.reload(null, false);
           });
         } else if (res.is_warning) {
-          // [NEW] Trigger the specific "No modifications" warning popup
-          Swal.fire({
-            icon: "warning",
-            title: "没有修改",
-            text: res.message, // Uses '无需保存' from the API
-            timer: 2000,
-            showConfirmButton: false,
-          });
+          if (typeof window.showNoChangeWarning === "function") {
+            window.showNoChangeWarning(res.message || "无需保存");
+          }
         } else {
           Swal.fire("更新失败", res.message, "error");
         }

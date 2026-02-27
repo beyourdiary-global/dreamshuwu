@@ -1,10 +1,10 @@
 <?php
 require_once dirname(__DIR__, 2) . '/common.php';
 
-// --- [BUG FIX] Session Integrity Check ---
-if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
+// --- Session Integrity Check ---
+if (hasSession('logged_in') && session('logged_in') === true) {
     
-    $sessionUserId = $_SESSION['user_id'] ?? 0;
+    $sessionUserId = sessionInt('user_id');
     $checkSql = "SELECT id FROM " . USR_LOGIN . " WHERE id = ? LIMIT 1";
     $checkStmt = $conn->prepare($checkSql);
     
@@ -28,7 +28,6 @@ $pageMetaKey = '/Home.php';
 ?>
 
 <!DOCTYPE html>
-<html lang="<?php echo defined('SITE_LANG') ? SITE_LANG : 'zh-CN'; ?>">
 <head>
     <?php require_once BASE_PATH . 'include/header.php'; ?>
 </head>
@@ -39,11 +38,12 @@ $pageMetaKey = '/Home.php';
 <div class="container main-content" style="max-width: 1200px; margin: 20px auto; padding: 0 15px;">
     
     <?php 
-    if (isset($_SESSION['flash_msg'])) {
-        $flashType = $_SESSION['flash_type'] ?? 'info';
-        $flashMsg = $_SESSION['flash_msg'];
+    if (hasSession('flash_msg')) {
+        $flashType = session('flash_type') ?: 'info';
+        $flashMsg = session('flash_msg');
         // Clear the message so it doesn't show up again on refresh
-        unset($_SESSION['flash_msg'], $_SESSION['flash_type']);
+        unsetSession('flash_msg');
+        unsetSession('flash_type');
     ?>
         <div class="alert alert-<?php echo htmlspecialchars($flashType); ?> alert-dismissible fade show shadow-sm" role="alert">
             <i class="fa-solid fa-circle-exclamation me-2"></i>
@@ -52,9 +52,9 @@ $pageMetaKey = '/Home.php';
         </div>
     <?php } ?>
 
-    <?php if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true): ?>
+    <?php if (hasSession('logged_in') && session('logged_in') === true): ?>
         <div class="alert alert-success mt-3 shadow-sm">
-            欢迎回来, <strong><?php echo htmlspecialchars($_SESSION['user_name'] ?? 'User'); ?></strong>!
+            欢迎回来, <strong><?php echo htmlspecialchars(session('user_name') ?: 'User'); ?></strong>!
         </div>
     <?php endif; ?>
 

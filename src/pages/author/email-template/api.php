@@ -8,11 +8,9 @@ try {
     if (ob_get_length()) ob_clean();
     header('Content-Type: application/json; charset=utf-8');
 
-    if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
-        throw new Exception('会话已过期，请重新登录。');
-    }
+    requireLogin();
 
-    $currentUserId = isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : (isset($_SESSION['userid']) ? (int)$_SESSION['userid'] : 0);
+    $currentUserId = sessionInt('user_id');
     $currentUrl = '/author/email-template.php';
     $perm = hasPagePermission($conn, $currentUrl);
     
@@ -22,15 +20,15 @@ try {
     }
     $auditPage = 'Email Template Management';
 
-    $mode = strtolower(trim((string)($_REQUEST['mode'] ?? 'data')));
+    // [FIX] Use input() global function
+    $mode = strtolower(input('mode') ?: 'data');
 
-    // --- [NEW] CSRF Token Protection ---
-    // Validate CSRF token for all state-changing operations to prevent malicious forged requests
+    // --- CSRF Token Protection ---
     if (in_array($mode, ['create', 'update', 'delete'])) {
-        $headers = function_exists('getallheaders') ? getallheaders() : [];
-        $clientToken = $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? $headers['X-CSRF-Token'] ?? '';
+        // [FIX] Use input() to check for header token, falling back to post()
+        $clientToken = input('HTTP_X_CSRF_TOKEN') ?: post('csrf_token');
         
-        if (empty($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $clientToken)) {
+        if (empty(session('csrf_token')) || !hash_equals(session('csrf_token'), (string)$clientToken)) {
             http_response_code(403);
             throw new Exception('安全校验失败：非法的请求 (Invalid CSRF Token)');
         }
@@ -53,7 +51,7 @@ try {
             $row = null;
             if ($stmt->fetch()) {
                 $row = [
-                    'id' => (int)$r_id,
+                    'id' => $r_id,
                     'template_code' => (string)$r_code,
                     'template_name' => (string)$r_name,
                     'subject' => (string)$r_subject,
@@ -61,8 +59,8 @@ try {
                     'status' => (string)$r_status,
                     'created_at' => (string)$r_created,
                     'updated_at' => (string)$r_updated,
-                    'created_by' => (int)$r_createdBy,
-                    'updated_by' => (int)$r_updatedBy
+                    'created_by' => $r_createdBy,
+                    'updated_by' => $r_updatedBy
                 ];
             }
             $stmt->close();
@@ -78,22 +76,19 @@ try {
     // MODE: DATA (Fetch DataTables)
     // ==========================================
     if ($mode === 'data') {
-        $viewError = checkPermissionError('view', $perm, '邮件模板管理', false);
-        if ($viewError) throw new Exception($viewError);
+        checkPermissionError('view', $perm);
 
-        $draw = (int)($_REQUEST['draw'] ?? 1);
-        $start = max(0, (int)($_REQUEST['start'] ?? 0));
-        $length = max(1, min(100, (int)($_REQUEST['length'] ?? 10)));
-        
-        // Safely extract search value to prevent PHP 8 Array Warning
-        $searchData = $_REQUEST['search'] ?? [];
-        $searchValue = trim((string)($searchData['value'] ?? ''));
+        // [FIX] Use numberInput and getArray helpers
+        $draw   = (int)(numberInput('draw') ?: 1);
+        $start  = max(0, (int)(numberInput('start') ?: 0));
+        $length = max(1, min(100, (int)(numberInput('length') ?: 10)));
+        $searchValue = getArray('search')['value'] ?? '';
 
         $baseWhere = " WHERE status <> 'D' ";
 
         $sqlTotal = "SELECT COUNT(*) AS total FROM " . EMAIL_TEMPLATE . $baseWhere;
         $stmtTotal = $conn->prepare($sqlTotal);
-        if (!$stmtTotal) throw new Exception('统计失败: ' . $conn->error);
+        if (!$stmtTotal) throw new Exception('统计失败');
         $stmtTotal->execute();
         $stmtTotal->bind_result($recordsTotal);
         $stmtTotal->fetch();
@@ -111,7 +106,7 @@ try {
 
         $sqlFiltered = "SELECT COUNT(*) AS total FROM " . EMAIL_TEMPLATE . $baseWhere . $searchWhere;
         $stmtFiltered = $conn->prepare($sqlFiltered);
-        if (!$stmtFiltered) throw new Exception('筛选统计失败: ' . $conn->error);
+        if (!$stmtFiltered) throw new Exception('筛选统计失败');
         
         if (!empty($params)) {
             $bind = [$types];
@@ -146,7 +141,7 @@ try {
         $rows = [];
         while ($stmtData->fetch()) {
             $rows[] = [
-                'id' => (int)$d_id,
+                'id' => $d_id,
                 'template_code' => (string)$d_code,
                 'template_name' => (string)$d_name,
                 'subject' => (string)$d_subject,
@@ -161,8 +156,8 @@ try {
 
         echo safeJsonEncode([
             'draw' => $draw,
-            'recordsTotal' => (int)$recordsTotal,
-            'recordsFiltered' => (int)$recordsFiltered,
+            'recordsTotal' => $recordsTotal,
+            'recordsFiltered' => $recordsFiltered,
             'data' => $rows
         ]);
         exit();
@@ -172,14 +167,14 @@ try {
     // MODE: CREATE
     // ==========================================
     if ($mode === 'create') {
-        $addError = checkPermissionError('add', $perm, '邮件模板管理', false);
-        if ($addError) throw new Exception($addError);
+        checkPermissionError('add', $perm);
 
-        $templateCode = strtoupper(trim((string)($_POST['template_code'] ?? '')));
-        $templateName = trim((string)($_POST['template_name'] ?? ''));
-        $subject = trim((string)($_POST['subject'] ?? ''));
-        $content = trim((string)($_POST['content'] ?? ''));
-        $status = trim((string)($_POST['status'] ?? 'A'));
+        // [FIX] Use postSpaceFilter for auto-trimming
+        $templateCode = strtoupper(postSpaceFilter('template_code'));
+        $templateName = postSpaceFilter('template_name');
+        $subject      = postSpaceFilter('subject');
+        $content      = postSpaceFilter('content');
+        $status       = post('status') ?: 'A';
 
         if ($templateCode === '' || $templateName === '' || $subject === '' || $content === '') {
             throw new Exception('请完整填写必填字段');
@@ -211,9 +206,7 @@ try {
         $exists = $checkStmt->num_rows > 0;
         $checkStmt->close();
 
-        if ($exists) {
-            throw new Exception('模板代码已存在，请使用其他代码');
-        }
+        if ($exists) throw new Exception('模板代码已存在');
 
         $insertSql = "INSERT INTO " . EMAIL_TEMPLATE . " (template_code, template_name, subject, content, status, created_at, updated_at, created_by, updated_by) VALUES (?, ?, ?, ?, ?, NOW(), NOW(), ?, ?)";
         $stmt = $conn->prepare($insertSql);
@@ -249,15 +242,14 @@ try {
     // MODE: UPDATE
     // ==========================================
     if ($mode === 'update') {
-        $editError = checkPermissionError('edit', $perm, '邮件模板管理', false);
-        if ($editError) throw new Exception($editError);
+        checkPermissionError('edit', $perm);
 
-        $id = (int)($_POST['id'] ?? 0);
-        $templateCode = strtoupper(trim((string)($_POST['template_code'] ?? '')));
-        $templateName = trim((string)($_POST['template_name'] ?? ''));
-        $subject = trim((string)($_POST['subject'] ?? ''));
-        $content = trim((string)($_POST['content'] ?? ''));
-        $status = trim((string)($_POST['status'] ?? 'A'));
+        $id           = (int)post('id');
+        $templateCode = strtoupper(postSpaceFilter('template_code'));
+        $templateName = postSpaceFilter('template_name');
+        $subject      = postSpaceFilter('subject');
+        $content      = postSpaceFilter('content');
+        $status       = post('status') ?: 'A';
 
         if ($id <= 0 || $templateCode === '' || $templateName === '' || $subject === '' || $content === '') {
             throw new Exception('参数不完整');
@@ -272,7 +264,6 @@ try {
             throw new Exception('记录不存在');
         }
 
-        // --- [CRITICAL REQUIREMENT FIX: PREVENT MODIFICATION OF CORE TEMPLATES] ---
         if (in_array($oldRow['template_code'], $requiredTemplates, true)) {
             // 1. Cannot rename template code
             if ($templateCode !== $oldRow['template_code']) {
@@ -292,6 +283,7 @@ try {
             'content' => $content,
             'status' => $status,
         ];
+        
         $changeResult = checkNoChangesAndRedirect($newData, $oldRow);
         if (is_array($changeResult)) {
             echo safeJsonEncode([
@@ -349,10 +341,9 @@ try {
     // MODE: DELETE
     // ==========================================
     if ($mode === 'delete') {
-        $deleteError = checkPermissionError('delete', $perm, '邮件模板管理', false);
-        if ($deleteError) throw new Exception($deleteError);
+        checkPermissionError('delete', $perm);
 
-        $id = (int)($_POST['id'] ?? 0);
+        $id = (int)post('id');
         if ($id <= 0) throw new Exception('无效ID');
 
         $oldRow = fetchEmailTemplateRowById($conn, $id);
@@ -360,7 +351,6 @@ try {
             throw new Exception('记录不存在');
         }
 
-        // --- [CRITICAL REQUIREMENT FIX: PREVENT DELETION OF CORE TEMPLATES] ---
         if (in_array($oldRow['template_code'], $requiredTemplates, true)) {
             throw new Exception('【' . $oldRow['template_code'] . '】是审核流程必备模板，系统禁止删除！');
         }
@@ -407,17 +397,10 @@ try {
     if (ob_get_length()) ob_clean(); 
     header('Content-Type: application/json; charset=utf-8');
     
-    $modeStr = isset($_REQUEST['mode']) ? $_REQUEST['mode'] : 'data';
+    $modeStr = input('mode') ?: 'data';
     
     if ($modeStr === 'data') {
-        // Response format expected by DataTables
-        echo safeJsonEncode([
-            'draw' => intval($_REQUEST['draw'] ?? 1),
-            'recordsTotal' => 0,
-            'recordsFiltered' => 0,
-            'data' => [],
-            'error' => '接口错误，请检查系统日志' 
-        ]);
+        echo safeJsonEncode(['draw' => (int)(input('draw') ?: 1), 'recordsTotal' => 0, 'recordsFiltered' => 0, 'data' => [], 'error' => '接口错误']);
     } else {
         // [FIX] Security: Hide database details from the frontend user.
         // We split the string by ": " so "读取数据失败: SQL syntax..." becomes just "读取数据失败"

@@ -4,6 +4,7 @@
  * Shared HTML head component.
  */
 
+
 // 1. Fetch Website Settings
 $webSettings = getWebSettings($conn);
 
@@ -39,6 +40,8 @@ $finalOgDesc    = !empty($specificSeo['og_description']) ? $specificSeo['og_desc
 $finalOgUrl     = !empty($specificSeo['og_url']) ? $specificSeo['og_url'] : ($globalSeo['og_url'] ?? '');
 ?>
 
+<!DOCTYPE html>
+<html lang="<?php echo defined('SITE_LANG') ? SITE_LANG : 'zh-CN'; ?>">
 <head>
     <title><?php echo htmlspecialchars($finalMetaTitle); ?></title>
     <meta name="description" content="<?php echo htmlspecialchars($finalMetaDesc); ?>">
@@ -82,92 +85,7 @@ $finalOgUrl     = !empty($specificSeo['og_url']) ? $specificSeo['og_url'] : ($gl
         }
     </style>
 
-    <script>
-    window.StarAdminConfig = {
-        emailRegex: new RegExp("<?php
-            echo addslashes(
-                defined('EMAIL_REGEX_PATTERN')
-                    ? EMAIL_REGEX_PATTERN
-                    : '^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$'
-            );
-        ?>"),
-        pwdRegex: new RegExp("<?php
-            echo addslashes(
-                defined('PWD_REGEX_PATTERN')
-                    ? PWD_REGEX_PATTERN
-                    : '^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[\\W_]).{8,}$'
-            );
-        ?>")
-    };
-    // Global Interceptor: Prevent form submission and page reload if no changes were made
-    document.addEventListener("DOMContentLoaded", function() {
-        // Automatically find all forms with the 'check-changes' class
-        document.querySelectorAll('form.check-changes').forEach(form => {
-            // 1. On page load, record the initial state
-            form.dataset.originalData = new URLSearchParams(new FormData(form)).toString();
-
-            form.addEventListener('submit', function(e) {
-                // 2. Check if there are newly uploaded files
-                const fileInputs = form.querySelectorAll('input[type="file"]');
-                let hasFile = false;
-                fileInputs.forEach(input => { if (input.files.length > 0) hasFile = true; });
-
-                // 3. Get current form data
-                const currentData = new URLSearchParams(new FormData(form)).toString();
-
-                // 4. If no new file is uploaded and the text content is identical -> intercept submission!
-                if (!hasFile && form.dataset.originalData === currentData) {
-                    e.preventDefault(); // Stop page refresh entirely
-
-                    // Use SweetAlert2 for a nice popup if available, otherwise fallback to standard alert
-                    if (typeof Swal !== 'undefined') {
-                        Swal.fire({
-                            icon: 'warning',
-                            title: '没有修改',
-                            text: '无需保存',
-                            timer: 2000,
-                            showConfirmButton: false
-                        });
-                    } else {
-                        alert("没有修改，无需保存");
-                    }
-                }
-            });
-        });
-
-        const breadcrumbs = Array.from(document.querySelectorAll('.page-action-breadcrumb'));
-        if (breadcrumbs.length > 0) {
-            const preferredBreadcrumb = breadcrumbs.find(el => el.closest('.card-header')) || breadcrumbs[0];
-            const dashboardMain = document.querySelector('.dashboard-main');
-            const fallbackParent = preferredBreadcrumb.closest('.container-fluid, .container') || preferredBreadcrumb.parentElement;
-            let mountParent = fallbackParent;
-
-            if (dashboardMain) {
-                const innerContainer = Array.from(dashboardMain.children).find(child => {
-                    return child.classList && (child.classList.contains('container-fluid') || child.classList.contains('container'));
-                });
-                mountParent = innerContainer || dashboardMain;
-            }
-
-            if (mountParent) {
-                let inlineHost = mountParent.querySelector(':scope > .global-breadcrumb-inline');
-                if (!inlineHost) {
-                    inlineHost = document.createElement('div');
-                    inlineHost.className = 'global-breadcrumb-inline';
-                    mountParent.insertBefore(inlineHost, mountParent.firstElementChild);
-                }
-
-                inlineHost.innerHTML = '';
-                inlineHost.appendChild(preferredBreadcrumb);
-                preferredBreadcrumb.classList.add('global-page-breadcrumb');
-            }
-
-            breadcrumbs.forEach(el => {
-                if (el !== preferredBreadcrumb) {
-                    el.remove();
-                }
-            });
-        }
-    });
-    </script>
+    <meta name="staradmin-email-regex" content="<?php echo htmlspecialchars(defined('EMAIL_REGEX_PATTERN') ? EMAIL_REGEX_PATTERN : '^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$', ENT_QUOTES, 'UTF-8'); ?>">
+    <meta name="staradmin-pwd-regex" content="<?php echo htmlspecialchars(defined('PWD_REGEX_PATTERN') ? PWD_REGEX_PATTERN : '^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[\\W_]).{8,}$', ENT_QUOTES, 'UTF-8'); ?>">
+    <script src="<?php echo URL_ASSETS; ?>/js/global.js"></script>
 </head>

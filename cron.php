@@ -8,7 +8,7 @@ require_once __DIR__ . '/common.php';
 
 // Security: Prevent unauthorized execution via web browser. 
 // Comment this out if you want to test it by visiting http://localhost:8000/cron.php
-if (php_sapi_name() !== 'cli' && empty($_GET['test_run'])) {
+if (php_sapi_name() !== 'cli' && empty(input('test_run'))) {
     die("Forbidden: This script can only be run from the command line or with a test_run parameter.");
 }
 
@@ -45,7 +45,7 @@ $uniqueAuthorIds = [];
 // Collect chapters and unique author IDs
 while ($row = $result->fetch_assoc()) {
     $chaptersToProcess[] = $row;
-    $uniqueAuthorIds[(int)$row['author_id']] = true;
+    $uniqueAuthorIds[$row['author_id']] = true;
 }
 $result->free();
 
@@ -58,7 +58,7 @@ if (!empty($uniqueAuthorIds)) {
     $userSql = "SELECT id, email, name FROM " . USR_LOGIN . " WHERE id IN ($safeIds)";
     if ($uResult = $conn->query($userSql)) {
         while ($uRow = $uResult->fetch_assoc()) {
-            $authorsMap[(int)$uRow['id']] = [
+            $authorsMap[$uRow['id']] = [
                 'email' => $uRow['email'],
                 'name'  => $uRow['name']
             ];
@@ -72,8 +72,8 @@ $failedCount = 0;
 
 // 5. Process each scheduled chapter using the mapped data
 foreach ($chaptersToProcess as $chapter) {
-    $chapterId = (int)$chapter['id'];
-    $authorId = (int)$chapter['author_id'];
+    $chapterId = $chapter['id'];
+    $authorId = $chapter['author_id'];
     $content = $chapter['content'];
     $title = $chapter['title'];
     

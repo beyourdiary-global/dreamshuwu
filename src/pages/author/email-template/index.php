@@ -1,33 +1,29 @@
 <?php
 require_once dirname(__DIR__, 4) . '/common.php';
 
+// Generate a CSRF token if it doesn't exist in the session
+if (empty(session('csrf_token'))) {
+    setSession('csrf_token', bin2hex(random_bytes(32)));
+}
+
+requireLogin();
+
 $isEmbeddedEmailTemplate = isset($EMBED_EMAIL_TEMPLATE) && $EMBED_EMAIL_TEMPLATE === true;
-$currentUserId = isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : (isset($_SESSION['userid']) ? (int)$_SESSION['userid'] : 0);
+$currentUserId = sessionInt('user_id');
+requireApprovedAuthor($conn, $currentUserId);
+
 $currentUrl = '/author/email-template.php';
 $auditPage = 'Email Template Management';
-
-if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
-    header('Location: ' . URL_LOGIN);
-    exit();
-}
-
-
-// Generate a CSRF token if it doesn't exist in the session
-if (empty($_SESSION['csrf_token'])) {
-    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-}
-
 
 $perm = hasPagePermission($conn, $currentUrl);
 if (empty($perm) || (isset($perm->view) && empty($perm->view))) {
     $legacyPath = defined('PATH_EMAIL_TEMPLATE_INDEX') ? ('/' . ltrim(PATH_EMAIL_TEMPLATE_INDEX, '/')) : '/src/pages/author/email-template/index.php';
     $perm = hasPagePermission($conn, $legacyPath);
 }
-checkPermissionError('view', $perm, '邮件模板管理');
+checkPermissionError('view', $perm);
 $apiEndpoint = defined('URL_EMAIL_TEMPLATE_API') ? URL_EMAIL_TEMPLATE_API : (SITEURL . '/src/pages/author/email-template/api.php');
 
-if (function_exists('logAudit') && !defined('EMAIL_TEMPLATE_VIEW_LOGGED')) {
-    define('EMAIL_TEMPLATE_VIEW_LOGGED', true);
+if (function_exists('logAudit')) {
     logAudit([
         'page' => $auditPage,
         'action' => 'V',
@@ -63,7 +59,7 @@ ob_start();
 ?>
 <div class="container-fluid px-0" id="emailTemplateApp" 
      data-api-url="<?php echo htmlspecialchars($apiEndpoint); ?>"
-     data-csrf="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>"
+    data-csrf="<?php echo htmlspecialchars(session('csrf_token')); ?>"
      data-can-edit="<?php echo !empty($perm->edit) ? 1 : 0; ?>"
      data-can-delete="<?php echo !empty($perm->delete) ? 1 : 0; ?>">
     <div class="card border-0 shadow-sm">

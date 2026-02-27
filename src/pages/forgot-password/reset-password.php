@@ -6,7 +6,7 @@ $msgType = "";
 $validToken = false;
 $email = "";
 
-$token = $_POST['token'] ?? ($_GET['token'] ?? '');
+$token = post('token') ?: input('token');
 
 if (empty($token)) {
     $message = "无效的访问链接";
@@ -32,9 +32,9 @@ if (empty($token)) {
     $stmt->close();
 }
 
-if ($_SERVER["REQUEST_METHOD"] === "POST" && $validToken) {
-    $newPass = $_POST['new_password'] ?? "";
-    $confirmPass = $_POST['confirm_password'] ?? "";
+if (isPostRequest() && $validToken) {
+    $newPass = post('new_password');
+    $confirmPass = post('confirm_password');
 
     if (empty($newPass) || empty($confirmPass)) {
         $message = "请输入新密码";
@@ -71,7 +71,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $validToken) {
 
 <?php $pageMetaKey = '/reset-password.php'; ?>
 <!DOCTYPE html>
-<html lang="<?php echo defined('SITE_LANG') ? SITE_LANG : 'zh-CN'; ?>">
 <head>
     <?php require_once BASE_PATH . 'include/header.php'; ?>
     <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/auth.css?v=<?php echo time(); ?>">
@@ -86,20 +85,24 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $validToken) {
             <p class="subtext">请为您的账号设置新密码</p>
 
             <form id="resetForm" method="POST">
-                <div class="auth-field mb-3 password-field position-relative">
+                <div class="auth-field mb-3">
                     <label class="form-label">新密码</label>
-                    <input type="password" class="form-control" id="password" name="new_password" required>
-                    <button type="button" class="toggle-password" data-target="password">
-                        <i class="fa fa-eye"></i>
-                    </button>
+                    <div class="password-field">
+                        <input type="password" class="form-control" id="password" name="new_password" required>
+                        <button type="button" class="toggle-password" data-target="password">
+                            <i class="fa fa-eye"></i>
+                        </button>
+                    </div>
                 </div>
 
-                <div class="auth-field mb-3 password-field position-relative">
+                <div class="auth-field mb-3">
                     <label class="form-label">确认新密码</label>
-                    <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
-                    <button type="button" class="toggle-password" data-target="confirm_password">
-                        <i class="fa fa-eye"></i>
-                    </button>
+                    <div class="password-field">
+                        <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
+                        <button type="button" class="toggle-password" data-target="confirm_password">
+                            <i class="fa fa-eye"></i>
+                        </button>
+                    </div>
                 </div>
 
                 <div class="password-hints mb-4">

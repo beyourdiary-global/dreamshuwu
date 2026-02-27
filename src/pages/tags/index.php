@@ -2,42 +2,30 @@
 // Path: src/pages/tags/index.php
 require_once dirname(__DIR__, 3) . '/common.php';
 
+// Auth Check
+requireLogin();
+
 // 1. Identify this specific view's URL as registered in your DB
 $currentUrl = '/dashboard.php?view=tags'; 
 
 // [ADDED] Fetch the dynamic permission object for this page
 $perm = hasPagePermission($conn, $currentUrl);
 
-checkPermissionError('view', $perm, '标签管理页面');
+checkPermissionError('view', $perm);
 
 $tagTable = NOVEL_TAGS;
 $auditPage = 'Tag Management';
 $viewQuery = "SELECT id, name FROM " . $tagTable;
 $deleteQuery = "DELETE FROM " . $tagTable . " WHERE id = ?";
-$isEmbeddedInDashboard = isset($EMBED_TAGS_PAGE) && $EMBED_TAGS_PAGE === true;
-$tagMode = isset($_GET[QUERY_TAG_MODE]) ? (string)$_GET[QUERY_TAG_MODE] : (isset($_GET['pa_mode']) ? (string)$_GET['pa_mode'] : '');
-$pageActionMode = ($tagMode === QUERY_FORM_MODE) ? QUERY_FORM_MODE : 'list';
 
 // Request Type Detection
-$isAjaxRequest = isset($_GET['mode']) && $_GET['mode'] === 'data';
-$isDeleteRequest = isset($_POST['mode']) && $_POST['mode'] === 'delete';
+$isEmbeddedInDashboard = ($EMBED_TAGS_PAGE ?? false) === true;
 
-// 1. Auth Check
-if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
-    if ($isAjaxRequest || $isDeleteRequest) {
-        header('Content-Type: application/json');
-        echo json_encode([
-            'draw' => intval($_GET['draw'] ?? 0),
-            'recordsTotal' => 0,
-            'recordsFiltered' => 0,
-            'data' => [],
-            'error' => 'Session expired. Please login again.'
-        ]);
-        exit();
-    }
-    header("Location: " . URL_LOGIN); 
-    exit();
-}
+$tagMode = input(QUERY_TAG_MODE) ?: (input('pa_mode') ?: '');
+$pageActionMode = ($tagMode === QUERY_FORM_MODE) ? QUERY_FORM_MODE : 'list';
+
+$isAjaxRequest = input('mode') === 'data';
+$isDeleteRequest = post('mode') === 'delete';
 
 if ($isEmbeddedInDashboard && $pageActionMode === 'form') {
     $EMBED_TAG_FORM_PAGE = true;
@@ -55,7 +43,7 @@ if (!function_exists('jsonEncodeWrapper')) {
 
 if (!function_exists('sendTagTableError')) {
     function sendTagTableError($message) {
-        $draw = isset($_GET['draw']) ? (int) $_GET['draw'] : 0;
+        $draw = input('draw') ?? 0;
         echo safeJsonEncode([
             "draw" => $draw,
             "recordsTotal" => 0,
@@ -110,12 +98,11 @@ if ($isAjaxRequest) {
     }
     
     // Get DataTables parameters
-    $start  = $_GET['start'] ?? 0;
-    $length = $_GET['length'] ?? 10;
-    $search = '';
-    if (isset($_GET['search']) && is_array($_GET['search']) && isset($_GET['search']['value'])) {
-        $search = $_GET['search']['value'];
-    }
+        $start  = (int)numberInput('start');
+        $length = (int)(numberInput('length') ?: 10);
+
+    // Use the global array helper for the nested search value
+    $search = getArray('search')['value'] ?? '';
 
     // Build SQL queries
     $sql = "SELECT id, name FROM " . $tagTable . " WHERE 1=1";
@@ -158,7 +145,7 @@ if ($isAjaxRequest) {
 
     $data = [];
     while ($stmt->fetch()) {
-        $editUrl = URL_NOVEL_TAGS_FORM . '&id=' . (int) $id;
+        $editUrl = URL_NOVEL_TAGS_FORM . '&id=' . $id;
         
         $actionsHtml = '';
         // 1. Check dynamic permission properties
@@ -178,9 +165,9 @@ if ($isAjaxRequest) {
     $stmt->close();
 
     echo safeJsonEncode([
-        "draw" => intval($_GET['draw'] ?? 0),
-        "recordsTotal" => (int) $totalRecords,
-        "recordsFiltered" => (int) $totalRecords,
+        "draw" => intval(input('draw') ?? 0),
+        "recordsTotal" => $totalRecords,
+        "recordsFiltered" => $totalRecords,
         "data" => $data
     ]);
     exit();
@@ -189,7 +176,7 @@ if ($isAjaxRequest) {
 // 4. API: Delete (POST)
 if ($isDeleteRequest) {
     // [ADDED] Secure the Delete API
-    $deleteError = checkPermissionError('delete', $perm, '标签');
+    $deleteError = checkPermissionError('delete', $perm);
     if ($deleteError) {
         sendDeleteError($deleteError);
     }
@@ -201,16 +188,16 @@ if ($isDeleteRequest) {
     ini_set('display_errors', '0');
     error_reporting(E_ALL);
 
-    $debug = isset($_POST['debug']) && $_POST['debug'] === '1';
+    $debug = post('debug') === '1';
     $traceId = uniqid('tag-del-', true);
     
     if (!isset($conn) || !($conn instanceof mysqli)) {
         sendDeleteError('Database connection is not available.', $debug, $traceId);
     }
     
-    $id = intval($_POST['id'] ?? 0);
-    $tagName = $_POST['name'] ?? 'Unknown';
-    $currentUserId = $_SESSION['user_id'] ?? 0;
+    $id = intval(post('id') ?? 0);
+    $tagName = postSpaceFilter('name') ?? 'Unknown';
+    $currentUserId = sessionInt('user_id');
     
     if ($id <= 0) sendDeleteError('Invalid tag ID.', $debug, $traceId);
     
@@ -279,10 +266,11 @@ if ($isDeleteRequest) {
 }
 
 // Flash message
-$flashMsg = $_SESSION['flash_msg'] ?? '';
-$flashType = $_SESSION['flash_type'] ?? 'success';
+$flashMsg = session('flash_msg');
+$flashType = session('flash_type') ?: 'success';
 if ($flashMsg !== '') {
-    unset($_SESSION['flash_msg'], $_SESSION['flash_type']);
+    unsetSession('flash_msg');
+    unsetSession('flash_type');
 }
 
 // 5. Audit Log (View) & HTML Render
@@ -295,11 +283,14 @@ if (function_exists('logAudit')) {
         'action_message' => 'User viewed Tag List',
         'query'          => $viewQuery,
         'query_table'    => $tagTable,
-        'user_id'        => $_SESSION['user_id']
+        'user_id'        => sessionInt('user_id')
     ]);
 }
 
-if ($isEmbeddedInDashboard): ?>
+if ($isEmbeddedInDashboard):
+    $pageScripts = ['jquery.dataTables.min.js', 'dataTables.bootstrap.min.js', 'tag.js'];
+?>
+    <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/dataTables.bootstrap.min.css">
     <div class="tag-container">
         <div class="card tag-card">
             <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
@@ -340,7 +331,6 @@ if ($isEmbeddedInDashboard): ?>
 <?php else: ?>
 <?php $pageMetaKey = '/dashboard.php?view=tags'; ?>
 <!DOCTYPE html>
-<html lang="<?php echo defined('SITE_LANG') ? SITE_LANG : 'zh-CN'; ?>">
 <head>
     <?php require_once BASE_PATH . 'include/header.php'; ?>
     <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/global.css">
@@ -362,7 +352,7 @@ if ($isEmbeddedInDashboard): ?>
             <?php endif; ?>
         </div>
         <div class="card-body">
-            <?php if (isset($_GET['msg']) && $_GET['msg'] == 'saved'): ?>
+            <?php if (input('msg') === 'saved'): ?>
                     <div class="alert alert-success alert-dismissible fade show">
                         标签保存成功！ 
                     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>

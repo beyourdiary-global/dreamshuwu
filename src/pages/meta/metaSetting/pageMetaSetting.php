@@ -95,7 +95,7 @@
                             $placeholderLabel = "Enter " . $config['label']; 
                         ?>
                             <div class="mb-4 row">
-                                <label class="col-md-3 col-form-label text-md-end form-label"><?php echo htmlspecialchars($config['label']); ?></label>
+                                <label class="col-md-3 col-form-label text-md-end form-label"><?php echo htmlspecialchars($config['label']); ?> <span class="text-danger">*</span></label>
                                 <div class="col-md-9">
                                     <?php if ($config['type'] === 'textarea'): ?>
                                         <textarea name="<?php echo $fieldName; ?>" class="form-control" rows="3"
