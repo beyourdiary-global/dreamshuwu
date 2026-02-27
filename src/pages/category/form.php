@@ -115,7 +115,9 @@ if (isPostRequest()) {
         $msgType = "danger";
     } else {
     $name   = postSpaceFilter('name');
-    $tagIds = getArray('tags');
+    // [FIX] Safely retrieve tags from POST data instead of GET
+    $rawTags = post('tags');
+    $tagIds  = is_array($rawTags) ? $rawTags : [];
     $uid    = sessionInt('user_id');
 
     if (empty($name)) {
@@ -182,11 +184,12 @@ if (isPostRequest()) {
 
                     // Create comparison array
                     $oldCompare = $existingCatRow;
-                    $oldCompare['tags'] = $oldTags;
+                    // [FIX] Convert arrays to strings to prevent "Array to string conversion" crash
+                    $oldCompare['tags'] = implode(',', $oldTags);
 
-                    // Pass name and tags to check
+                    // Pass name and tags to check safely
                     checkNoChangesAndRedirect(
-                        ['name' => $name, 'tags' => $newTags], 
+                        ['name' => $name, 'tags' => implode(',', $newTags)], 
                         $oldCompare
                     );
                 }

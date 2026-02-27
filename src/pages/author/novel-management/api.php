@@ -39,8 +39,12 @@ try {
         $perm = hasPagePermission($conn, $legacyPath);
     }
 
-    // [FIX] Use input() for mode detection
-    $mode = strtolower(input('mode') ?: 'data');
+    // [CRITICAL FIX] Combine input() and post() to safely replicate $_REQUEST
+    $modeStr = input('mode');
+    if ($modeStr === '') {
+        $modeStr = post('mode');
+    }
+    $mode = strtolower($modeStr ?: 'data');
     
     // Check specific operation permissions based on the current request mode
     if (in_array($mode, ['data', 'stats', 'get_tags', 'get_novel'])) {
@@ -66,7 +70,10 @@ try {
     // GET SINGLE NOVEL (For Modal Populating)
     // ==========================================
     if ($mode === 'get_novel') {
-        $novelId = (int)numberInput('novel_id');
+        // [FIX] Safely catch the ID regardless of whether JS sends it as 'id' or 'novel_id' via GET or POST
+        $novelIdInput = input('id') ?: post('id') ?: input('novel_id') ?: post('novel_id');
+        $novelId = (int)$novelIdInput;
+        
         if ($novelId <= 0) throw new Exception('无效的小说ID');
 
         $sql = "SELECT id, title, category_id, tags, introduction, cover_image, completion_status FROM {$novelTable} WHERE id = ? AND author_id = ? AND status = 'A' LIMIT 1";
@@ -105,7 +112,11 @@ try {
     // DYNAMIC TAGS FETCHING
     // ==========================================
     if ($mode === 'get_tags') {
-        $catId = (int)numberInput('category_id');
+        // [FIX] Check both POST and GET
+        $catIdInput = input('category_id');
+        if ($catIdInput === '') $catIdInput = post('category_id');
+        $catId = (int)$catIdInput;
+        
         $tags = [];
         $tagIds = [];
         
@@ -168,11 +179,28 @@ try {
     // DATATABLES LIST
     // ==========================================
     if ($mode === 'data') {
-        $draw = (int)(numberInput('draw') ?: 1);
-        $start = max(0, (int)(numberInput('start') ?: 0));
-        $length = max(1, min(100, (int)(numberInput('length') ?: 10)));
-        // [FIX] Use input() for search value retrieval
-        $searchValue = input('search_value');
+        // [FIX] Safely check BOTH POST and GET so the 'draw' counter always matches
+        $drawInput = post('draw') !== '' ? post('draw') : input('draw');
+        $draw = (int)($drawInput ?: 1);
+
+        $startInput = post('start') !== '' ? post('start') : input('start');
+        $start = max(0, (int)($startInput ?: 0));
+
+        $lengthInput = post('length') !== '' ? post('length') : input('length');
+        $length = max(1, min(100, (int)($lengthInput ?: 10)));
+
+        $searchArrPost = postSpaceFilter('search');
+        $searchArrGet = getArray('search');
+        
+        $searchValue = '';
+        if (is_array($searchArrPost) && isset($searchArrPost['value'])) {
+            $searchValue = $searchArrPost['value'];
+        } elseif (is_array($searchArrGet) && isset($searchArrGet['value'])) {
+            $searchValue = $searchArrGet['value'];
+        } else {
+            $searchCustom = post('search_value') !== '' ? post('search_value') : input('search_value');
+            $searchValue = $searchCustom;
+        }
 
         $baseWhere = " author_id = ? AND status = 'A' ";
         $params = [$currentUserId];
@@ -287,10 +315,15 @@ try {
         exit();
     }
 
-    // [FIX] Use post() for CSRF token
-    $clientToken = post('csrf_token');
-    if (empty(session('csrf_token')) || !hash_equals(session('csrf_token'), (string)$clientToken)) {
-        throw new Exception('安全校验失败 (Invalid CSRF Token)');
+    // ==========================================
+    // CSRF Protection for state-changing POSTs
+    // ==========================================
+    if (in_array($mode, ['create', 'update', 'delete'])) {
+        // [FIX] Use getServer for headers and post for body
+        $clientToken = getServer('HTTP_X_CSRF_TOKEN') ?: post('csrf_token');
+        if (empty(session('csrf_token')) || !hash_equals(session('csrf_token'), (string)$clientToken)) {
+            throw new Exception('安全校验失败 (Invalid CSRF Token)');
+        }
     }
 
     // ==========================================
@@ -299,10 +332,12 @@ try {
     if ($mode === 'create') {
         $insertSql = "INSERT INTO {$novelTable} (author_id, title, category_id, tags, introduction, cover_image, completion_status, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'A', NOW(), NOW())";
 
-        // [FIX] Use postSpaceFilter to auto-trim strings and post() for others
         $title = postSpaceFilter('title');
         $categoryId = (int)post('category_id');
-        $tagsArray = getArray('tags');
+        
+        $rawTags = post('tags');
+        $tagsArray = is_array($rawTags) ? $rawTags : ($rawTags !== '' ? explode(',', $rawTags) : []);
+        
         $intro = postSpaceFilter('introduction');
         $completionStatus = postSpaceFilter('completion_status') ?: 'ongoing';
         $copyright = (int)post('copyright_declaration');
@@ -317,8 +352,7 @@ try {
             throw new Exception('请上传封面图片');
         }
 
-        // [FIX] Using array_map('trim') here is safer for the implode string
-        $tagsString = implode(', ', array_map('trim', $tagsArray));
+        $tagsString = implode(',', array_map('trim', $tagsArray));
 
         $checkSql = "SELECT id FROM {$novelTable} WHERE author_id = ? AND title = ? AND status = 'A' LIMIT 1";
         $stmt = $conn->prepare($checkSql);
@@ -376,11 +410,21 @@ try {
     if ($mode === 'update') {
         $updateSql = "UPDATE {$novelTable} SET title=?, category_id=?, tags=?, introduction=?, cover_image=?, completion_status=?, updated_at=NOW() WHERE id=?";
 
-        // [FIX] Use global functions to replace manual post/trim
-        $novelId = (int)post('novel_id');
+        $novelIdInput = post('id') ?: input('id') ?: post('novel_id') ?: input('novel_id');
+        $novelId = (int)$novelIdInput;
+        
         $title = postSpaceFilter('title');
         $categoryId = (int)post('category_id');
-        $tagsArray = getArray('tags');
+        
+        $rawTags = post('tags');
+        $tagsArray = [];
+        
+        if (is_array($rawTags)) {
+            $tagsArray = $rawTags;
+        } elseif ($rawTags !== '') {
+            $tagsArray = explode(',', $rawTags);
+        }
+        
         $intro = postSpaceFilter('introduction');
         $completionStatus = postSpaceFilter('completion_status') ?: 'ongoing';
         
@@ -391,7 +435,7 @@ try {
         if (count($tagsArray) > 10) throw new Exception('最多只能选择10个标签');
         if ($intro === '') throw new Exception('简介不能为空');
 
-        $tagsString = implode(', ', array_map('trim', $tagsArray));
+        $tagsString = implode(',', array_map('trim', $tagsArray));
 
         // 1. Fetch all old fields for change detection & ownership check
         $oldRow = [];
@@ -548,18 +592,23 @@ try {
     if (ob_get_length()) ob_clean(); 
     header('Content-Type: application/json; charset=utf-8');
     
-    // [FIX] Use input() for the catch block fallback
-    $modeStr = input('mode') ?: 'data';
-    if ($modeStr === 'data') {
+    // [CRITICAL FIX] Ensure error handler correctly detects mode even from POST
+    $modeStrErr = input('mode');
+    if ($modeStrErr === '') {
+        $modeStrErr = post('mode');
+    }
+    $modeErr = strtolower($modeStrErr ?: 'data');
+    
+    if ($modeErr === 'data') {
         echo safeJsonEncode([
             'draw' => (int)(input('draw') ?: 1),
             'recordsTotal' => 0,
             'recordsFiltered' => 0,
             'data' => [],
-            'error' => '接口错误，请检查系统日志'
+            'error' => $e->getMessage()
         ]);
     } else {
-        echo safeJsonEncode(['success' => false, 'message' => '系统错误，请稍后再试或联系管理员']);
+        echo safeJsonEncode(['success' => false, 'message' => $e->getMessage()]);
     }
     exit();
 }

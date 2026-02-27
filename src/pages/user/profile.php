@@ -329,16 +329,31 @@ $pageScripts = ['user-profile.js?v=' . filemtime(BASE_PATH . 'assets/js/user-pro
             <input type="hidden" name="action" value="change_pwd">
             <div class="form-group">
                 <label>当前密码 <span class="text-danger">*</span></label>
-                <input type="password" name="current_password" class="form-control" required>
+                <div class="password-field">
+                    <input type="password" name="current_password" id="current_password" class="form-control" required>
+                    <button type="button" class="toggle-password" data-target="current_password" title="显示/隐藏密码">
+                        <i class="fa fa-eye"></i>
+                    </button>
+                </div>
             </div>
             <div class="form-row">
                 <div class="col-half form-group">
                     <label>新密码 <span class="text-danger">*</span></label>
-                    <input type="password" name="new_password" id="new_password" class="form-control" required>
+                    <div class="password-field">
+                        <input type="password" name="new_password" id="new_password" class="form-control" required>
+                        <button type="button" class="toggle-password" data-target="new_password" title="显示/隐藏密码">
+                            <i class="fa fa-eye"></i>
+                        </button>
+                    </div>
                 </div>
                 <div class="col-half form-group">
                     <label>确认新密码 <span class="text-danger">*</span></label>
-                    <input type="password" name="confirm_password" id="confirm_password" class="form-control" required>
+                    <div class="password-field">
+                        <input type="password" name="confirm_password" id="confirm_password" class="form-control" required>
+                        <button type="button" class="toggle-password" data-target="confirm_password" title="显示/隐藏密码">
+                            <i class="fa fa-eye"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
             <div class="mt-3">

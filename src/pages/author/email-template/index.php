@@ -10,7 +10,6 @@ requireLogin();
 
 $isEmbeddedEmailTemplate = isset($EMBED_EMAIL_TEMPLATE) && $EMBED_EMAIL_TEMPLATE === true;
 $currentUserId = sessionInt('user_id');
-requireApprovedAuthor($conn, $currentUserId);
 
 $currentUrl = '/author/email-template.php';
 $auditPage = 'Email Template Management';
@@ -39,6 +38,7 @@ if (!$isEmbeddedEmailTemplate) {
         $customCSS = [];
     }
     $customCSS[] = 'dataTables.bootstrap.min.css';
+    $customCSS[] = 'admin.css';
     $pageMetaKey = $currentUrl;
 }
 
@@ -69,7 +69,7 @@ ob_start();
                 <h4 class="m-0 text-primary"><i class="fa-solid fa-envelope-open-text me-2"></i>邮件模板管理</h4>
             </div>
             <?php if (!empty($perm->add)): ?>
-            <button type="button" class="btn btn-primary" id="btnEmailTemplateAdd">
+            <button type="button" class="btn btn-primary desktop-add-btn" id="btnEmailTemplateAdd">
                 <i class="fa-solid fa-plus me-1"></i>新增模板
             </button>
             <?php endif; ?>

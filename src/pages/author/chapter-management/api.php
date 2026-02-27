@@ -11,9 +11,13 @@ try {
     $currentUserId = sessionInt('user_id');
     requireApprovedAuthor($conn, $currentUserId);
 
-    // [FIX] Use input() for mode and novel_id
-    $mode = strtolower(input('mode') ?: 'data');
-    $novelId = (int)numberInput('novel_id');
+    // [CRITICAL FIX] Combine input() and post() for mode and novel_id detection
+    $modeStr = input('mode') !== '' ? input('mode') : post('mode');
+    $mode = strtolower($modeStr ?: 'data');
+    
+    $novelIdInput = input('novel_id') !== '' ? input('novel_id') : post('novel_id');
+    $novelId = (int)$novelIdInput;
+    
     $auditPage = 'Chapter Management';
     
     if ($novelId <= 0) throw new Exception('小说ID缺失');
@@ -134,9 +138,14 @@ try {
 
     // Data List
     if ($mode === 'data') {
-        // [FIX] Use numberInput for draw/start/length
-        $start  = max(0, (int)(numberInput('start') ?: 0));
-        $length = max(1, min(100, (int)(numberInput('length') ?: 10)));
+        // [CRITICAL FIX] Ensure DataTables params pull from POST first
+        $drawInput = post('draw') !== '' ? post('draw') : input('draw');
+        $startInput = post('start') !== '' ? post('start') : input('start');
+        $lengthInput = post('length') !== '' ? post('length') : input('length');
+        
+        $draw   = (int)($drawInput ?: 1);
+        $start  = max(0, (int)($startInput ?: 0));
+        $length = max(1, min(100, (int)($lengthInput ?: 10)));
         
         $countSql = "SELECT COUNT(id) FROM {$chapterTable} WHERE novel_id = ? AND status = 'A'";
         $stmt = $conn->prepare($countSql);
@@ -168,7 +177,7 @@ try {
         }
         $stmt->close();
         
-        echo safeJsonEncode(['draw' => (int)(numberInput('draw') ?: 1), 'recordsTotal' => $totalRecords, 'recordsFiltered' => $totalRecords, 'data' => $rows]);
+        echo safeJsonEncode(['draw' => $draw, 'recordsTotal' => $totalRecords, 'recordsFiltered' => $totalRecords, 'data' => $rows]);
         exit();
     }
 
@@ -179,8 +188,10 @@ try {
         $updateSql = "UPDATE {$chapterTable} SET chapter_number=?, title=?, content=?, word_count=?, publish_status=?, scheduled_publish_at=?, updated_at=NOW() WHERE id=? AND novel_id=?";
         $insertVersionSql = "INSERT INTO {$chapterVersionTable} (chapter_id, version_number, title, content, word_count, created_by) VALUES (?, ?, ?, ?, ?, ?)";
 
-        // [FIX] Use postSpaceFilter and numberInput
-        $chapterId = (int)post('chapter_id');
+        // [FIX] Safely pull from POST
+        $chapterIdInput = post('chapter_id') !== '' ? post('chapter_id') : input('chapter_id');
+        $chapterId = (int)$chapterIdInput;
+        
         $title     = postSpaceFilter('title');
         $cNum      = (int)post('chapter_number') ?: 1;
         $content   = postSpaceFilter('content');
@@ -361,8 +372,10 @@ try {
         exit();
     }
 
-    // [FIX] Use input() for ID
-    $chapterId = (int)input('chapter_id');
+    // [CRITICAL FIX] Ensure chapter ID is caught for Delete and View actions
+    $chapterIdInput2 = post('chapter_id') !== '' ? post('chapter_id') : input('chapter_id');
+    $chapterId = (int)$chapterIdInput2;
+    
     if ($chapterId > 0 && in_array($mode, ['get', 'delete'])) {
         $chk = "SELECT id FROM {$chapterTable} WHERE id = ? AND novel_id = ? AND status = 'A' LIMIT 1";
         $stmt=$conn->prepare($chk); 
@@ -429,7 +442,9 @@ try {
 
     // Versions
     if ($mode === 'get_versions') {
-        $chapterId = (int)numberInput('chapter_id');
+        $cIdInput = post('chapter_id') !== '' ? post('chapter_id') : input('chapter_id');
+        $chapterId = (int)$cIdInput;
+        
         $versions = [];
         $sql = "SELECT id, version_number, word_count, created_at FROM {$chapterVersionTable} WHERE chapter_id = ? ORDER BY version_number DESC";
         $stmt = $conn->prepare($sql);
@@ -452,7 +467,9 @@ try {
     }
 
     if ($mode === 'get_version_detail') {
-        $versionId = (int)numberInput('version_id');
+        $vIdInput = post('version_id') !== '' ? post('version_id') : input('version_id');
+        $versionId = (int)$vIdInput;
+        
         $sql = "SELECT version_number, title, content FROM {$chapterVersionTable} WHERE id = ? LIMIT 1";
         $stmt = $conn->prepare($sql);
         if (!$stmt) throw new Exception("Database Error: " . $conn->error);
@@ -474,10 +491,13 @@ try {
     if (ob_get_length()) ob_clean(); 
     header('Content-Type: application/json; charset=utf-8');
     
-    // [FIX] Use input() for catch block mode detection
-    $modeStr = input('mode') ?: 'data';
-    if ($modeStr === 'data') {
-        echo safeJsonEncode(['draw' => (int)(input('draw') ?: 1), 'recordsTotal' => 0, 'recordsFiltered' => 0, 'data' => [], 'error' => $e->getMessage()]);
+    // [CRITICAL FIX] Ensure error handler correctly detects mode even from POST
+    $modeStrErr = input('mode') !== '' ? input('mode') : post('mode');
+    $modeErr = strtolower($modeStrErr ?: 'data');
+    
+    if ($modeErr === 'data') {
+        $drawErr = post('draw') !== '' ? post('draw') : input('draw');
+        echo safeJsonEncode(['draw' => (int)($drawErr ?: 1), 'recordsTotal' => 0, 'recordsFiltered' => 0, 'data' => [], 'error' => $e->getMessage()]);
     } else {
         echo safeJsonEncode(['success' => false, 'message' => $e->getMessage()]);
     }

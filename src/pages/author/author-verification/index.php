@@ -101,6 +101,7 @@ if (!isset($customCSS) || !is_array($customCSS)) {
 }
 $customCSS[] = 'dataTables.bootstrap.min.css';
 $customCSS[] = 'author.css';
+$customCSS[] = 'admin.css';
 $pageMetaKey = $currentUrl;
 
 // --- Arrays for Rendering UI ---
@@ -137,10 +138,10 @@ ob_start();
 ?>
 <div class="container-fluid px-0" id="authorVerificationApp" 
      data-api-url="<?php echo htmlspecialchars($apiEndpoint); ?>" 
-    data-csrf="<?php echo htmlspecialchars(session('csrf_token')); ?>"
-     data-can-approve="<?php echo !empty($perm->approve) ? 1 : 0; ?>"
-     data-can-reject="<?php echo !empty($perm->reject) ? 1 : 0; ?>"
-     data-can-resend="<?php echo (!empty($perm->resend) || !empty($perm->{'resend email'})) ? 1 : 0; ?>"
+     data-csrf="<?php echo htmlspecialchars(session('csrf_token')); ?>"
+     data-can-approve="<?php echo (!empty($perm->approve) || !empty($perm->edit)) ? 1 : 0; ?>"
+     data-can-reject="<?php echo (!empty($perm->reject) || !empty($perm->edit)) ? 1 : 0; ?>"
+     data-can-resend="<?php echo (!empty($perm->resend) || !empty($perm->{'resend email'}) || !empty($perm->edit)) ? 1 : 0; ?>"
      data-can-delete="<?php echo !empty($perm->delete) ? 1 : 0; ?>">
     <div class="card border-0 shadow-sm">
         <div class="card-header bg-white d-flex justify-content-between align-items-center py-3 flex-wrap gap-2">
@@ -292,7 +293,9 @@ ob_start();
             </div>
             <form id="authorVerifyActionForm">
                 <div class="modal-body">
+                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(session('csrf_token')); ?>">
                     <input type="hidden" name="id" value="0">
+                    
                     <div class="mb-3">
                         <label class="form-label">操作类型</label>
                         <select name="action_type" class="form-select" required>

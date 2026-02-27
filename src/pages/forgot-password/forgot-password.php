@@ -5,15 +5,15 @@ $message = "";
 $msgType = ""; // 'success', 'danger', or 'warning'
 $isAjax = post('ajax') === '1';
 
-// [FIX] Convert Constant String to Array safely
+// [FIX] Use getServer helper for server variables
 $local_whitelist = defined('LOCAL_WHITELIST') ? explode(',', LOCAL_WHITELIST) : ['127.0.0.1', '::1', 'localhost'];
-$isLocal = in_array(input('SERVER_NAME'), $local_whitelist);
+$isLocal = in_array(getServer('SERVER_NAME'), $local_whitelist);
 
 if (isPostRequest()) {
     $email = postSpaceFilter('email');
 
     // 1. Validation
-    if (empty($email)) {
+    if ($email === '') {
         $message = "请输入邮箱";
         $msgType = "danger";
     } elseif (!isValidEmail($email)) {
@@ -32,16 +32,13 @@ if (isPostRequest()) {
         } else {
             // 3. Generate Token & Expiry (30 mins)
             $token = bin2hex(random_bytes(32)); 
-            // Use time() for safer timestamp calculation
             $expires_at = date("Y-m-d H:i:s", time() + 1800); 
 
             // 4. Store in PWD_RESET table
-            // Delete old tokens first
             $delStmt = $conn->prepare("DELETE FROM " . PWD_RESET . " WHERE email = ?");
             $delStmt->bind_param("s", $email);
             $delStmt->execute();
 
-            // Insert new token
             $insertStmt = $conn->prepare("INSERT INTO " . PWD_RESET . " (email, token, expires_at) VALUES (?, ?, ?)");
             $insertStmt->bind_param("sss", $email, $token, $expires_at);
             
@@ -49,29 +46,27 @@ if (isPostRequest()) {
                 // 5. Send Email Logic
                 $resetLink = URL_RESET_PWD . "?token=" . $token;
                 
-                // Try to send email
                 $mailSent = sendPasswordResetEmail($email, $resetLink);
 
-                // [LOGIC IMPROVED]
-                if ($mailSent && !$isLocal) {
+                // [FIX] Removed auto-redirects. Only show success message.
+                if ($mailSent) {
                     $message = "重置链接已发送，请检查您的邮箱 (含垃圾箱)";
                     $msgType = "success";
-                    
-                    if ($isAjax) {
-                        header('Content-Type: application/json');
-                        echo json_encode(['success' => true, 'message' => $message, 'redirect' => URL_RESET_PWD]);
-                        exit();
-                    }
-                    header("Location: " . URL_RESET_PWD);
-                    exit();
                 } else {
-                    // Fallback for Localhost or Failed Email - redirect with token
-                    if ($isAjax) {
-                        header('Content-Type: application/json');
-                        echo json_encode(['success' => true, 'message' => '重置链接已生成', 'redirect' => $resetLink]);
-                        exit();
+                    if ($isLocal) {
+                        // Local dev fallback so you can click the link directly on your screen
+                        $message = "【本地开发模式】重置链接已生成: <a href='" . htmlspecialchars($resetLink) . "'>点击这里重置</a>";
+                        $msgType = "success";
+                    } else {
+                        $message = "系统错误，邮件发送失败，请稍后再试";
+                        $msgType = "danger";
                     }
-                    header("Location: " . $resetLink);
+                }
+
+                if ($isAjax) {
+                    header('Content-Type: application/json');
+                    // Return success WITHOUT a 'redirect' key
+                    echo safeJsonEncode(['success' => ($msgType === 'success'), 'message' => $message]);
                     exit();
                 }
             } else {
@@ -82,10 +77,9 @@ if (isPostRequest()) {
         $stmt->close();
     }
 
-    // Return error response for AJAX
     if ($isAjax) {
         header('Content-Type: application/json');
-        echo json_encode(['success' => false, 'message' => $message]);
+        echo safeJsonEncode(['success' => false, 'message' => $message]);
         exit();
     }
 }
@@ -105,6 +99,13 @@ if (isPostRequest()) {
         <div class="forgot-card">
             <h3>忘记密码？</h3>
             <p class="subtext">输入您的注册邮箱，我们将向您发送重置链接</p>
+
+            <?php if ($message !== ''): ?>
+                <div class="alert alert-<?php echo htmlspecialchars($msgType); ?> alert-dismissible fade show">
+                    <?php echo $message; ?>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            <?php endif; ?>
 
             <div id="forgotAlert" class="alert alert-success" style="display: none; justify-content: space-between;">
                 <span id="forgotAlertText"></span>
