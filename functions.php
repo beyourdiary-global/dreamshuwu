@@ -11,13 +11,113 @@
  * Strictly checks if the user is logged in.
  * Handles standard redirects, AJAX requests, and headers_sent() scenarios.
  */
+
+/**
+ * Safely retrieve an array from GET data (Used for DataTables sorting/filtering).
+ */
+function getArray($key) {
+    return isset($_GET[$key]) && is_array($_GET[$key]) ? $_GET[$key] : [];
+}
+
+/**
+ * Get a session value as a string (default empty string)
+ */
+function session($key) {
+    return $_SESSION[$key] ?? '';
+}
+
+/**
+ * Get a session value as an integer
+ */
+function sessionInt($key) {
+    return (int)($_SESSION[$key] ?? 0);
+}
+
+/**
+ * Set a session value
+ */
+function setSession($key, $value) {
+    $_SESSION[$key] = $value;
+}
+
+/**
+ * Check if a session key exists
+ */
+function hasSession($key) {
+    return isset($_SESSION[$key]);
+}
+
+/**
+ * Remove a specific session key
+ */
+function unsetSession($key) {
+    if (isset($_SESSION[$key])) {
+        unset($_SESSION[$key]);
+    }
+}
+
+/**
+ * Completely clear the session data and destroy the session
+ */
+/**
+ * Completely clear the session data and destroy the session
+ */
+function clearSession() {
+    // 1. Clear all data from the session array in memory (Safe anytime)
+    $_SESSION = [];
+    
+    // 2. Only attempt to modify cookies and destroy if headers haven't been sent yet
+    if (!headers_sent()) {
+        if (ini_get("session.use_cookies")) {
+            $params = session_get_cookie_params();
+            setcookie(session_name(), '', time() - 42000,
+                $params["path"], $params["domain"],
+                $params["secure"], $params["httponly"]
+            );
+        }
+        
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_destroy();
+        }
+    }
+}
+
+/**
+ * Check if current request is a POST method
+ */
+function isPostRequest() {
+    return ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST';
+}
+
+/**
+ * Safely retrieve SERVER parameters or current script info
+ */
+function getServer($key) {
+    return $_SERVER[$key] ?? '';
+}
+
+/**
+ * Get current page filename (e.g., dashboard.php)
+ */
+function getCurrentPage() {
+    return basename($_SERVER['PHP_SELF'] ?? '');
+}
+
+/**
+ * Check if the request is an AJAX request
+ */
+function isAjax() {
+    return (strtolower($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'xmlhttprequest');
+}
+
 function requireLogin() {
-    if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
+    if (!hasSession('logged_in') || session('logged_in') !== true) {
         $loginUrl = defined('URL_LOGIN') ? URL_LOGIN : '/login.php';
 
         // 1. Handle JSON/AJAX/API requests (e.g., DataTables or background saves)
-        $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest');
-        $isApiMode = isset($_REQUEST['mode']);
+        $isAjax = isAjax();
+        
+        $isApiMode = (input('mode') !== '' || post('mode') !== '');
         
         if ($isAjax || $isApiMode) {
             if (!headers_sent()) {
@@ -42,15 +142,16 @@ function requireLogin() {
         }
         exit();
     }
+    
     // If an Admin upgrades this user, this instantly updates their active session 
     // so they don't have to log out and log back in
-    if (isset($_SESSION['user_id']) && !empty($conn)) {
+    if (hasSession('user_id') && !empty($conn)) {
         $usersTable = defined('USR_LOGIN') ? USR_LOGIN : 'users';
-        $uid = (int)$_SESSION['user_id'];
+        $uid = sessionInt('user_id');
         $res = $conn->query("SELECT user_role_id FROM {$usersTable} WHERE id = $uid LIMIT 1");
         if ($res && $res->num_rows > 0) {
             $row = $res->fetch_assoc();
-            $_SESSION['role_id'] = (int)$row['user_role_id'];
+            setSession('role_id', (int)$row['user_role_id']);
         }
     }
 }
@@ -87,6 +188,9 @@ function input($key) {
     if (is_array($val)) {
         return ''; 
     }
+
+    // Auto-trim the whitespace before checking length
+    $val = trim((string)$val);
     
     $results = (strlen($val) <= 256) ? $val : '';
     return xssFilter($results);
@@ -135,6 +239,39 @@ function xssFilter($url) {
     }
     
     return $url;
+}
+
+/**
+ * Safely retrieve an uploaded file array from $_FILES.
+ * Returns a standardized empty file array if the key is missing to prevent undefined index errors.
+ */
+function getFile($key) {
+    if (isset($_FILES[$key])) {
+        return $_FILES[$key];
+    }
+    
+    // Return a safe mock array if no file was uploaded
+    return [
+        'name'     => '',
+        'type'     => '',
+        'tmp_name' => '',
+        'error'    => UPLOAD_ERR_NO_FILE,
+        'size'     => 0
+    ];
+}
+
+/**
+ * Check if a file was successfully uploaded (exists, no errors, and size > 0).
+ */
+function hasUploadedFile($key) {
+    return isset($_FILES[$key]) && $_FILES[$key]['error'] === UPLOAD_ERR_OK && $_FILES[$key]['size'] > 0;
+}
+
+/**
+ * Safely retrieve a COOKIE value as a string (default empty string)
+ */
+function getCookie($key) {
+    return $_COOKIE[$key] ?? '';
 }
 
 /**
@@ -671,14 +808,14 @@ function processAuthorVerificationEmail($conn, $userId, $actionType, $rejectReas
  * Check if the form has any modifications. (Backend fallback)
  */
 function checkNoChangesAndRedirect($newData, $oldData, $fileInputName = null, $redirectUrl = null) {
-    // 1. Check for new file uploads
-    if ($fileInputName && isset($_FILES[$fileInputName]) && $_FILES[$fileInputName]['size'] > 0) {
+    // 1. Check for new file uploads using the secure global helper
+    if ($fileInputName && hasUploadedFile($fileInputName)) {
         return false; 
     }
 
     foreach ($newData as $key => $newVal) {
         if (!array_key_exists($key, $oldData)) continue;
-        if ($newVal != $oldData[$key]) return false; 
+        if ((string)$newVal !== (string)$oldData[$key]) return false; // Strict comparison is safer here
     }
 
     // 3. No changes detected
@@ -1345,7 +1482,7 @@ function hasPagePermission($conn, $pageUrl) {
     if (empty($pageUrl)) return $perm;
 
     // 2. Get Role ID from Session
-    $roleId = isset($_SESSION['role_id']) ? $_SESSION['role_id'] : 0;
+    $roleId = sessionInt('role_id');
     if ($roleId <= 0) return $perm;
 
     // 3. Get Page ID
@@ -1457,18 +1594,18 @@ function checkPermissionError($actionType, $perm) {
     // If an error occurred, redirect
     if ($errorMessage) {
         
-        if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
+        if (input('mode') === 'data') {
             header('Content-Type: application/json');
             echo safeJsonEncode(['success' => false, 'message' => $errorMessage]);
             exit();
         }
 
         if (session_status() === PHP_SESSION_NONE) session_start();
-        $_SESSION['flash_msg'] = $errorMessage;
-        $_SESSION['flash_type'] = 'danger';
+        setSession('flash_msg', $errorMessage);
+        setSession('flash_type', 'danger');
 
-        $currentView = $_GET['view'] ?? '';
-        $isDashboardHome = (strpos($_SERVER['SCRIPT_NAME'], 'dashboard.php') !== false) && empty($currentView);
+        $currentView = input('view') ?? '';
+        $isDashboardHome = (strpos(getServer('SCRIPT_NAME'), 'dashboard.php') !== false) && empty($currentView);
 
         $targetRedirectUrl = ($isDashboardHome || $resolvedName === '仪表盘首页') ? (defined('URL_HOME') ? URL_HOME : '/index.php') : (defined('URL_USER_DASHBOARD') ? URL_USER_DASHBOARD : '/dashboard.php');
         
@@ -1748,8 +1885,8 @@ function requireApprovedAuthor($conn, $userId) {
         // If profile exists but is not approved (pending/rejected), send them to the status page
         if ($vStatus !== 'approved') {
             if (session_status() === PHP_SESSION_NONE) session_start();
-            $_SESSION['flash_msg'] = '访问受限：您的作者申请尚未通过审核。';
-            $_SESSION['flash_type'] = 'warning';
+            setSession('flash_msg', '访问受限：您的作者申请尚未通过审核。');
+            setSession('flash_type', 'warning');
             header("Location: " . $registerUrl);
             exit();
         }

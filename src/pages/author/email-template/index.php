@@ -2,14 +2,16 @@
 require_once dirname(__DIR__, 4) . '/common.php';
 
 // Generate a CSRF token if it doesn't exist in the session
-if (empty($_SESSION['csrf_token'])) {
-    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+if (empty(session('csrf_token'))) {
+    setSession('csrf_token', bin2hex(random_bytes(32)));
 }
 
 requireLogin();
 
 $isEmbeddedEmailTemplate = isset($EMBED_EMAIL_TEMPLATE) && $EMBED_EMAIL_TEMPLATE === true;
-$currentUserId = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : (isset($_SESSION['userid']) ? $_SESSION['userid'] : 0);
+$currentUserId = sessionInt('user_id');
+requireApprovedAuthor($conn, $currentUserId);
+
 $currentUrl = '/author/email-template.php';
 $auditPage = 'Email Template Management';
 
@@ -57,7 +59,7 @@ ob_start();
 ?>
 <div class="container-fluid px-0" id="emailTemplateApp" 
      data-api-url="<?php echo htmlspecialchars($apiEndpoint); ?>"
-     data-csrf="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>"
+    data-csrf="<?php echo htmlspecialchars(session('csrf_token')); ?>"
      data-can-edit="<?php echo !empty($perm->edit) ? 1 : 0; ?>"
      data-can-delete="<?php echo !empty($perm->delete) ? 1 : 0; ?>">
     <div class="card border-0 shadow-sm">

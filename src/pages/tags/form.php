@@ -19,7 +19,7 @@ $updateQuery = "UPDATE $tagTable SET name = ?, updated_by = ? WHERE id = ?";
 // 2. Context Detection
 $isEmbeddedTagForm = isset($EMBED_TAG_FORM_PAGE) && $EMBED_TAG_FORM_PAGE === true;
 
-$tagId = $_GET['id'] ?? null;
+$tagId = (int)numberInput('id');
 $tagId = $tagId !== null ? $tagId : null;
 $isEditMode = !empty($tagId);
 
@@ -47,14 +47,15 @@ $msgType = "";
 $existingTagRow = null;
 
 // [NEW] Flash Message Check (Reads message after redirect)
-if (isset($_SESSION['flash_msg'])) {
-    $message = $_SESSION['flash_msg'];
-    $msgType = $_SESSION['flash_type'];
-    unset($_SESSION['flash_msg'], $_SESSION['flash_type']);
+if (hasSession('flash_msg')) {
+    $message = session('flash_msg');
+    $msgType = session('flash_type');
+    unsetSession('flash_msg');
+    unsetSession('flash_type');
 }
 
 // [NEW] Log "View" Action (Run only on GET request)
-if ($_SERVER["REQUEST_METHOD"] !== "POST") {
+if (!isPostRequest()) {
         if (function_exists('logAudit')) {
             logAudit([
                 'page'           => $auditPage,
@@ -62,7 +63,7 @@ if ($_SERVER["REQUEST_METHOD"] !== "POST") {
                 'action_message' => $isEditMode ? "Viewing Edit Tag Form (ID: $tagId)" : "Viewing Add Tag Form",
                 'query'          => $viewQuery,
                 'query_table'    => $tagTable,
-                'user_id'        => $_SESSION['user_id'] ?? 0
+                'user_id'        => sessionInt('user_id')
             ]);
         }
     }
@@ -93,7 +94,7 @@ try {
     }
 
     // 4. Handle Form Submission (POST)
-    if ($_SERVER["REQUEST_METHOD"] === "POST") {
+    if (isPostRequest()) {
         // [ADDED] Re-verify strict permissions before DB transaction
     $submitAction = $isEditMode ? 'edit' : 'add';
     $submitError = checkPermissionError($submitAction, $perm);
@@ -102,14 +103,14 @@ try {
         $message = $submitError;
         $msgType = "danger";
     } else {
-        $tagName = trim($_POST['tag_name'] ?? '');
-        $postedTagId = isset($_POST['tag_id']) ? $_POST['tag_id'] : null;
+        $tagName = postSpaceFilter('tag_name');
+        $postedTagId = post('tag_id') ?: null;
         
         if ($postedTagId) {
             $tagId = $postedTagId;
             $isEditMode = true;
         }
-        $currentUserId = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : 0;
+        $currentUserId = sessionInt('user_id');
 
         if (!$conn || !($conn instanceof mysqli)) throw new Exception('Database connection is not available.');
 
@@ -217,8 +218,8 @@ try {
                             ]);
                         }
                         
-                        $_SESSION['flash_msg'] = '标签保存成功！';
-                        $_SESSION['flash_type'] = 'success';
+                        setSession('flash_msg', '标签保存成功！');
+                        setSession('flash_type', 'success');
                         $redirectUrl = $listPageUrl;
                         if (!headers_sent()) header("Location: " . $redirectUrl);
                         else echo "<script>window.location.href = '" . $redirectUrl . "';</script>";

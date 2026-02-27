@@ -23,7 +23,7 @@ $deleteQuery = "DELETE FROM " . $catTable . " WHERE id = ?";
 
 // 2. Embed Detection
 $isEmbeddedInDashboard = isset($EMBED_CATS_PAGE) && $EMBED_CATS_PAGE === true;
-$catMode = isset($_GET[QUERY_CAT_MODE]) ? (string)$_GET[QUERY_CAT_MODE] : (isset($_GET['pa_mode']) ? (string)$_GET['pa_mode'] : '');
+$catMode = input(QUERY_CAT_MODE) !== '' ? input(QUERY_CAT_MODE) : input('pa_mode');
 $pageActionMode = ($catMode === QUERY_FORM_MODE) ? QUERY_FORM_MODE : 'list';
 
 if ($isEmbeddedInDashboard && $pageActionMode === 'form') {
@@ -33,12 +33,15 @@ if ($isEmbeddedInDashboard && $pageActionMode === 'form') {
 }
 
 // API: DATA FETCH
-if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
+if (input('mode') === 'data') {
     header('Content-Type: application/json');
 
-    $start  = $_GET['start'] ?? 0;
-    $length = $_GET['length'] ?? 10;
-    $search = $_GET['search']['value'] ?? '';
+    // [FIX] Use numberInput with strict casting for pagination
+    $start  = (int)numberInput('start'); 
+    $length = (int)(numberInput('length') ?: 10); 
+
+    // [FIX] Use getArray one-liner for DataTables nested search
+    $search = getArray('search')['value'] ?? '';
 
     $sql = "SELECT id, name FROM $catTable WHERE 1=1";
     $countSql = "SELECT COUNT(*) FROM $catTable WHERE 1=1";
@@ -148,16 +151,16 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'data') {
     }
 
     echo safeJsonEncode([
-        "draw" => intval($_GET['draw']),
-        "recordsTotal" => $totalRecords,
-        "recordsFiltered" => $totalRecords,
-        "data" => $data
-    ]);
-    exit();
+    "draw"            => (int)numberInput('draw'),
+    "recordsTotal"    => $totalRecords,
+    "recordsFiltered" => $totalRecords,
+    "data"            => $data
+]);
+exit();
 }
 
 // API: DELETE
-if (isset($_POST['mode']) && $_POST['mode'] === 'delete') {
+if (post('mode') === 'delete') {
     header('Content-Type: application/json');
 
 $deleteError = checkPermissionError('delete', $perm);
@@ -166,8 +169,8 @@ $deleteError = checkPermissionError('delete', $perm);
         exit();
     }
 
-    $id = intval($_POST['id']);
-    $name = $_POST['name'] ?? 'Unknown';
+    $id = intval(post('id'));
+    $name = post('name') ?? 'Unknown';
 
     // 1. Fetch Old Data BEFORE Deleting
     $oldData = null;
@@ -208,7 +211,7 @@ $deleteError = checkPermissionError('delete', $perm);
                 'action_message' => 'Deleted Category: ' . $name,
                 'query'          => $deleteQuery,
                 'query_table'    => $catTable,
-                'user_id'        => $_SESSION['user_id'],
+                'user_id'        => sessionInt('user_id'),
                 'record_id'      => $id,
                 'record_name'    => $name,
                 'old_value'      => $oldData // Pass the old data here
@@ -232,15 +235,16 @@ if (function_exists('logAudit')) {
         'action_message' => 'User viewed Category List',
         'query'          => $viewQuery,
         'query_table'    => $catTable,
-        'user_id'        => $_SESSION['user_id']
+        'user_id'        => sessionInt('user_id')
     ]);
 }
 
 // Flash message
-$flashMsg = $_SESSION['flash_msg'] ?? '';
-$flashType = $_SESSION['flash_type'] ?? 'success';
+$flashMsg = session('flash_msg');
+$flashType = session('flash_type') ?: 'success';
 if ($flashMsg !== '') {
-    unset($_SESSION['flash_msg'], $_SESSION['flash_type']);
+    unsetSession('flash_msg');
+    unsetSession('flash_type');
 }
 
 

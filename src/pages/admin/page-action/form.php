@@ -12,7 +12,7 @@ checkPermissionError('view', $perm);
 $actionToCheck = $isEditMode ? 'edit' : 'add';
 checkPermissionError($actionToCheck, $perm);
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty(post('mode'))) {
+if (isPostRequest() && empty(post('mode'))) {
     
     // [FIX] Use global post method
     $formAction = post('form_action');
@@ -32,16 +32,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty(post('mode'))) {
         $redirectTo = $recordId > 0 ? ($formBaseUrl . '&id=' . $recordId) : $formBaseUrl;
 
         if ($name === '') {
-            $_SESSION['flash_msg'] = '名称不能为空';
-            $_SESSION['flash_type'] = 'danger';
+            setSession('flash_msg', '名称不能为空');
+            setSession('flash_type', 'danger');
             pageActionRedirect($redirectTo);
         }
 
         if ($recordId > 0) {
             $oldValue = fetchPageActionRowById($conn, $table, $recordId);
             if (!$oldValue || $oldValue['status'] !== 'A') {
-                $_SESSION['flash_msg'] = '记录不存在';
-                $_SESSION['flash_type'] = 'warning';
+                setSession('flash_msg', '记录不存在');
+                setSession('flash_type', 'warning');
                 pageActionRedirect($baseListUrl);
             }
 
@@ -56,8 +56,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty(post('mode'))) {
             $dupStmt->close();
 
             if ($dupExists) {
-                $_SESSION['flash_msg'] = '名称已存在，请使用其他名称';
-                $_SESSION['flash_type'] = 'danger';
+                setSession('flash_msg', '名称已存在，请使用其他名称');
+                setSession('flash_type', 'danger');
                 pageActionRedirect($redirectTo);
             }
 
@@ -83,13 +83,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty(post('mode'))) {
                         'new_value' => $newValue
                     ]);
                 }
-                $_SESSION['flash_msg'] = '保存成功';
-                $_SESSION['flash_type'] = 'success';
+                setSession('flash_msg', '保存成功');
+                setSession('flash_type', 'success');
                 pageActionRedirect($baseListUrl);
             }
 
-            $_SESSION['flash_msg'] = '保存失败，请稍后重试';
-            $_SESSION['flash_type'] = 'danger';
+            setSession('flash_msg', '保存失败，请稍后重试');
+            setSession('flash_type', 'danger');
             pageActionRedirect($redirectTo);
         }
 
@@ -102,8 +102,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty(post('mode'))) {
         $dupStmt->close();
 
         if ($dupExists) {
-            $_SESSION['flash_msg'] = '名称已存在，请使用其他名称';
-            $_SESSION['flash_type'] = 'danger';
+            setSession('flash_msg', '名称已存在，请使用其他名称');
+            setSession('flash_type', 'danger');
             pageActionRedirect($redirectTo);
         }
 
@@ -129,13 +129,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty(post('mode'))) {
                     'new_value' => $newValue
                 ]);
             }
-            $_SESSION['flash_msg'] = '新增成功';
-            $_SESSION['flash_type'] = 'success';
+            setSession('flash_msg', '新增成功');
+            setSession('flash_type', 'success');
             pageActionRedirect($baseListUrl);
         }
 
-        $_SESSION['flash_msg'] = '新增失败，请稍后重试';
-        $_SESSION['flash_type'] = 'danger';
+        setSession('flash_msg', '新增失败，请稍后重试');
+        setSession('flash_type', 'danger');
         pageActionRedirect($redirectTo);
     }
 }
@@ -145,8 +145,8 @@ if ($isEditMode) {
     if ($loaded && $loaded['status'] === 'A') {
         $formRow = $loaded;
     } else {
-        $_SESSION['flash_msg'] = '记录不存在或已删除';
-        $_SESSION['flash_type'] = 'warning';
+        setSession('flash_msg', '记录不存在或已删除');
+        setSession('flash_type', 'warning');
         pageActionRedirect($baseListUrl);
     }
 }

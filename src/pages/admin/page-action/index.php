@@ -18,7 +18,7 @@ requireLogin();
 $table = PAGE_ACTION;
 $auditPage = 'Page Action Management';
 $isEmbeddedPageAction = isset($EMBED_PAGE_ACTION) && $EMBED_PAGE_ACTION === true;
-$currentUserId = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : (isset($_SESSION['userid']) ? $_SESSION['userid'] : 0);
+$currentUserId = sessionInt('user_id');
 
 $currentUrl = '/dashboard.php?view=page_action';
 $perm = hasPagePermission($conn, $currentUrl);
@@ -30,10 +30,11 @@ $baseListUrl = defined('URL_PAGE_ACTION') ? URL_PAGE_ACTION : (URL_USER_DASHBOAR
 $formBaseUrl = $baseListUrl . '&pa_mode=form';
 $apiEndpoint = defined('URL_PAGE_ACTION_API') ? URL_PAGE_ACTION_API : (SITEURL . '/src/pages/admin/page-action/index.php');
 
-$flashMsg = $_SESSION['flash_msg'] ?? '';
-$flashType = $_SESSION['flash_type'] ?? 'success';
+$flashMsg = session('flash_msg');
+$flashType = session('flash_type') ?: 'success';
 if ($flashMsg !== '') {
-    unset($_SESSION['flash_msg'], $_SESSION['flash_type']);
+    unsetSession('flash_msg');
+    unsetSession('flash_type');
 }
 
 // [FIX] Used input() global function

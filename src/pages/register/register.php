@@ -16,12 +16,12 @@ $gender = "";
 $birthday = "";
 
 // Process Form Submission (POST Request)
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $name = trim($_POST['name']);
-    $email = trim($_POST['email']);
-    $password = $_POST['password'];
-    $gender = $_POST['gender'] ?? "";
-    $birthday = $_POST['birthday'] ?? "";
+if (isPostRequest()) {
+    $name = postSpaceFilter('name');
+    $email = postSpaceFilter('email');
+    $password = post('password');
+    $gender = post('gender') ?? "";
+    $birthday = post('birthday') ?? "";
 
     // Validation Logic
     if (empty($name)) {
@@ -105,10 +105,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     session_start();
                 }
                 
-                $_SESSION['user_id'] = $newUserId ? $newUserId : null;
-                $_SESSION['user_name'] = $name;
-                $_SESSION['role_id'] = $defaultRoleId; // Save Role ID to session
-                $_SESSION['logged_in'] = true;
+                setSession('user_id', $newUserId ? $newUserId : null);
+                setSession('user_name', $name);
+                setSession('role_id', $defaultRoleId); // Save Role ID to session
+                setSession('logged_in', true);
 
                 header("Location: " . URL_HOME);
                 exit();

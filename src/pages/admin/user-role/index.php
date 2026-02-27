@@ -22,7 +22,7 @@ $tableRole = USER_ROLE;
 $tableRolePermission = USER_ROLE_PERMISSION;
 $auditPage = 'User Role Management';
 $isEmbedded = isset($EMBED_USER_ROLE) && $EMBED_USER_ROLE === true;
-$currentUserId = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : 0;
+$currentUserId = sessionInt('user_id');
 
 // URL Paths
 $baseListUrl = URL_USER_ROLE;
@@ -36,7 +36,7 @@ $perm = hasPagePermission($conn, $currentUrl);
 checkPermissionError('view', $perm);
 
 // 3. POST Handling (Delete Action)
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if (isPostRequest()) {
     $actionType = post('action_type');
 
     if ($actionType === 'delete') {
@@ -56,8 +56,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt->bind_param('si', $updatedBy, $delId);
                 if ($stmt->execute()) {
                     $newValue = fetchUserRoleById($conn, $delId);
-                    $_SESSION['flash_msg'] = '删除成功';
-                    $_SESSION['flash_type'] = 'success';
+                    setSession('flash_msg', '删除成功');
+                    setSession('flash_type', 'success');
 
                     // Audit Log
                     if (function_exists('logAudit')) {
@@ -74,13 +74,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         ]);
                     }
                 } else {
-                    $_SESSION['flash_msg'] = '删除失败';
-                    $_SESSION['flash_type'] = 'danger';
+                    setSession('flash_msg', '删除失败');
+                    setSession('flash_type', 'danger');
                 }
                 $stmt->close();
             } else {
-                $_SESSION['flash_msg'] = '删除失败';
-                $_SESSION['flash_type'] = 'danger';
+                setSession('flash_msg', '删除失败');
+                setSession('flash_type', 'danger');
             }
         }
 
@@ -134,9 +134,10 @@ if ($isEmbedded):
         : ['jquery.dataTables.min.js', 'dataTables.bootstrap.min.js', 'admin.js'];
 
     // Flash Messages
-    if (isset($_SESSION['flash_msg'])) {
-        echo '<div class="alert alert-' . htmlspecialchars($_SESSION['flash_type'] ?? 'info') . ' alert-dismissible fade show"><button type="button" class="btn-close" data-bs-dismiss="alert"></button>' . htmlspecialchars($_SESSION['flash_msg']) . '</div>';
-        unset($_SESSION['flash_msg'], $_SESSION['flash_type']);
+    if (hasSession('flash_msg')) {
+        echo '<div class="alert alert-' . htmlspecialchars(session('flash_type') ?: 'info') . ' alert-dismissible fade show"><button type="button" class="btn-close" data-bs-dismiss="alert"></button>' . htmlspecialchars(session('flash_msg')) . '</div>';
+        unsetSession('flash_msg');
+        unsetSession('flash_type');
     }
 
     // Router: Show Form or List

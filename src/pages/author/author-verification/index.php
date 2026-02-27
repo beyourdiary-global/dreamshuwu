@@ -1,13 +1,13 @@
 <?php
 require_once dirname(__DIR__, 4) . '/common.php';
 
-$currentUserId = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : (isset($_SESSION['userid']) ? $_SESSION['userid'] : 0);
+$currentUserId = sessionInt('user_id');
 $currentUrl = '/author/author-verification.php';
 $auditPage = 'Author Verification Management';
 
 // [NEW] Generate CSRF token if it doesn't exist
-if (empty($_SESSION['csrf_token'])) {
-    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+if (empty(session('csrf_token'))) {
+    setSession('csrf_token', bin2hex(random_bytes(32)));
 }
 
 requireLogin();
@@ -83,7 +83,7 @@ for ($offset = 29; $offset >= 0; $offset--) {
 }
 $trendMaxValue = max(1, !empty($trendValues) ? max($trendValues) : 0);
 
-$isDashboardHidden = isset($_COOKIE['hide_author_verify_dashboard']) && $_COOKIE['hide_author_verify_dashboard'] === '1';
+$isDashboardHidden = getCookie('hide_author_verify_dashboard') === '1';
 
 if (function_exists('logAudit')) {
     logAudit([
@@ -137,7 +137,7 @@ ob_start();
 ?>
 <div class="container-fluid px-0" id="authorVerificationApp" 
      data-api-url="<?php echo htmlspecialchars($apiEndpoint); ?>" 
-     data-csrf="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>"
+    data-csrf="<?php echo htmlspecialchars(session('csrf_token')); ?>"
      data-can-approve="<?php echo !empty($perm->approve) ? 1 : 0; ?>"
      data-can-reject="<?php echo !empty($perm->reject) ? 1 : 0; ?>"
      data-can-resend="<?php echo (!empty($perm->resend) || !empty($perm->{'resend email'})) ? 1 : 0; ?>"

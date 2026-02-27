@@ -5,7 +5,7 @@ require_once dirname(__DIR__, 3) . '/common.php';
 // 1. Basic login check
 requireLogin();
 
-$currentUserId = $_SESSION['user_id'];
+$currentUserId = sessionInt('user_id');
 $currentUrl = '/author/dashboard.php';
 $auditPage = 'Author Dashboard';
 
@@ -58,10 +58,11 @@ if (empty($permNovel) || (isset($permNovel->view) && empty($permNovel->view))) {
     
     <?php 
     // Display flash messages if any exist
-    if (isset($_SESSION['flash_msg'])) {
-        $flashType = $_SESSION['flash_type'] ?? 'info';
-        $flashMsg = $_SESSION['flash_msg'];
-        unset($_SESSION['flash_msg'], $_SESSION['flash_type']);
+    if (hasSession('flash_msg')) {
+        $flashType = session('flash_type') ?: 'info';
+        $flashMsg = session('flash_msg');
+        unsetSession('flash_msg');
+        unsetSession('flash_type');
     ?>
         <div class="alert alert-<?php echo htmlspecialchars($flashType); ?> alert-dismissible fade show shadow-sm" role="alert">
             <i class="fa-solid fa-circle-exclamation me-2"></i>

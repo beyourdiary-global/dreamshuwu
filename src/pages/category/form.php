@@ -24,7 +24,7 @@ $updateQuery = "UPDATE $catTable SET name = ?, updated_by = ? WHERE id = ?";
 // Context Detection
 $isEmbeddedCatForm = isset($EMBED_CAT_FORM_PAGE) && $EMBED_CAT_FORM_PAGE === true;
 
-$id = $_GET['id'] ?? null;
+$id = (int)numberInput('id');
 $isEditMode = !empty($id);
 
 // 2. Check Add/Edit Permission for initial load
@@ -50,14 +50,15 @@ $message = ""; $msgType = "";
 $existingCatRow = null;
 
 // [NEW] Flash Message Check (Reads message after redirect)
-if (isset($_SESSION['flash_msg'])) {
-    $message = $_SESSION['flash_msg'];
-    $msgType = $_SESSION['flash_type'];
-    unset($_SESSION['flash_msg'], $_SESSION['flash_type']);
+if (hasSession('flash_msg')) {
+    $message = session('flash_msg');
+    $msgType = session('flash_type');
+    unsetSession('flash_msg');
+    unsetSession('flash_type');
 }
 
 // [NEW] Log "View" Action (Run only on GET request)
-if ($_SERVER["REQUEST_METHOD"] !== "POST") {
+if (!isPostRequest()) {
         if (function_exists('logAudit')) {
             logAudit([
                 'page'           => $auditPage,
@@ -65,7 +66,7 @@ if ($_SERVER["REQUEST_METHOD"] !== "POST") {
                 'action_message' => $isEditMode ? "Viewing Edit Category Form (ID: $id)" : "Viewing Add Category Form",
                 'query'          => $viewQuery,
                 'query_table'    => $catTable,
-                'user_id'        => $_SESSION['user_id']
+                'user_id'        => sessionInt('user_id')
             ]);
         }
     }
@@ -102,7 +103,7 @@ if ($isEditMode) {
 }
 
 // 2. Handle Submit
-if ($_SERVER["REQUEST_METHOD"] === "POST") {
+if (isPostRequest()) {
 
 // Determine action and check permission using the common function
     $submitAction = $isEditMode ? 'edit' : 'add';
@@ -113,9 +114,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $message = $submitError;
         $msgType = "danger";
     } else {
-    $name = trim($_POST['name'] ?? '');
-    $tagIds = $_POST['tags'] ?? []; 
-    $uid = $_SESSION['user_id'];
+    $name   = postSpaceFilter('name');
+    $tagIds = getArray('tags');
+    $uid    = sessionInt('user_id');
 
     if (empty($name)) {
         $message = "分类名称不能为空"; $msgType = "danger";
@@ -280,8 +281,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                         ]);
                     }
                     
-                    $_SESSION['flash_msg'] = '分类保存成功！';
-                    $_SESSION['flash_type'] = 'success';
+                    setSession('flash_msg', '分类保存成功！');
+                    setSession('flash_type', 'success');
                     $redirectUrl = $listPageUrl;
                     if ($isEmbeddedCatForm || headers_sent()) {
                         echo "<script>window.location.href='$redirectUrl';</script>";

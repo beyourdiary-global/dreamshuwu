@@ -2,13 +2,13 @@
 // Path: src/pages/author/chapter-management/index.php
 require_once dirname(__DIR__, 4) . '/common.php';
 
-if (empty($_SESSION['csrf_token'])) {
-    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+if (empty(session('csrf_token'))) {
+    setSession('csrf_token', bin2hex(random_bytes(32)));
 }
 
 requireLogin();
 
-$currentUserId = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : 0;
+$currentUserId = sessionInt('user_id');
 requireApprovedAuthor($conn, $currentUserId);
 
 $auditPage = 'Chapter Management';
@@ -45,7 +45,7 @@ $canAdd = !empty($perm->add);
 $canEdit = !empty($perm->edit);
 $canDelete = !empty($perm->delete);
 
-$novelId = ($_GET['novel_id'] ?? 0);
+$novelId = (int)numberInput('novel_id');
 if ($novelId <= 0) {
     die("无效的小说ID (Invalid Novel ID)");
 }
@@ -198,7 +198,7 @@ $currentUrl = '/author/novel/' . $novelId . '/chapters/';
         </div>
         <div class="card-body p-4">
             <form id="chapterForm">
-                <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
+                <input type="hidden" name="csrf_token" value="<?php echo session('csrf_token'); ?>">
                 <input type="hidden" name="novel_id" value="<?php echo $novelId; ?>">
                 <input type="hidden" name="chapter_id" id="edit_chapter_id" value="0">
                 

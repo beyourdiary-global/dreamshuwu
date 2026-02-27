@@ -7,14 +7,14 @@ $auditPage = 'Login Page';
 
 $message = "";
 $errorCode = "";
-$isAjax = isset($_POST['ajax']) && $_POST['ajax'] === '1';
-$redirectCandidate = $_GET['redirect'] ?? ($_SESSION['redirect_after_login'] ?? '');
+$isAjax = post('ajax') === '1';
+$redirectCandidate = input('redirect') ?: session('redirect_after_login');
 $redirectTarget = isSafeRedirect($redirectCandidate) ? $redirectCandidate : URL_HOME;
 
-if ($_SERVER["REQUEST_METHOD"] === "POST") {
-    $email = trim($_POST['email'] ?? "");
-    $password = $_POST['password'] ?? "";
-    $redirectFromPost = $_POST['redirect'] ?? "";
+if (isPostRequest()) {
+    $email = postSpaceFilter('email');
+    $password = post('password') ?? "";
+    $redirectFromPost = post('redirect') ?? "";
 
     if (isSafeRedirect($redirectFromPost)) {
         $redirectTarget = $redirectFromPost;
@@ -60,10 +60,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 session_regenerate_id(true);
 
                 // Set session variables including role_id
-                $_SESSION['user_id'] = $user['id'];
-                $_SESSION['user_name'] = $user['name'] ?? $email;
-                $_SESSION['role_id'] = isset($user['user_role_id']) ? $user['user_role_id'] : 0;
-                $_SESSION['logged_in'] = true;
+                setSession('user_id', $user['id']);
+                setSession('user_name', $user['name'] ?? $email);
+                setSession('role_id', isset($user['user_role_id']) ? $user['user_role_id'] : 0);
+                setSession('logged_in', true);
                 
                 // Audit Log (Safely)
                 if (function_exists('logAudit')) {
@@ -75,7 +75,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     ]);
                 }
                 
-                unset($_SESSION['redirect_after_login']);
+                unsetSession('redirect_after_login');
 
                 if ($isAjax) {
                     header('Content-Type: application/json');

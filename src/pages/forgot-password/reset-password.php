@@ -6,7 +6,7 @@ $msgType = "";
 $validToken = false;
 $email = "";
 
-$token = $_POST['token'] ?? ($_GET['token'] ?? '');
+$token = post('token') ?: input('token');
 
 if (empty($token)) {
     $message = "无效的访问链接";
@@ -32,9 +32,9 @@ if (empty($token)) {
     $stmt->close();
 }
 
-if ($_SERVER["REQUEST_METHOD"] === "POST" && $validToken) {
-    $newPass = $_POST['new_password'] ?? "";
-    $confirmPass = $_POST['confirm_password'] ?? "";
+if (isPostRequest() && $validToken) {
+    $newPass = post('new_password');
+    $confirmPass = post('confirm_password');
 
     if (empty($newPass) || empty($confirmPass)) {
         $message = "请输入新密码";

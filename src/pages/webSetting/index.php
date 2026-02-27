@@ -14,7 +14,7 @@ $pageName = !empty($perm->page_name) ? $perm->page_name : '系统设置';
 checkPermissionError('view', $perm);
 
 $auditPage = 'Web Settings';
-$auditUserId = $_SESSION['user_id'] ?? 0;
+$auditUserId = sessionInt('user_id');
 $table = WEB_SETTINGS;
 
 $message = ""; 
@@ -24,10 +24,11 @@ $msgType = "";
 // We will dynamically build the query based on changed fields below!
 
 // Flash Message Check
-if (isset($_SESSION['flash_msg'])) {
-    $message = $_SESSION['flash_msg'];
-    $msgType = $_SESSION['flash_type'];
-    unset($_SESSION['flash_msg'], $_SESSION['flash_type']);
+if (hasSession('flash_msg')) {
+    $message = session('flash_msg');
+    $msgType = session('flash_type');
+    unsetSession('flash_msg');
+    unsetSession('flash_type');
 }
 
 // Fetch Current Settings
@@ -40,7 +41,7 @@ if (!$current) {
 $uploadDir = dirname(__DIR__, 3) . '/assets/uploads/settings/';
 
 // [AUDIT] Log View
-if ($_SERVER['REQUEST_METHOD'] !== 'POST' && function_exists('logAudit')) {
+if (!isPostRequest() && function_exists('logAudit')) {
     logAudit([
         'page'           => $auditPage,
         'action'         => 'V',
@@ -54,7 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST' && function_exists('logAudit')) {
 $webBaseUrl = URL_WEB_SETTINGS ?? '?';
 
 // ========== HANDLE POST REQUESTS ==========
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if (isPostRequest()) {
     
     // 1. Fetch allowed actions dynamically from the Database
     $validActions = [];
@@ -75,10 +76,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $ACTION_RM_FAV  = $validActions['remove_favicon'] ?? null;
 
     // 3. Get submitted action and Recheck/Validate it against the DB list
-    $rawAction = strtolower(trim($_POST['action_type'] ?? $ACTION_SAVE)); 
+    $rawAction = strtolower(post('action_type') ?: $ACTION_SAVE);
     if (!isset($validActions[$rawAction])) {
-        $_SESSION['flash_msg'] = "操作被拒绝：数据库页面权限 (Page Action) 中未定义此操作 ({$rawAction})。";
-        $_SESSION['flash_type'] = "danger";
+        setSession('flash_msg', "操作被拒绝：数据库页面权限 (Page Action) 中未定义此操作 ({$rawAction})。");
+        setSession('flash_type', "danger");
         
         if (!headers_sent()) {
             header("Location: " . $webBaseUrl);
@@ -92,8 +93,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // 4. Dynamic Role Permission Check
     if (empty($perm->$actionType)) {
-        $_SESSION['flash_msg'] = "权限不足：您的角色没有执行此操作的权限。";
-        $_SESSION['flash_type'] = "danger";
+        setSession('flash_msg', "权限不足：您的角色没有执行此操作的权限。");
+        setSession('flash_type', "danger");
         
         if (!headers_sent()) {
             header("Location: " . $webBaseUrl);
@@ -153,21 +154,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $actionTitle = "网站 Favicon 已移除！";
 
     } else {
-        // DEFAULT SAVE ACTION
-        $sanitizedWebsiteName = mb_substr(trim($_POST['website_name'] ?? ''), 0, 255, 'UTF-8');
-        
+       // DEFAULT SAVE ACTION
+        $sanitizedWebsiteName = mb_substr(postSpaceFilter('website_name'), 0, 255, 'UTF-8');
+
         $newDataToSave = [
-            'website_name'     => $sanitizedWebsiteName,
-            'theme_bg_color'   => $validateHex($_POST['theme_bg_color'] ?? '', '#ffffff'),
-            'theme_text_color' => $validateHex($_POST['theme_text_color'] ?? '', '#333333'),
-            'button_color'     => $validateHex($_POST['button_color'] ?? '', '#233dd2'),
-            'button_text_color'=> $validateHex($_POST['button_text_color'] ?? '', '#ffffff'),
-            'background_color' => $validateHex($_POST['background_color'] ?? '', '#f4f7f6'),
+            'website_name'      => $sanitizedWebsiteName,
+            'theme_bg_color'    => $validateHex(post('theme_bg_color'), '#ffffff'),
+            'theme_text_color'  => $validateHex(post('theme_text_color'), '#333333'),
+            'button_color'      => $validateHex(post('button_color'), '#233dd2'),
+            'button_text_color' => $validateHex(post('button_text_color'), '#ffffff'),
+            'background_color'  => $validateHex(post('background_color'), '#f4f7f6'),
         ];
 
         // Process Uploads
-        if (!empty($_FILES['website_logo']['name'])) {
-            $upRes = uploadImage($_FILES['website_logo'], $uploadDir);
+        if (hasUploadedFile('website_logo')) {
+            $upRes = uploadImage(getFile('website_logo'), $uploadDir);
             if ($upRes['success']) {
                 if (!empty($current['website_logo'])) @unlink($uploadDir . $current['website_logo']);
                 $newDataToSave['website_logo'] = $upRes['filename'];
@@ -176,8 +177,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        if (!empty($_FILES['website_favicon']['name'])) {
-            $upRes = uploadImage($_FILES['website_favicon'], $uploadDir);
+        if (hasUploadedFile('website_favicon')) {
+            $upRes = uploadImage(getFile('website_favicon'), $uploadDir);
             if ($upRes['success']) {
                 if (!empty($current['website_favicon'])) @unlink($uploadDir . $current['website_favicon']);
                 $newDataToSave['website_favicon'] = $upRes['filename'];
@@ -193,8 +194,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // --- DYNAMIC QUERY BUILDER & EXECUTION ---
     
     if (!empty($uploadErrors)) {
-        $_SESSION['flash_msg'] = implode("<br>", $uploadErrors);
-        $_SESSION['flash_type'] = "danger";
+        setSession('flash_msg', implode("<br>", $uploadErrors));
+        setSession('flash_type', "danger");
     } else {
         
         $fieldsToUpdate = [];
@@ -214,8 +215,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($isEditMode && empty($fieldsToUpdate)) {
 
-        $_SESSION['flash_msg'] = "没有修改，无需保存";
-            $_SESSION['flash_type'] = "warning";
+        setSession('flash_msg', "没有修改，无需保存");
+            setSession('flash_type', "warning");
         } else {
             $success = false;
             $executedQuery = "";
@@ -252,8 +253,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             // --- FINALIZATION ---
             if ($success) {
-                $_SESSION['flash_msg'] = $actionTitle;
-                $_SESSION['flash_type'] = $flashType;
+                setSession('flash_msg', $actionTitle);
+                setSession('flash_type', $flashType);
 
                 if (function_exists('logAudit')) {
                     $auditNewData = array_merge($current, $newDataToSave);
@@ -271,8 +272,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ]);
                 }
             } else {
-                $_SESSION['flash_msg'] = "保存失败: " . $conn->error;
-                $_SESSION['flash_type'] = "danger";
+                setSession('flash_msg', "保存失败: " . $conn->error);
+                setSession('flash_type', "danger");
             }
         }
     }

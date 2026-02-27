@@ -19,7 +19,7 @@ $tableInfo = PAGE_INFO_LIST;
 $tableMaster = ACTION_MASTER;
 $auditPage = 'Page Information Management';
 $isEmbedded = isset($EMBED_PAGE_INFO) && $EMBED_PAGE_INFO === true;
-$currentUserId = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : 0;
+$currentUserId = sessionInt('user_id');
 
 $baseListUrl = URL_USER_DASHBOARD . '?view=page_info';
 $formBaseUrl = URL_USER_DASHBOARD . '?view=page_info&mode=form';
@@ -31,7 +31,7 @@ $perm = hasPagePermission($conn, $currentUrl);
 // 1. Check View Permission for the list
 checkPermissionError('view', $perm);
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if (isPostRequest()) {
     // [FIX] Use global post method
     $actionType = post('action_type');
 
@@ -50,8 +50,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt->bind_param('ii', $currentUserId, $delId);
                 if ($stmt->execute()) {
                     $newValue = fetchPageInfoRowById($conn, $tableInfo, $delId);
-                    $_SESSION['flash_msg'] = '删除成功';
-                    $_SESSION['flash_type'] = 'success';
+                    setSession('flash_msg', '删除成功');
+                    setSession('flash_type', 'success');
 
                     if (function_exists('logAudit')) {
                         logAudit([
@@ -67,13 +67,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         ]);
                     }
                 } else {
-                    $_SESSION['flash_msg'] = '删除失败';
-                    $_SESSION['flash_type'] = 'danger';
+                    setSession('flash_msg', '删除失败');
+                    setSession('flash_type', 'danger');
                 }
                 $stmt->close();
             } else {
-                $_SESSION['flash_msg'] = '删除失败';
-                $_SESSION['flash_type'] = 'danger';
+                setSession('flash_msg', '删除失败');
+                setSession('flash_type', 'danger');
             }
         }
 
@@ -125,9 +125,10 @@ if ($isEmbedded):
         ? ['admin.js']
         : ['jquery.dataTables.min.js', 'dataTables.bootstrap.min.js', 'admin.js'];
 
-    if (isset($_SESSION['flash_msg'])) {
-        echo '<div class="alert alert-' . htmlspecialchars($_SESSION['flash_type'] ?? 'info') . ' alert-dismissible fade show"><button type="button" class="btn-close" data-bs-dismiss="alert"></button>' . htmlspecialchars($_SESSION['flash_msg']) . '</div>';
-        unset($_SESSION['flash_msg'], $_SESSION['flash_type']);
+    if (hasSession('flash_msg')) {
+        echo '<div class="alert alert-' . htmlspecialchars(session('flash_type') ?: 'info') . ' alert-dismissible fade show"><button type="button" class="btn-close" data-bs-dismiss="alert"></button>' . htmlspecialchars(session('flash_msg')) . '</div>';
+        unsetSession('flash_msg');
+        unsetSession('flash_type');
     }
 
     if ($viewMode === 'form') {

@@ -25,7 +25,7 @@ $actionToCheck = $isEditMode ? 'edit' : 'add';
 checkPermissionError($actionToCheck, $perm);
 
 // 2. Form Submission Handling (POST)
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty(post('mode'))) {
+if (isPostRequest() && empty(post('mode'))) {
     $formAction = post('action_type');
     
     // Handle 'save' action
@@ -51,15 +51,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty(post('mode'))) {
 
         // Validation: Required fields
         if ($name_cn === '' || $name_en === '') {
-            $_SESSION['flash_msg'] = 'Required fields cannot be empty.';
-            $_SESSION['flash_type'] = 'danger';
+            setSession('flash_msg', 'Required fields cannot be empty.');
+            setSession('flash_type', 'danger');
             userRoleRedirect($redirectTo);
         }
 
         // Validation: Duplicate Name Check
         if (checkRoleNameDuplicate($conn, $name_cn, $name_en, $recordId)) {
-            $_SESSION['flash_msg'] = 'Role name (EN or CN) already exists.';
-            $_SESSION['flash_type'] = 'danger';
+            setSession('flash_msg', 'Role name (EN or CN) already exists.');
+            setSession('flash_type', 'danger');
             userRoleRedirect($redirectTo);
         }
 
@@ -69,8 +69,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty(post('mode'))) {
         if ($recordId > 0) {
             $oldRoleData = fetchUserRoleById($conn, $recordId);
             if (!$oldRoleData || $oldRoleData['status'] !== 'A') {
-                $_SESSION['flash_msg'] = 'Record not found or already deleted.';
-                $_SESSION['flash_type'] = 'warning';
+                setSession('flash_msg', 'Record not found or already deleted.');
+                setSession('flash_type', 'warning');
                 userRoleRedirect($baseListUrl);
             }
 
@@ -128,7 +128,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty(post('mode'))) {
                 foreach ($selectedPerms as $permKey) {
                     // Parse "pageId_actionId" string
                     @list($pageId, $actionId) = explode('_', $permKey);
-                    if (!is_numeric($pageId) || !is_numeric($actionId)) {
+                    if (!isNumber($pageId) || !isNumber($actionId)) {
                         continue;
                     }
                     
@@ -181,15 +181,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty(post('mode'))) {
                 }
             }
 
-            $_SESSION['flash_msg'] = '保存成功.';
-            $_SESSION['flash_type'] = 'success';
+            setSession('flash_msg', '保存成功.');
+            setSession('flash_type', 'success');
             userRoleRedirect($baseListUrl);
         } catch (Exception $e) {
             // Rollback on error
             $conn->rollback();
             error_log('Database error in user-role form: ' . $e->getMessage());
-            $_SESSION['flash_msg'] = '数据库错误，请稍后重试或联系管理员。';
-            $_SESSION['flash_type'] = 'danger';
+            setSession('flash_msg', '数据库错误，请稍后重试或联系管理员。');
+            setSession('flash_type', 'danger');
             userRoleRedirect($redirectTo);
         }
     }
@@ -201,8 +201,8 @@ if ($isEditMode) {
     if ($loaded && $loaded['status'] === 'A') {
         $formRow = $loaded;
     } else {
-        $_SESSION['flash_msg'] = 'Record not found.';
-        $_SESSION['flash_type'] = 'warning';
+        setSession('flash_msg', 'Record not found.');
+        setSession('flash_type', 'warning');
         userRoleRedirect($baseListUrl);
     }
 
@@ -253,12 +253,12 @@ if ($masterRes) {
         </div>
 
         <div class="card-body">
-            <?php if (isset($_SESSION['flash_msg'])): ?>
-                <div class="alert alert-<?php echo htmlspecialchars($_SESSION['flash_type'] ?? 'info'); ?> alert-dismissible fade show">
-                    <?php echo htmlspecialchars($_SESSION['flash_msg']); ?>
+            <?php if (hasSession('flash_msg')): ?>
+                <div class="alert alert-<?php echo htmlspecialchars(session('flash_type') ?: 'info'); ?> alert-dismissible fade show">
+                    <?php echo htmlspecialchars(session('flash_msg')); ?>
                     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 </div>
-                <?php unset($_SESSION['flash_msg'], $_SESSION['flash_type']); ?>
+                <?php unsetSession('flash_msg'); unsetSession('flash_type'); ?>
             <?php endif; ?>
 
             <form method="POST" action="<?php echo htmlspecialchars($formBaseUrl . ($isEditMode ? '&id=' . $recordId : '')); ?>" class="<?php echo $isEditMode ? 'check-changes' : ''; ?>">

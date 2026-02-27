@@ -8,11 +8,12 @@ try {
     if (ob_get_length()) ob_clean();
     header('Content-Type: application/json; charset=utf-8');
 
-    $currentUserId = $_SESSION['user_id'];
+    $currentUserId = sessionInt('user_id');
     requireApprovedAuthor($conn, $currentUserId);
 
-    $mode = strtolower(trim((string)($_REQUEST['mode'] ?? 'data')));
-    $novelId = ($_REQUEST['novel_id'] ?? 0);
+    // [FIX] Use input() for mode and novel_id
+    $mode = strtolower(input('mode') ?: 'data');
+    $novelId = (int)numberInput('novel_id');
     $auditPage = 'Chapter Management';
     
     if ($novelId <= 0) throw new Exception('小说ID缺失');
@@ -133,8 +134,9 @@ try {
 
     // Data List
     if ($mode === 'data') {
-        $start = max(0, ($_REQUEST['start'] ?? 0));
-        $length = max(1, min(100, ($_REQUEST['length'] ?? 10)));
+        // [FIX] Use numberInput for draw/start/length
+        $start  = max(0, (int)(numberInput('start') ?: 0));
+        $length = max(1, min(100, (int)(numberInput('length') ?: 10)));
         
         $countSql = "SELECT COUNT(id) FROM {$chapterTable} WHERE novel_id = ? AND status = 'A'";
         $stmt = $conn->prepare($countSql);
@@ -166,7 +168,7 @@ try {
         }
         $stmt->close();
         
-        echo safeJsonEncode(['draw' => ($_REQUEST['draw'] ?? 1), 'recordsTotal' => $totalRecords, 'recordsFiltered' => $totalRecords, 'data' => $rows]);
+        echo safeJsonEncode(['draw' => (int)(numberInput('draw') ?: 1), 'recordsTotal' => $totalRecords, 'recordsFiltered' => $totalRecords, 'data' => $rows]);
         exit();
     }
 
@@ -177,12 +179,13 @@ try {
         $updateSql = "UPDATE {$chapterTable} SET chapter_number=?, title=?, content=?, word_count=?, publish_status=?, scheduled_publish_at=?, updated_at=NOW() WHERE id=? AND novel_id=?";
         $insertVersionSql = "INSERT INTO {$chapterVersionTable} (chapter_id, version_number, title, content, word_count, created_by) VALUES (?, ?, ?, ?, ?, ?)";
 
-        $chapterId = ($_POST['chapter_id'] ?? 0);
-        $title = trim($_POST['title'] ?? '');
-        $cNum = ($_POST['chapter_number'] ?? 1);
-        $content = trim($_POST['content'] ?? '');
-        $pStatus = $_POST['publish_status'] ?? 'draft';
-        $sTime = !empty($_POST['scheduled_publish_at']) ? $_POST['scheduled_publish_at'] : null;
+        // [FIX] Use postSpaceFilter and numberInput
+        $chapterId = (int)post('chapter_id');
+        $title     = postSpaceFilter('title');
+        $cNum      = (int)post('chapter_number') ?: 1;
+        $content   = postSpaceFilter('content');
+        $pStatus   = post('publish_status') ?: 'draft';
+        $sTime     = post('scheduled_publish_at') ?: null;
 
         if ($mode === 'auto_save') $pStatus = 'draft';
 
@@ -358,8 +361,8 @@ try {
         exit();
     }
 
-    // Get Single / Delete
-    $chapterId = ($_REQUEST['chapter_id'] ?? 0);
+    // [FIX] Use input() for ID
+    $chapterId = (int)input('chapter_id');
     if ($chapterId > 0 && in_array($mode, ['get', 'delete'])) {
         $chk = "SELECT id FROM {$chapterTable} WHERE id = ? AND novel_id = ? AND status = 'A' LIMIT 1";
         $stmt=$conn->prepare($chk); 
@@ -383,10 +386,8 @@ try {
         }
         
         if ($mode === 'delete') {
-            // Define query at top of block
             $delSql = "UPDATE {$chapterTable} SET status = 'D', updated_at=NOW() WHERE id = ?";
             
-            // Fetch old data for audit before deleting
             $oldRow = null;
             $osql = "SELECT id, title, chapter_number FROM {$chapterTable} WHERE id = ?";
             $ostmt = $conn->prepare($osql);
@@ -426,9 +427,9 @@ try {
         }
     }
 
-    // Get Versions
+    // Versions
     if ($mode === 'get_versions') {
-        $chapterId = ($_GET['chapter_id'] ?? 0);
+        $chapterId = (int)numberInput('chapter_id');
         $versions = [];
         $sql = "SELECT id, version_number, word_count, created_at FROM {$chapterVersionTable} WHERE chapter_id = ? ORDER BY version_number DESC";
         $stmt = $conn->prepare($sql);
@@ -450,9 +451,8 @@ try {
         exit();
     }
 
-    // Get Version Detail
     if ($mode === 'get_version_detail') {
-        $versionId = ($_GET['version_id'] ?? 0);
+        $versionId = (int)numberInput('version_id');
         $sql = "SELECT version_number, title, content FROM {$chapterVersionTable} WHERE id = ? LIMIT 1";
         $stmt = $conn->prepare($sql);
         if (!$stmt) throw new Exception("Database Error: " . $conn->error);
@@ -474,15 +474,10 @@ try {
     if (ob_get_length()) ob_clean(); 
     header('Content-Type: application/json; charset=utf-8');
     
-    if ($e->getMessage() === '包含严重违规内容，已禁止提交。') {
-        http_response_code(400);
-        echo safeJsonEncode(['success' => false, 'message' => $e->getMessage()]);
-        exit();
-    }
-    
-    $modeStr = isset($_REQUEST['mode']) ? $_REQUEST['mode'] : 'data';
+    // [FIX] Use input() for catch block mode detection
+    $modeStr = input('mode') ?: 'data';
     if ($modeStr === 'data') {
-        echo safeJsonEncode(['draw' => intval($_REQUEST['draw'] ?? 1), 'recordsTotal' => 0, 'recordsFiltered' => 0, 'data' => [], 'error' => $e->getMessage()]);
+        echo safeJsonEncode(['draw' => (int)(input('draw') ?: 1), 'recordsTotal' => 0, 'recordsFiltered' => 0, 'data' => [], 'error' => $e->getMessage()]);
     } else {
         echo safeJsonEncode(['success' => false, 'message' => $e->getMessage()]);
     }

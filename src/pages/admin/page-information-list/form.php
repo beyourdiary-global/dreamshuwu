@@ -24,7 +24,7 @@ $actionToCheck = $isEditMode ? 'edit' : 'add';
 checkPermissionError($actionToCheck, $perm);
 
 // [FIX] Use global post method
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty(post('mode'))) {
+if (isPostRequest() && empty(post('mode'))) {
     $formAction = post('action_type');
     
     if ($formAction === 'save') {
@@ -51,14 +51,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty(post('mode'))) {
         $redirectTo = $recordId > 0 ? ($formBaseUrl . '&id=' . $recordId) : $formBaseUrl;
 
         if ($name_en === '' || $name_cn === '' || $public_url === '') {
-            $_SESSION['flash_msg'] = 'Required fields cannot be empty.';
-            $_SESSION['flash_type'] = 'danger';
+            setSession('flash_msg', 'Required fields cannot be empty.');
+            setSession('flash_type', 'danger');
             pageInfoRedirect($redirectTo);
         }
 
         if ($public_url[0] !== '/' || !preg_match('#^/[A-Za-z0-9/_\-.?=&]*$#', $public_url)) {
-            $_SESSION['flash_msg'] = 'Public URL 格式无效，必须以 / 开头且仅包含字母、数字、/、_、-、. 以及 ? = &';
-            $_SESSION['flash_type'] = 'danger';
+            setSession('flash_msg', 'Public URL 格式无效，必须以 / 开头且仅包含字母、数字、/、_、-、. 以及 ? = &');
+            setSession('flash_type', 'danger');
             pageInfoRedirect($redirectTo);
         }
 
@@ -67,8 +67,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty(post('mode'))) {
             . ' LIMIT 1';
         $dupStmt = $conn->prepare($dupSql);
         if (!$dupStmt) {
-            $_SESSION['flash_msg'] = '数据库错误：无法检查重复数据';
-            $_SESSION['flash_type'] = 'danger';
+            setSession('flash_msg', '数据库错误：无法检查重复数据');
+            setSession('flash_type', 'danger');
             pageInfoRedirect($redirectTo);
         }
         if ($recordId > 0) {
@@ -82,8 +82,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty(post('mode'))) {
         $dupStmt->close();
 
         if ($dupExists) {
-            $_SESSION['flash_msg'] = 'Name (EN/CN) 或 Public URL 已存在。';
-            $_SESSION['flash_type'] = 'danger';
+            setSession('flash_msg', 'Name (EN/CN) 或 Public URL 已存在。');
+            setSession('flash_type', 'danger');
             pageInfoRedirect($redirectTo);
         }
 
@@ -92,8 +92,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty(post('mode'))) {
         if ($recordId > 0) {
             $oldPageInfo = fetchPageInfoRowById($conn, $tableInfo, $recordId);
             if (!$oldPageInfo || $oldPageInfo['status'] !== 'A') {
-                $_SESSION['flash_msg'] = '记录不存在或已删除';
-                $_SESSION['flash_type'] = 'warning';
+                setSession('flash_msg', '记录不存在或已删除');
+                setSession('flash_type', 'warning');
                 pageInfoRedirect($baseListUrl);
             }
 
@@ -181,14 +181,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty(post('mode'))) {
                 }
             }
 
-            $_SESSION['flash_msg'] = '保存成功.';
-            $_SESSION['flash_type'] = 'success';
+            setSession('flash_msg', '保存成功.');
+            setSession('flash_type', 'success');
             pageInfoRedirect($baseListUrl);
         } catch (Exception $e) {
             $conn->rollback();
             error_log('Database error in page-information-list form: ' . $e->getMessage());
-            $_SESSION['flash_msg'] = '数据库错误，请稍后重试或联系管理员。';
-            $_SESSION['flash_type'] = 'danger';
+            setSession('flash_msg', '数据库错误，请稍后重试或联系管理员。');
+            setSession('flash_type', 'danger');
             pageInfoRedirect($redirectTo);
         }
     }
@@ -199,8 +199,8 @@ if ($isEditMode) {
     if ($loaded && $loaded['status'] === 'A') {
         $formRow = $loaded;
     } else {
-        $_SESSION['flash_msg'] = 'Record not found.';
-        $_SESSION['flash_type'] = 'warning';
+        setSession('flash_msg', 'Record not found.');
+        setSession('flash_type', 'warning');
         pageInfoRedirect($baseListUrl);
     }
 
@@ -239,12 +239,12 @@ if ($res) {
         </div>
 
         <div class="card-body">
-            <?php if (isset($_SESSION['flash_msg'])): ?>
-                <div class="alert alert-<?php echo htmlspecialchars($_SESSION['flash_type'] ?? 'info'); ?> alert-dismissible fade show">
-                    <?php echo htmlspecialchars($_SESSION['flash_msg']); ?>
+            <?php if (hasSession('flash_msg')): ?>
+                <div class="alert alert-<?php echo htmlspecialchars(session('flash_type') ?: 'info'); ?> alert-dismissible fade show">
+                    <?php echo htmlspecialchars(session('flash_msg')); ?>
                     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 </div>
-                <?php unset($_SESSION['flash_msg'], $_SESSION['flash_type']); ?>
+                <?php unsetSession('flash_msg'); unsetSession('flash_type'); ?>
             <?php endif; ?>
 
             <form id="pageInfoForm" method="POST" action="<?php echo htmlspecialchars($formBaseUrl . ($isEditMode ? '&id=' . $recordId : '')); ?>" class="<?php echo $isEditMode ? 'check-changes' : ''; ?>">

@@ -48,7 +48,7 @@ if (input('mode') === 'data') {
 
         // DataTables sends 'search' as an array. We bypass input() array-blocking 
         // by checking it directly and applying the global xssFilter()
-        $searchVal = $_GET['search']['value'] ?? '';
+        $searchVal = getArray('search')['value'] ?? '';
         $searchRaw = xssFilter(trim($searchVal));
 
         if (!isset($conn) || !$conn) {
@@ -100,9 +100,14 @@ if (input('mode') === 'data') {
 
         // 5. Sorting
         $sortCols = ['page', 'action', 'action_message', 'user_id', 'created_at', 'created_at']; 
-        $colIdx = ($_GET['order'][0]['column'] ?? 5); 
+
+        // Fetch the array safely through the global function
+        $orderParams = getArray('order');
+
+        // Safely access the nested array keys with strict integer casting
+        $colIdx = (int)($orderParams[0]['column'] ?? 5); 
         $colName = $sortCols[($colIdx > 0) ? $colIdx - 1 : 4] ?? 'created_at';
-        $dir = ($_GET['order'][0]['dir'] ?? 'desc') === 'asc' ? 'ASC' : 'DESC';
+        $dir = ($orderParams[0]['dir'] ?? 'desc') === 'asc' ? 'ASC' : 'DESC';
 
         // 6. Fetch Data
         $sql = "SELECT page, action, action_message, query, old_value, new_value, user_id, created_at 
@@ -233,7 +238,7 @@ $pageMetaKey = $currentUrl;
             </div>
         </div>
         <div class="card-body">
-            <table id="auditTable" class="table table-hover w-100" data-api-url="<?php echo htmlspecialchars($_SERVER['PHP_SELF']); ?>?mode=data">
+            <table id="auditTable" class="table table-hover w-100" data-api-url="<?php echo htmlspecialchars(getServer('PHP_SELF')); ?>?mode=data">
                 <thead><tr><th style="width: 30px;"></th><th>Page</th><th>Action</th><th>Message</th><th>User</th><th>Date</th><th>Time</th></tr></thead>
             </table>
         </div>

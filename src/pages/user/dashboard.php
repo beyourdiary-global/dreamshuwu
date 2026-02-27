@@ -3,21 +3,21 @@ require_once dirname(__DIR__, 3) . '/common.php';
 // Auth Check
 requireLogin();
 
-$currentUserId = $_SESSION['user_id'];
+$currentUserId = sessionInt('user_id');
 $userTable = USR_LOGIN;
 $dashTable = USR_DASHBOARD;
 $auditPage = 'User Dashboard';
 
 // --- VIEW LOGIC ---
-$currentView     = isset($_GET['view']) ? $_GET['view'] : 'home';
-$legacyMode      = isset($_GET['pa_mode']) ? trim((string)$_GET['pa_mode']) : '';
-$tagMode         = isset($_GET[QUERY_TAG_MODE]) ? trim((string)$_GET[QUERY_TAG_MODE]) : $legacyMode;
-$catMode         = isset($_GET[QUERY_CAT_MODE]) ? trim((string)$_GET[QUERY_CAT_MODE]) : $legacyMode;
+$currentView     = input('view') ?: 'home';
+$legacyMode      = input('pa_mode') ?: '';
+$tagMode         = input(QUERY_TAG_MODE) ?: $legacyMode;
+$catMode         = input(QUERY_CAT_MODE) ?: $legacyMode;
 
 if ($currentView === 'tag_form') {
     $redirectUrl = URL_NOVEL_TAGS_FORM;
-    if (!empty($_GET['id'])) {
-        $redirectUrl .= '&id=' . $_GET['id'];
+    if (!empty(numberInput('id'))) {
+        $redirectUrl .= '&id=' . numberInput('id');
     }
     header('Location: ' . $redirectUrl);
     exit();
@@ -25,8 +25,8 @@ if ($currentView === 'tag_form') {
 
 if ($currentView === 'cat_form') {
     $redirectUrl = URL_NOVEL_CATS_FORM;
-    if (!empty($_GET['id'])) {
-        $redirectUrl .= '&id=' . $_GET['id'];
+    if (!empty(numberInput('id'))) {
+        $redirectUrl .= '&id=' . numberInput('id');
     }
     header('Location: ' . $redirectUrl);
     exit();
@@ -73,7 +73,7 @@ if (!$isTagSection && !$isCatSection && !$isProfileView && !$isMetaView && !$isW
 if ($isTagSection) {
     checkPermissionError('view', $permTags);
     if ($isTagFormView) {
-        $tagFormActionToCheck = !empty($_GET['id']) ? 'edit' : 'add';
+        $tagFormActionToCheck = !empty(numberInput('id')) ? 'edit' : 'add';
         checkPermissionError($tagFormActionToCheck, $permTags);
     }
 }
@@ -81,7 +81,7 @@ if ($isTagSection) {
 if ($isCatSection) {
     checkPermissionError('view', $permCategories);
     if ($isCatFormView) {
-        $catFormActionToCheck = !empty($_GET['id']) ? 'edit' : 'add';
+        $catFormActionToCheck = !empty(numberInput('id')) ? 'edit' : 'add';
         checkPermissionError($catFormActionToCheck, $permCategories);
     }
 }
@@ -122,7 +122,7 @@ if (!$isTagSection && !$isCatSection && !$isMetaView && !$isProfileView && !$isW
 
 // Data Prep
 $rawAvatar = !empty($dashRow['avatar']) ? URL_ASSETS . '/uploads/avatars/' . $dashRow['avatar'] : URL_ASSETS . '/images/default-avatar.png';
-$rawName   = $userRow['name'] ?? $_SESSION['user_name'];
+$rawName   = $userRow['name'] ?? session('user_name');
 $rawLevel  = 'Lv' . ($dashRow['level'] ?? 1);
 
 $statsArray = [
@@ -192,10 +192,11 @@ $pageMetaKey = ($currentView === 'home' || empty($currentView)) ? '/dashboard.ph
 
     <main class="dashboard-main">
         <?php 
-        if (isset($_SESSION['flash_msg'])) {
-            $dashFlashMsg = $_SESSION['flash_msg'];
-            $dashFlashType = $_SESSION['flash_type'] ?? 'danger';
-            unset($_SESSION['flash_msg'], $_SESSION['flash_type']);
+        if (hasSession('flash_msg')) {
+            $dashFlashMsg = session('flash_msg');
+            $dashFlashType = session('flash_type') ?: 'danger';
+            unsetSession('flash_msg');
+            unsetSession('flash_type');
         ?>
         <div class="alert alert-<?php echo $dashFlashType; ?> alert-dismissible fade show shadow-sm" role="alert">
             <i class="fa-solid fa-circle-exclamation me-2"></i> 

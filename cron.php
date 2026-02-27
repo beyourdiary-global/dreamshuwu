@@ -8,7 +8,7 @@ require_once __DIR__ . '/common.php';
 
 // Security: Prevent unauthorized execution via web browser. 
 // Comment this out if you want to test it by visiting http://localhost:8000/cron.php
-if (php_sapi_name() !== 'cli' && empty($_GET['test_run'])) {
+if (php_sapi_name() !== 'cli' && empty(input('test_run'))) {
     die("Forbidden: This script can only be run from the command line or with a test_run parameter.");
 }
 
