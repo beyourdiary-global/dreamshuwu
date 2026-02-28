@@ -552,7 +552,7 @@ $(document).ready(function () {
     $.ajax({
       url: API_URL,
       type: "GET",
-      data: { mode: "get_novel", id: novelId },
+      data: { mode: "get_novel", novel_id: novelId },
       dataType: "json",
       success: function (res) {
         if (res.success) {
@@ -701,7 +701,7 @@ $(document).ready(function () {
         $.ajax({
           url: API_URL,
           type: "POST",
-          data: { mode: "delete", id: novelId, csrf_token: csrfToken },
+          data: { mode: "delete", novel_id: novelId, csrf_token: csrfToken },
           dataType: "json",
           success: function (res) {
             if (res.success) {

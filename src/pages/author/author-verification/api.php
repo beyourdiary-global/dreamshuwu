@@ -26,12 +26,12 @@ try {
     
     $auditPage = 'Author Verification Management';
 
-    // [CRITICAL FIX] Combine input() and post() to safely replicate $_REQUEST
-    $modeStr = input('mode');
-    if ($modeStr === '') {
-        $modeStr = post('mode');
-    }
-    $mode = strtolower($modeStr ?: 'data');
+   // [CENTRALIZED] Safely pull the mode from GET or POST, defaulting to 'data'
+    $mode = strtolower(input('mode') ?: post('mode') ?: 'data');
+    $id        = (int)(post('id') ?: input('id') ?: 0);
+    $draw      = (int)(post('draw') ?: input('draw') ?: 1);
+    $start     = (int)(post('start') ?: input('start') ?: 0);
+    $length    = (int)(post('length') ?: input('length') ?: 10);
 
     // Helper Function
     if (!function_exists('authorVerificationFetchRow')) {
@@ -120,16 +120,6 @@ try {
     // =========================================================================
     if ($mode === 'data') {
         checkPermissionError('view', $perm);
-
-        // [FIX] Safely check BOTH POST and GET so the 'draw' counter always matches DataTables
-        $drawInput = post('draw') !== '' ? post('draw') : input('draw');
-        $draw = (int)($drawInput ?: 1);
-
-        $startInput = post('start') !== '' ? post('start') : input('start');
-        $start = max(0, (int)($startInput ?: 0));
-
-        $lengthInput = post('length') !== '' ? post('length') : input('length');
-        $length = max(1, min(100, (int)($lengthInput ?: 10)));
 
         // [FIX] Check both sources for custom dropdown filters
         $statusInput = post('status_filter') !== '' ? post('status_filter') : input('status_filter');
@@ -253,7 +243,6 @@ try {
         if ($actionType === 'reject' && !$canReject) throw new Exception('权限不足');
         if ($actionType === 'resend' && !$canResend) throw new Exception('权限不足');
 
-        $id = (int)post('id');
         $rejectReason = postSpaceFilter('reject_reason');
         
         if ($id <= 0) throw new Exception('无效记录ID');
@@ -345,7 +334,6 @@ try {
     if ($mode === 'delete') {
         checkPermissionError('delete', $perm);
 
-        $id = (int)post('id');
         if ($id <= 0) throw new Exception('无效记录ID');
 
         $oldRow = authorVerificationFetchRow($conn, $id, $authorProfileTable, $usersTable);
@@ -389,14 +377,7 @@ try {
     if (ob_get_length()) ob_clean(); 
     header('Content-Type: application/json; charset=utf-8');
     
-    // [CRITICAL FIX] Ensure error handler correctly detects mode even from POST
-    $modeStrErr = input('mode');
-    if ($modeStrErr === '') {
-        $modeStrErr = post('mode');
-    }
-    $modeErr = strtolower($modeStrErr ?: 'data');
-    
-    if ($modeErr === 'data') {
+    if ($mode === 'data') {
         echo safeJsonEncode([
             'draw' => (int)(input('draw') ?: 1),
             'recordsTotal' => 0,

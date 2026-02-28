@@ -11,9 +11,8 @@ try {
     $currentUserId = sessionInt('user_id');
     requireApprovedAuthor($conn, $currentUserId);
 
-    // [CRITICAL FIX] Combine input() and post() for mode and novel_id detection
-    $modeStr = input('mode') !== '' ? input('mode') : post('mode');
-    $mode = strtolower($modeStr ?: 'data');
+    // Combine input() and post() for mode detection
+    $mode = strtolower(input('mode') ?: post('mode') ?: 'data');
     
     // [CENTRALIZED] Safely pull IDs from GET or POST and cast to integers
     $novelId   = (int)(input('novel_id') ?: post('novel_id') ?: 0);
@@ -480,12 +479,8 @@ try {
     
     if (ob_get_length()) ob_clean(); 
     header('Content-Type: application/json; charset=utf-8');
-    
-    // [CRITICAL FIX] Ensure error handler correctly detects mode even from POST
-    $modeStrErr = input('mode') !== '' ? input('mode') : post('mode');
-    $modeErr = strtolower($modeStrErr ?: 'data');
-    
-    if ($modeErr === 'data') {
+        
+    if ($mode === 'data') {
         $drawErr = post('draw') !== '' ? post('draw') : input('draw');
         echo safeJsonEncode(['draw' => (int)($drawErr ?: 1), 'recordsTotal' => 0, 'recordsFiltered' => 0, 'data' => [], 'error' => $e->getMessage()]);
     } else {

@@ -39,12 +39,11 @@ try {
         $perm = hasPagePermission($conn, $legacyPath);
     }
 
-    // [CRITICAL FIX] Combine input() and post() to safely replicate $_REQUEST
-    $modeStr = input('mode');
-    if ($modeStr === '') {
-        $modeStr = post('mode');
-    }
-    $mode = strtolower($modeStr ?: 'data');
+    // Safely replicate $_REQUEST and default to 'data'
+    $mode = strtolower(input('mode') ?: post('mode') ?: 'data');
+
+    // [CENTRALIZED] Safely pull the ID from any possible GET or POST parameter
+    $novelId   = (int)(input('novel_id') ?: post('novel_id') ?: 0);
     
     // Check specific operation permissions based on the current request mode
     if (in_array($mode, ['data', 'stats', 'get_tags', 'get_novel'])) {
@@ -70,9 +69,6 @@ try {
     // GET SINGLE NOVEL (For Modal Populating)
     // ==========================================
     if ($mode === 'get_novel') {
-        // [FIX] Safely catch the ID regardless of whether JS sends it as 'id' or 'novel_id' via GET or POST
-        $novelIdInput = input('id') ?: post('id') ?: input('novel_id') ?: post('novel_id');
-        $novelId = (int)$novelIdInput;
         
         if ($novelId <= 0) throw new Exception('无效的小说ID');
 
@@ -409,9 +405,6 @@ try {
     // ==========================================
     if ($mode === 'update') {
         $updateSql = "UPDATE {$novelTable} SET title=?, category_id=?, tags=?, introduction=?, cover_image=?, completion_status=?, updated_at=NOW() WHERE id=?";
-
-        $novelIdInput = post('id') ?: input('id') ?: post('novel_id') ?: input('novel_id');
-        $novelId = (int)$novelIdInput;
         
         $title = postSpaceFilter('title');
         $categoryId = (int)post('category_id');
@@ -552,7 +545,7 @@ try {
     if ($mode === 'delete') {
         $delSql = "UPDATE {$novelTable} SET status = 'D', updated_at = NOW() WHERE id = ?";
 
-        $novelId = (int)post('id');
+    
         if ($novelId <= 0) throw new Exception('无效的ID');
 
         $checkSql = "SELECT title FROM {$novelTable} WHERE id = ? AND author_id = ? AND status = 'A' LIMIT 1";
@@ -593,13 +586,8 @@ try {
     header('Content-Type: application/json; charset=utf-8');
     
     // [CRITICAL FIX] Ensure error handler correctly detects mode even from POST
-    $modeStrErr = input('mode');
-    if ($modeStrErr === '') {
-        $modeStrErr = post('mode');
-    }
-    $modeErr = strtolower($modeStrErr ?: 'data');
     
-    if ($modeErr === 'data') {
+    if ($mode === 'data') {
         echo safeJsonEncode([
             'draw' => (int)(input('draw') ?: 1),
             'recordsTotal' => 0,
