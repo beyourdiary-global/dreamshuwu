@@ -205,10 +205,7 @@ $deleteError = checkPermissionError('delete', $perm);
 
     // 2. Logical Pre-Validation & Hard Deletion
     try {
-        // [KEPT: THE NOVEL BUG FIX] 
-        // Step 1: Check if any novels are currently using this category BEFORE touching anything
-        $novelTable = defined('NOVEL_TABLE') ? NOVEL_TABLE : 'novel';
-        $checkSql = "SELECT COUNT(*) FROM " . $novelTable . " WHERE category_id = ?";
+        $checkSql = "SELECT COUNT(*) FROM " . NOVEL . " WHERE category_id = ?";
         $checkStmt = $conn->prepare($checkSql);
         
         if ($checkStmt) {
