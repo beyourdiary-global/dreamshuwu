@@ -15,8 +15,10 @@ try {
     $modeStr = input('mode') !== '' ? input('mode') : post('mode');
     $mode = strtolower($modeStr ?: 'data');
     
-    $novelIdInput = input('novel_id') !== '' ? input('novel_id') : post('novel_id');
-    $novelId = (int)$novelIdInput;
+    // [CENTRALIZED] Safely pull IDs from GET or POST and cast to integers
+    $novelId   = (int)(input('novel_id') ?: post('novel_id') ?: 0);
+    $chapterId = (int)(post('chapter_id') ?: input('chapter_id') ?: 0);
+    $versionId = (int)(post('version_id') ?: input('version_id') ?: 0);
     
     $auditPage = 'Chapter Management';
     
@@ -187,10 +189,6 @@ try {
         $insertSql = "INSERT INTO {$chapterTable} (novel_id, author_id, chapter_number, title, content, word_count, publish_status, scheduled_publish_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
         $updateSql = "UPDATE {$chapterTable} SET chapter_number=?, title=?, content=?, word_count=?, publish_status=?, scheduled_publish_at=?, updated_at=NOW() WHERE id=? AND novel_id=?";
         $insertVersionSql = "INSERT INTO {$chapterVersionTable} (chapter_id, version_number, title, content, word_count, created_by) VALUES (?, ?, ?, ?, ?, ?)";
-
-        // [FIX] Safely pull from POST
-        $chapterIdInput = post('chapter_id') !== '' ? post('chapter_id') : input('chapter_id');
-        $chapterId = (int)$chapterIdInput;
         
         $title     = postSpaceFilter('title');
         $cNum      = (int)post('chapter_number') ?: 1;
@@ -372,10 +370,6 @@ try {
         exit();
     }
 
-    // [CRITICAL FIX] Ensure chapter ID is caught for Delete and View actions
-    $chapterIdInput2 = post('chapter_id') !== '' ? post('chapter_id') : input('chapter_id');
-    $chapterId = (int)$chapterIdInput2;
-    
     if ($chapterId > 0 && in_array($mode, ['get', 'delete'])) {
         $chk = "SELECT id FROM {$chapterTable} WHERE id = ? AND novel_id = ? AND status = 'A' LIMIT 1";
         $stmt=$conn->prepare($chk); 
@@ -442,8 +436,6 @@ try {
 
     // Versions
     if ($mode === 'get_versions') {
-        $cIdInput = post('chapter_id') !== '' ? post('chapter_id') : input('chapter_id');
-        $chapterId = (int)$cIdInput;
         
         $versions = [];
         $sql = "SELECT id, version_number, word_count, created_at FROM {$chapterVersionTable} WHERE chapter_id = ? ORDER BY version_number DESC";
@@ -467,8 +459,6 @@ try {
     }
 
     if ($mode === 'get_version_detail') {
-        $vIdInput = post('version_id') !== '' ? post('version_id') : input('version_id');
-        $versionId = (int)$vIdInput;
         
         $sql = "SELECT version_number, title, content FROM {$chapterVersionTable} WHERE id = ? LIMIT 1";
         $stmt = $conn->prepare($sql);
