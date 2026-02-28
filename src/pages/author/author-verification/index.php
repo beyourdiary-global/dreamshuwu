@@ -17,6 +17,7 @@ if (empty($perm) || (isset($perm->view) && empty($perm->view))) {
     $legacyPath = defined('PATH_AUTHOR_VERIFICATION_INDEX') ? ('/' . ltrim(PATH_AUTHOR_VERIFICATION_INDEX, '/')) : '/src/pages/author/author-verification/index.php';
     $perm = hasPagePermission($conn, $legacyPath);
 }
+$pageName = getDynamicPageName($conn, $perm, $currentUrl);
 checkPermissionError('view', $perm);
 
 $baseViewUrl = defined('URL_AUTHOR_VERIFICATION') ? URL_AUTHOR_VERIFICATION : (SITEURL . '/author/author-verification.php');
@@ -147,7 +148,7 @@ ob_start();
         <div class="card-header bg-white d-flex justify-content-between align-items-center py-3 flex-wrap gap-2">
             <div>
                 <?php echo generateBreadcrumb($conn, $currentUrl); ?>
-                <h4 class="m-0 text-primary"><i class="fa-solid fa-user-check me-2"></i>作者审核管理</h4>
+                <h4 class="m-0 text-primary"><i class="fa-solid fa-user-check me-2"></i><?php echo htmlspecialchars($pageName); ?></h4>
             </div>
             <button type="button" class="btn btn-sm btn-outline-secondary" id="toggleAuthorVerifyDashboard">
                 <?php echo $isDashboardHidden ? '显示统计面板' : '隐藏统计面板'; ?>

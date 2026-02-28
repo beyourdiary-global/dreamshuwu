@@ -13,6 +13,7 @@ $perm = hasPagePermission($conn, $currentUrl);
 
 // 1. Check View Permission
 checkPermissionError('view', $perm);
+$pageName = getDynamicPageName($conn, $perm, $currentUrl);
 
 $catTable  = NOVEL_CATEGORY;
 $linkTable = CATEGORY_TAG;
@@ -323,7 +324,7 @@ if ($isEmbeddedCatForm): ?>
     <div class="card category-card">
         <div class="card-header bg-white py-3">
             <?php echo generateBreadcrumb($conn, $currentUrl); ?>
-            <h4 class="m-0 text-primary"><i class="fa-solid fa-layer-group me-2"></i> <?php echo $isEditMode ? "编辑分类" : "新增分类"; ?></h4>
+            <h4 class="m-0 text-primary"><i class="fa-solid fa-layer-group me-2"></i> <?php echo ($isEditMode ? '编辑' : '新增') . htmlspecialchars($pageName); ?></h4>
         </div>
         <div class="card-body">
             <?php if ($message): ?>

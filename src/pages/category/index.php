@@ -1,5 +1,5 @@
 <?php
-// Path: src/pages/category/index.ph
+// Path: src/pages/category/index.php
 require_once dirname(__DIR__, 3) . '/common.php';
 
 // Auth Check
@@ -10,6 +10,7 @@ $currentUrl = '/dashboard.php?view=categories';
 
 // [ADDED] Fetch the dynamic permission object for this page
 $perm = hasPagePermission($conn, $currentUrl);
+$pageName = getDynamicPageName($conn, $perm, $currentUrl);
 
 // --- 2. Check View Permission ---
 checkPermissionError('view', $perm);
@@ -18,6 +19,8 @@ $catTable  = NOVEL_CATEGORY;
 $linkTable = CATEGORY_TAG;
 $tagTable  = NOVEL_TAGS;
 $auditPage = 'Category Management'; // Define audit page for logging
+
+// [REVERTED] Back to standard fetching and Hard Delete
 $viewQuery = "SELECT id, name FROM " . $catTable;
 $deleteQuery = "DELETE FROM " . $catTable . " WHERE id = ?";
 
@@ -36,13 +39,14 @@ if ($isEmbeddedInDashboard && $pageActionMode === 'form') {
 if (input('mode') === 'data') {
     header('Content-Type: application/json');
 
-    // [FIX] Use numberInput with strict casting for pagination
+    // Use numberInput with strict casting for pagination
     $start  = (int)numberInput('start'); 
     $length = (int)(numberInput('length') ?: 10); 
 
-    // [FIX] Use getArray one-liner for DataTables nested search
+    // Use getArray one-liner for DataTables nested search
     $search = getArray('search')['value'] ?? '';
 
+    // [REVERTED] Removed is_active filter
     $sql = "SELECT id, name FROM $catTable WHERE 1=1";
     $countSql = "SELECT COUNT(*) FROM $catTable WHERE 1=1";
 
@@ -198,44 +202,63 @@ $deleteError = checkPermissionError('delete', $perm);
             'name' => $name,
         ];
     }
-    // 2. Perform Delete
+
+    // 2. Logical Pre-Validation & Hard Deletion
     try {
-        // [FIX] Unlink tags from this category FIRST to avoid Foreign Key crashes
+        // [KEPT: THE NOVEL BUG FIX] 
+        // Step 1: Check if any novels are currently using this category BEFORE touching anything
+        $novelTable = defined('NOVEL_TABLE') ? NOVEL_TABLE : 'novel';
+        $checkSql = "SELECT COUNT(*) FROM " . $novelTable . " WHERE category_id = ?";
+        $checkStmt = $conn->prepare($checkSql);
+        
+        if ($checkStmt) {
+            $checkStmt->bind_param("i", $id);
+            $checkStmt->execute();
+            $checkStmt->bind_result($novelCount);
+            $checkStmt->fetch();
+            $checkStmt->close();
+
+            if ($novelCount > 0) {
+                echo safeJsonEncode(['success' => false, 'message' => '无法删除：该分类下还有关联的小说，请先移除小说。']);
+                exit();
+            }
+        }
+
+        $conn->begin_transaction();
+
+        // [RESTORED] Step 2: Unlink tags from this category FIRST (Required for Hard Delete)
         $delLink = $conn->prepare("DELETE FROM $linkTable WHERE category_id = ?");
         if ($delLink) {
             $delLink->bind_param("i", $id);
-            $delLink->execute();
+            if (!$delLink->execute()) throw new Exception("标签解绑失败");
             $delLink->close();
         }
 
+        // [REVERTED] Step 3: HARD DELETE the category 
         $stmt = $conn->prepare($deleteQuery);
-        $stmt->bind_param("i", $id);
-        
-        if ($stmt->execute()) {
-            if (function_exists('logAudit')) {
-                logAudit([
-                    'page'           => $auditPage,
-                    'action'         => 'D',
-                    'action_message' => 'Deleted Category: ' . $name,
-                    'query'          => $deleteQuery,
-                    'query_table'    => $catTable,
-                    'user_id'        => sessionInt('user_id'),
-                    'record_id'      => $id,
-                    'record_name'    => $name,
-                    'old_value'      => $oldData
-                ]);
-            }
-            echo safeJsonEncode(['success' => true]);
-        } else {
-            echo safeJsonEncode(['success' => false, 'message' => '无法删除分类']);
+        $stmt->bind_param("i", $id); 
+        if (!$stmt->execute()) throw new Exception($stmt->error);
+
+        $conn->commit();
+
+        if (function_exists('logAudit')) {
+            logAudit([
+                'page'           => $auditPage,
+                'action'         => 'D',
+                'action_message' => 'Deleted Category: ' . $name,
+                'query'          => $deleteQuery,
+                'query_table'    => $catTable,
+                'user_id'        => sessionInt('user_id'),
+                'record_id'      => $id,
+                'record_name'    => $name,
+                'old_value'      => $oldData
+            ]);
         }
-    } catch (mysqli_sql_exception $e) {
-        // [FIX] Catch constraint errors gracefully (e.g., if novels are using this category)
-        if ($e->getCode() == 1451) {
-            echo safeJsonEncode(['success' => false, 'message' => '无法删除：该分类下还有关联的小说，请先移除小说。']);
-        } else {
-            echo safeJsonEncode(['success' => false, 'message' => '删除失败: 数据库约束冲突']);
-        }
+        echo safeJsonEncode(['success' => true]);
+
+    } catch (Exception $e) {
+        $conn->rollback();
+        echo safeJsonEncode(['success' => false, 'message' => '删除失败: ' . $e->getMessage()]);
     }
     exit();
 }
@@ -273,7 +296,7 @@ if ($isEmbeddedInDashboard):
         <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
             <div>
                 <?php echo generateBreadcrumb($conn, $currentUrl); ?>
-                <h4 class="m-0 text-primary"><i class="fa-solid fa-layer-group"></i> 分类管理</h4>
+                <h4 class="m-0 text-primary"><i class="fa-solid fa-layer-group"></i> <?php echo htmlspecialchars($pageName); ?></h4>
             </div>
             <?php if ($perm->add): ?>
             <a href="<?php echo URL_NOVEL_CATS_FORM; ?>" class="btn btn-primary desktop-add-btn"><i class="fa-solid fa-plus"></i> 新增分类</a>

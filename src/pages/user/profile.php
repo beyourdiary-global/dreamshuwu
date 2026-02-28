@@ -5,6 +5,7 @@ requireLogin();
 
 $currentUrl = '/dashboard.php?view=profile';
 $perm = hasPagePermission($conn, $currentUrl);
+$pageName = getDynamicPageName($conn, $perm, $currentUrl);
 
 checkPermissionError('view', $perm);
 
@@ -254,7 +255,7 @@ $pageScripts = ['user-profile.js?v=' . filemtime(BASE_PATH . 'assets/js/user-pro
     <div class="section-header">
         <div class="header-text-content">
             <?php echo generateBreadcrumb($conn, $currentUrl); ?>
-            <h2>个人资料设置</h2>
+            <h2><?php echo htmlspecialchars($pageName); ?></h2>
         </div>
     </div>
 

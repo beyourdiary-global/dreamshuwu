@@ -104,6 +104,18 @@
   border-radius: 12px;
 }
 
+.chapter-editor-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chapter-editor-actions .btn {
+  margin: 0 !important;
+}
+
 /* ======================================================== */
 /* --- Novel Management Specific Styles --- */
 /* ======================================================== */
@@ -201,6 +213,12 @@
   }
   .dataTables_wrapper .col-sm-12 {
     padding: 0 !important;
+  }
+
+  .chapter-editor-actions {
+    justify-content: flex-start;
+    margin-top: 8px;
+    gap: 8px;
   }
 
   /* 1. Prevent horizontal scrolling - scoped to novel/chapter tables */

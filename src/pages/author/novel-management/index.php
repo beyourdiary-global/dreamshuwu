@@ -23,6 +23,7 @@ if (empty($perm) || (isset($perm->view) && empty($perm->view))) {
     $legacyPath = defined('PATH_AUTHOR_NOVEL_MANAGEMENT') ? ('/' . ltrim(PATH_AUTHOR_NOVEL_MANAGEMENT, '/')) : '/src/pages/author/novel-management/index.php';
     $perm = hasPagePermission($conn, $legacyPath);
 }
+$pageName = getDynamicPageName($conn, $perm, $currentUrl);
 
 // Check for view permission; block and redirect if denied
 checkPermissionError('view', $perm);
@@ -78,8 +79,8 @@ $tableColumns = [
     
     <div class="d-flex align-items-center justify-content-between mb-4">
         <div>
-            <?php echo generateBreadcrumb($conn, $currentUrl, '我的小说'); ?>
-            <h3 class="text-dark mb-0">我的小说 (Novel Management)</h3>
+            <?php echo generateBreadcrumb($conn, $currentUrl, $pageName); ?>
+            <h3 class="text-dark mb-0"><?php echo htmlspecialchars($pageName); ?></h3>
         </div>
     </div>
 

@@ -536,7 +536,7 @@ function initAuthorVerificationModule() {
             html = '<span class="text-muted small">无操作权限</span>';
           }
 
-          return html;
+          return '<div class="author-verify-actions">' + html + "</div>";
         },
       },
     ],

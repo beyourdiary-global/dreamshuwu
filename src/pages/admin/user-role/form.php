@@ -19,6 +19,7 @@ $assignedPerms = [];
 
 // 1. Check View Permission for the form page
 checkPermissionError('view', $perm);
+$pageName = getDynamicPageName($conn, $perm, $currentUrl);
 
 // 2. Check Add/Edit Permission for loading the form
 $actionToCheck = $isEditMode ? 'edit' : 'add';
@@ -247,7 +248,7 @@ if ($masterRes) {
         <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
             <div>
                 <?php echo generateBreadcrumb($conn, $currentUrl); ?>
-                <h4 class="m-0 text-primary"><i class="fa-solid fa-shield me-2"></i><?php echo $isEditMode ? '编辑用户角色' : '新增用户角色'; ?></h4>
+                <h4 class="m-0 text-primary"><i class="fa-solid fa-shield me-2"></i><?php echo ($isEditMode ? '编辑' : '新增') . htmlspecialchars($pageName); ?></h4>
             </div>
             <a href="<?php echo $baseListUrl; ?>" class="btn btn-outline-secondary">返回列表</a>
         </div>

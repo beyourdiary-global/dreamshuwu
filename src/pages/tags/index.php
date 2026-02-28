@@ -10,6 +10,7 @@ $currentUrl = '/dashboard.php?view=tags';
 
 // [ADDED] Fetch the dynamic permission object for this page
 $perm = hasPagePermission($conn, $currentUrl);
+$pageName = getDynamicPageName($conn, $perm, $currentUrl);
 
 checkPermissionError('view', $perm);
 
@@ -296,7 +297,7 @@ if ($isEmbeddedInDashboard):
             <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
                 <div>
                     <?php echo generateBreadcrumb($conn, $currentUrl); ?>
-                    <h4 class="m-0 text-primary"><i class="fa-solid fa-tags"></i> 标签管理</h4>
+                    <h4 class="m-0 text-primary"><i class="fa-solid fa-tags"></i> <?php echo htmlspecialchars($pageName); ?></h4>
                 </div>
                 <?php if ($perm->add): ?>
                 <a href="<?php echo URL_NOVEL_TAGS_FORM; ?>" class="btn btn-primary desktop-add-btn">
@@ -343,7 +344,7 @@ if ($isEmbeddedInDashboard):
         <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
             <div>
                 <?php echo generateBreadcrumb($conn, $currentUrl); ?>
-                <h4 class="m-0 text-primary"><i class="fa-solid fa-tags"></i> 标签管理</h4>
+                <h4 class="m-0 text-primary"><i class="fa-solid fa-tags"></i> <?php echo htmlspecialchars($pageName); ?></h4>
             </div>
             <?php if ($perm->add): ?>
             <a href="<?php echo URL_NOVEL_TAGS_FORM; ?>" class="btn btn-primary desktop-add-btn">

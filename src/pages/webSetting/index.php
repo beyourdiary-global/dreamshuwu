@@ -8,8 +8,7 @@ requireLogin();
 $currentUrl = '/dashboard.php?view=web_settings';
 $perm = hasPagePermission($conn, $currentUrl);
 
-// Get the dynamic page name straight from the DB permission object
-$pageName = !empty($perm->page_name) ? $perm->page_name : '系统设置';
+$pageName = getDynamicPageName($conn, $perm, $currentUrl);
 
 checkPermissionError('view', $perm);
 
@@ -301,7 +300,6 @@ if (isPostRequest()) {
             <div class="card shadow-sm border-0 mb-4" style="border-radius: 12px;">
                 <div class="card-header bg-white border-bottom-0 pt-4 pb-3 px-4">
                     <h4 class="header-title m-0 fw-bold"><i class="fa-solid fa-paintbrush me-2"></i> <?php echo htmlspecialchars($pageName); ?></h4>
-                    <p class="header-subtitle mt-1 mb-0 text-muted">Customize the global appearance and branding of your site.</p>
                 </div>
                 <div class="card-body p-4">
                     

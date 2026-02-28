@@ -99,11 +99,11 @@
                                 <div class="col-md-9">
                                     <?php if ($config['type'] === 'textarea'): ?>
                                         <textarea name="<?php echo $fieldName; ?>" class="form-control" rows="3"
-                                            placeholder="<?php echo $placeholderLabel; ?><?php echo htmlspecialchars($globalValue); ?>"><?php echo htmlspecialchars($fieldValue); ?></textarea>
+                                            placeholder="<?php echo $placeholderLabel; ?>"><?php echo htmlspecialchars($fieldValue); ?></textarea>
                                 <?php else: ?>
                                 <input type="text" name="<?php echo $fieldName; ?>" class="form-control" 
                                     value="<?php echo htmlspecialchars($fieldValue); ?>"
-                                    placeholder="<?php echo $placeholderLabel; ?><?php echo htmlspecialchars($globalValue); ?>">
+                                    placeholder="<?php echo $placeholderLabel; ?>">
                                 <?php endif; ?>
                             </div>
                         </div>

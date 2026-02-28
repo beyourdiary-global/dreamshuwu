@@ -15,6 +15,7 @@ requireApprovedAuthor($conn, $currentUserId);
 
 // 3. System Permission Check for the dashboard itself (RBAC Fallback)
 $perm = hasPagePermission($conn, $currentUrl);
+$pageName = getDynamicPageName($conn, $perm, $currentUrl);
 checkPermissionError('view', $perm);
 
 // 4. Define a logical view query for the audit log (Checking Author Profile)
@@ -43,6 +44,7 @@ if (empty($permNovel) || (isset($permNovel->view) && empty($permNovel->view))) {
     $novelLegacyPath = defined('PATH_AUTHOR_NOVEL_MANAGEMENT') ? ('/' . ltrim(PATH_AUTHOR_NOVEL_MANAGEMENT, '/')) : '/src/pages/author/novel-management/index.php';
     $permNovel = hasPagePermission($conn, $novelLegacyPath);
 }
+$novelPageName = getDynamicPageName($conn, $permNovel, $novelUrlPath);
 
 ?>
 <!DOCTYPE html>
@@ -73,8 +75,8 @@ if (empty($permNovel) || (isset($permNovel->view) && empty($permNovel->view))) {
 
     <div class="d-flex align-items-center justify-content-between mb-4">
         <div>
-            <?php echo generateBreadcrumb($conn, $currentUrl, '作者专区'); ?>
-            <h3 class="text-dark mb-0">作者专区 (Author Zone)</h3>
+            <?php echo generateBreadcrumb($conn, $currentUrl, $pageName); ?>
+            <h3 class="text-dark mb-0"><?php echo htmlspecialchars($pageName); ?></h3>
         </div>
     </div>
 
@@ -90,7 +92,7 @@ if (empty($permNovel) || (isset($permNovel->view) && empty($permNovel->view))) {
                                 <i class="fa-solid fa-book-open fa-xl"></i>
                             </span>
                         </div>
-                        <h5 class="card-title text-dark fw-bold">我的小说</h5>
+                        <h5 class="card-title text-dark fw-bold"><?php echo htmlspecialchars($novelPageName); ?></h5>
                         <p class="card-text text-muted small">(Novel Management)</p>
                     </div>
                 </div>

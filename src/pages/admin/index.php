@@ -8,6 +8,7 @@ $baseViewPath = '/dashboard.php?view=';
 
 $currentUrl = $baseViewPath . 'admin';
 $perm = hasPagePermission($conn, $currentUrl);
+$pageName = getDynamicPageName($conn, $perm, $currentUrl);
 
 // 2. Use the unified helper to handle view permission and redirection
 // This handles the access check and redirects to /dashboard.php if denied
@@ -20,23 +21,30 @@ $permPageAction = hasPagePermission($conn, $baseViewPath . 'page_action');
 $permPageInfo   = hasPagePermission($conn, $baseViewPath . 'page_info');
 $permUserRole   = hasPagePermission($conn, $baseViewPath . 'user_role');
 
+$pageActionName = getDynamicPageName($conn, $permPageAction, $baseViewPath . 'page_action');
+$pageInfoName = getDynamicPageName($conn, $permPageInfo, $baseViewPath . 'page_info');
+$userRoleName = getDynamicPageName($conn, $permUserRole, $baseViewPath . 'user_role');
+
 $permAuthorVerification = hasPagePermission($conn, '/author/author-verification.php');
 if (empty($permAuthorVerification) || (isset($permAuthorVerification->view) && empty($permAuthorVerification->view))) {
     $authorVerificationLegacyPath = defined('PATH_AUTHOR_VERIFICATION_INDEX') ? ('/' . ltrim(PATH_AUTHOR_VERIFICATION_INDEX, '/')) : '/src/pages/author/author-verification/index.php';
     $permAuthorVerification = hasPagePermission($conn, $authorVerificationLegacyPath);
 }
 
+$authorVerificationName = getDynamicPageName($conn, $permAuthorVerification, '/author/author-verification.php');
+
 $permEmailTemplate = hasPagePermission($conn, '/author/email-template.php');
 if (empty($permEmailTemplate) || (isset($permEmailTemplate->view) && empty($permEmailTemplate->view))) {
     $emailTemplateLegacyPath = defined('PATH_EMAIL_TEMPLATE_INDEX') ? ('/' . ltrim(PATH_EMAIL_TEMPLATE_INDEX, '/')) : '/src/pages/author/email-template/index.php';
     $permEmailTemplate = hasPagePermission($conn, $emailTemplateLegacyPath);
 }
+$emailTemplateName = getDynamicPageName($conn, $permEmailTemplate, '/author/email-template.php');
 ?>
 <div class="container-fluid">
     <div class="d-flex align-items-center justify-content-between mb-4">
         <div>
             <?php echo generateBreadcrumb($conn, $currentUrl); ?>
-            <h3 class="text-dark mb-0">管理员面板</h3>
+            <h3 class="text-dark mb-0"><?php echo htmlspecialchars($pageName); ?></h3>
         </div>
     </div>
 
@@ -51,7 +59,7 @@ if (empty($permEmailTemplate) || (isset($permEmailTemplate->view) && empty($perm
                                 <i class="fa-solid fa-gears fa-xl"></i>
                             </span>
                         </div>
-                        <h5 class="card-title text-dark fw-bold">页面操作管理</h5>
+                        <h5 class="card-title text-dark fw-bold"><?php echo htmlspecialchars($pageActionName); ?></h5>
                         <p class="card-text text-muted small">(Page Actions)</p>
                     </div>
                 </div>
@@ -69,7 +77,7 @@ if (empty($permEmailTemplate) || (isset($permEmailTemplate->view) && empty($perm
                                 <i class="fa-solid fa-file-signature fa-xl"></i>
                             </span>
                         </div>
-                        <h5 class="card-title text-dark fw-bold">页面信息列表</h5>
+                        <h5 class="card-title text-dark fw-bold"><?php echo htmlspecialchars($pageInfoName); ?></h5>
                         <p class="card-text text-muted small">(Page Info & Permissions)</p>
                     </div>
                 </div>
@@ -87,7 +95,7 @@ if (empty($permEmailTemplate) || (isset($permEmailTemplate->view) && empty($perm
                                 <i class="fa-solid fa-shield fa-xl"></i>
                             </span>
                         </div>
-                        <h5 class="card-title text-dark fw-bold">用户角色管理</h5>
+                        <h5 class="card-title text-dark fw-bold"><?php echo htmlspecialchars($userRoleName); ?></h5>
                         <p class="card-text text-muted small">(User Roles)</p>
                     </div>
                 </div>
@@ -105,7 +113,7 @@ if (empty($permEmailTemplate) || (isset($permEmailTemplate->view) && empty($perm
                                 <i class="fa-solid fa-user-check fa-xl"></i>
                             </span>
                         </div>
-                        <h5 class="card-title text-dark fw-bold">作者审核管理</h5>
+                        <h5 class="card-title text-dark fw-bold"><?php echo htmlspecialchars($authorVerificationName); ?></h5>
                         <p class="card-text text-muted small">(Author Verification)</p>
                     </div>
                 </div>
@@ -123,7 +131,7 @@ if (empty($permEmailTemplate) || (isset($permEmailTemplate->view) && empty($perm
                                 <i class="fa-solid fa-envelope-open-text fa-xl"></i>
                             </span>
                         </div>
-                        <h5 class="card-title text-dark fw-bold">邮件模板管理</h5>
+                        <h5 class="card-title text-dark fw-bold"><?php echo htmlspecialchars($emailTemplateName); ?></h5>
                         <p class="card-text text-muted small">(Email Templates)</p>
                     </div>
                 </div>
