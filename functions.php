@@ -1549,6 +1549,72 @@ function hasPagePermission($conn, $pageUrl) {
     return $perm;
 }
 
+/**
+ * Get dynamic page name from permission object or page registry.
+ * Priority:
+ * 1) $perm->page_name (from hasPagePermission)
+ * 2) PAGE_INFO_LIST lookup using provided URL
+ * 3) PAGE_INFO_LIST lookup using current request URL (path + optional view)
+ */
+function getDynamicPageName($conn, $perm = null, $currentUrl = '') {
+    // 1) Try permission object first
+    if (is_object($perm) && !empty($perm->page_name)) {
+        return (string)$perm->page_name;
+    }
+
+    // Support array-style permission payloads if needed
+    if (is_array($perm) && !empty($perm['page_name'])) {
+        return (string)$perm['page_name'];
+    }
+
+    // 2) Resolve lookup URL
+    $lookupUrl = trim((string)$currentUrl);
+
+    // 3) Fallback to request URL normalization
+    if ($lookupUrl === '') {
+        $requestUri = (string)getServer('REQUEST_URI');
+        $pathPart = (string)parse_url($requestUri, PHP_URL_PATH);
+        $queryPart = (string)parse_url($requestUri, PHP_URL_QUERY);
+
+        $queryVars = [];
+        if ($queryPart !== '') {
+            parse_str($queryPart, $queryVars);
+        }
+
+        // Keep only view to align with PAGE_INFO_LIST public_url patterns
+        if (!empty($queryVars['view'])) {
+            $lookupUrl = $pathPart . '?view=' . (string)$queryVars['view'];
+        } else {
+            $lookupUrl = $pathPart;
+        }
+    }
+
+    // 4) Try DB lookup by public_url
+    if ($conn && $lookupUrl !== '') {
+        $stmt = $conn->prepare("SELECT name_cn FROM " . PAGE_INFO_LIST . " WHERE public_url = ? AND status = 'A' LIMIT 1");
+        if ($stmt) {
+            $stmt->bind_param('s', $lookupUrl);
+            $stmt->execute();
+            $stmt->store_result();
+
+            if ($stmt->num_rows > 0) {
+                $dbName = null;
+                $stmt->bind_result($dbName);
+                $stmt->fetch();
+                $stmt->close();
+
+                if (!empty($dbName)) {
+                    return (string)$dbName;
+                }
+            }
+
+            $stmt->close();
+        }
+    }
+
+    return '';
+}
+
 function renderTableActions($htmlString) {
     $minHeight = '32px'; // Matches standard btn-sm height
     if (!empty($htmlString)) {

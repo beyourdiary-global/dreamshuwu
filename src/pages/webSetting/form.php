@@ -27,7 +27,7 @@
                 </div>
             <?php endif; ?>
             <input type="file" name="website_logo" class="form-control" accept=".jpg,.jpeg,.png,.svg" <?php if (!$canSave) echo 'disabled'; ?>>
-            <small class="text-muted">Recommended height: 50px. Formats: JPG, JPEG, PNG, SVG.</small>
+            <small class="text-muted">Recommended height: 50px. Formats: JPG, JPEG, PNG.</small>
         </div>
     </div>
 
@@ -47,7 +47,7 @@
                 </div>
             <?php endif; ?>
             <input type="file" name="website_favicon" class="form-control" accept=".jpg,.jpeg,.png,.svg" <?php if (!$canSave) echo 'disabled'; ?>>
-            <small class="text-muted">Recommended size: 32x32. Formats: JPG, JPEG, PNG, SVG.</small>
+            <small class="text-muted">Recommended size: 32x32. Formats: JPG, JPEG, PNG.</small>
         </div>
     </div>
 

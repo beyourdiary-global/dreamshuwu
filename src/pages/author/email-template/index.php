@@ -19,6 +19,7 @@ if (empty($perm) || (isset($perm->view) && empty($perm->view))) {
     $legacyPath = defined('PATH_EMAIL_TEMPLATE_INDEX') ? ('/' . ltrim(PATH_EMAIL_TEMPLATE_INDEX, '/')) : '/src/pages/author/email-template/index.php';
     $perm = hasPagePermission($conn, $legacyPath);
 }
+$pageName = getDynamicPageName($conn, $perm, $currentUrl);
 checkPermissionError('view', $perm);
 $apiEndpoint = defined('URL_EMAIL_TEMPLATE_API') ? URL_EMAIL_TEMPLATE_API : (SITEURL . '/src/pages/author/email-template/api.php');
 
@@ -66,7 +67,7 @@ ob_start();
         <div class="card-header bg-white d-flex justify-content-between align-items-center py-3 flex-wrap gap-2">
             <div>
                 <?php echo generateBreadcrumb($conn, $currentUrl); ?>
-                <h4 class="m-0 text-primary"><i class="fa-solid fa-envelope-open-text me-2"></i>邮件模板管理</h4>
+                <h4 class="m-0 text-primary"><i class="fa-solid fa-envelope-open-text me-2"></i><?php echo htmlspecialchars($pageName); ?></h4>
             </div>
             <?php if (!empty($perm->add)): ?>
             <button type="button" class="btn btn-primary desktop-add-btn" id="btnEmailTemplateAdd">

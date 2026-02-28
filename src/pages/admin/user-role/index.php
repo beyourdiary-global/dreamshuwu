@@ -32,6 +32,7 @@ $apiEndpoint = defined('URL_USER_ROLE_API') ? URL_USER_ROLE_API : (SITEURL . '/s
 // 2. Permission Check
 $currentUrl = '/dashboard.php?view=user_role';
 $perm = hasPagePermission($conn, $currentUrl);
+$pageName = getDynamicPageName($conn, $perm, $currentUrl);
 // Check View Permission for the list
 checkPermissionError('view', $perm);
 
@@ -208,7 +209,7 @@ if ($isEmbedded):
         <div class="card-header bg-white d-flex justify-content-between align-items-center py-3 flex-wrap gap-2">
             <div>
                 <?php echo generateBreadcrumb($conn, $currentUrl); ?>
-                <h4 class="m-0 text-primary"><i class="fa-solid fa-shield me-2"></i>用户角色管理</h4>
+                <h4 class="m-0 text-primary"><i class="fa-solid fa-shield me-2"></i><?php echo htmlspecialchars($pageName); ?></h4>
             </div>
             <?php if (!empty($perm->add)): ?>
             <a href="<?php echo $formBaseUrl; ?>" class="btn btn-primary desktop-add-btn"><i class="fa-solid fa-plus"></i> 新增角色</a>
@@ -325,7 +326,7 @@ else:
 <body>
 <?php require_once BASE_PATH . 'common/menu/header.php'; ?>
 <div class="container mt-4">
-    <div class="alert alert-info">请通过用户面板访问该页面：<a href="<?php echo $baseListUrl; ?>">用户角色管理</a></div>
+    <div class="alert alert-info">请通过用户面板访问该页面：<a href="<?php echo $baseListUrl; ?>"><?php echo htmlspecialchars($pageName); ?></a></div>
 </div>
 </body>
 </html>

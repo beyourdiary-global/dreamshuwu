@@ -308,3 +308,43 @@
     min-height: 28px !important;
   }
 }
+
+/* Author Verification: enforce clean action-button rows */
+#authorVerificationTable td:last-child .author-verify-actions {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  justify-content: center !important;
+  align-items: center !important;
+  gap: 6px !important;
+}
+
+#authorVerificationTable td:last-child .author-verify-actions .btn {
+  margin: 0 !important;
+  white-space: nowrap !important;
+}
+
+@media (max-width: 1023px) {
+  #authorVerificationTable thead th:last-child,
+  #authorVerificationTable tbody td:last-child {
+    width: 168px !important;
+    min-width: 168px !important;
+    max-width: 168px !important;
+  }
+
+  #authorVerificationTable td:last-child .author-verify-actions {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+    width: 100% !important;
+    justify-items: center !important;
+    align-items: center !important;
+  }
+
+  #authorVerificationTable td:last-child .author-verify-actions .btn {
+    width: 100% !important;
+    max-width: 64px !important;
+    padding: 4px 0 !important;
+    font-size: 12px !important;
+    min-height: 28px !important;
+  }
+}

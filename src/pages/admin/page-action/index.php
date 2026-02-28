@@ -22,6 +22,7 @@ $currentUserId = sessionInt('user_id');
 
 $currentUrl = '/dashboard.php?view=page_action';
 $perm = hasPagePermission($conn, $currentUrl);
+$pageName = getDynamicPageName($conn, $perm, $currentUrl);
 
 // 1. Check View Permission
 checkPermissionError('view', $perm);
@@ -276,7 +277,7 @@ if ($isEmbeddedPageAction):
         <div class="card-header bg-white d-flex justify-content-between align-items-center py-3 flex-wrap gap-2">
             <div>
                 <?php echo generateBreadcrumb($conn, $currentUrl); ?>
-                <h4 class="m-0 text-primary"><i class="fa-solid fa-gears me-2"></i>页面操作管理</h4>
+                <h4 class="m-0 text-primary"><i class="fa-solid fa-gears me-2"></i><?php echo htmlspecialchars($pageName); ?></h4>
             </div>
             <?php if (!empty($perm->add)): ?>
             <a href="<?php echo $formBaseUrl; ?>" class="btn btn-primary desktop-add-btn">
@@ -406,7 +407,7 @@ if ($isEmbeddedPageAction):
 <body>
 <?php require_once BASE_PATH . 'common/menu/header.php'; ?>
 <div class="container mt-4">
-    <div class="alert alert-info">请通过用户面板访问该页面：<a href="<?php echo $baseListUrl; ?>">页面操作管理</a></div>
+    <div class="alert alert-info">请通过用户面板访问该页面：<a href="<?php echo $baseListUrl; ?>"><?php echo htmlspecialchars($pageName); ?></a></div>
 </div>
 </body>
 </html>

@@ -33,6 +33,7 @@ if (empty($perm) || (isset($perm->view) && empty($perm->view))) {
     $legacyPath = defined('PATH_AUTHOR_NOVEL_MANAGEMENT') ? ('/' . ltrim(PATH_AUTHOR_NOVEL_MANAGEMENT, '/')) : '/src/pages/author/novel-management/index.php';
     $perm = hasPagePermission($conn, $legacyPath);
 }
+$pageName = getDynamicPageName($conn, $perm, '');
 
 // Block access if no View permission
 if (empty($perm) || empty($perm->view)) {
@@ -134,7 +135,7 @@ $currentUrl = '/author/novel/' . $novelId . '/chapters/';
      data-api-url="<?php echo htmlspecialchars($apiEndpoint); ?>"
      data-novel-id="<?php echo $novelId; ?>">
 
-    <?php echo generateBreadcrumb($conn, $currentUrl, '章节管理'); ?>
+    <?php echo generateBreadcrumb($conn, $currentUrl, $pageName); ?>
     
     <div class="card border-0 shadow-sm mb-4 mt-3" style="border-radius: 12px; overflow: hidden;">
         <div class="card-body p-4 d-flex flex-column flex-md-row align-items-start align-items-md-center">
@@ -235,8 +236,8 @@ $currentUrl = '/author/novel/' . $novelId . '/chapters/';
                         <label class="form-label mb-1">定时时间 Scheduled Time</label>
                         <input type="datetime-local" name="scheduled_publish_at" id="scheduled_publish_at" class="form-control">
                     </div>
-                    <div class="col-md-4 text-end mt-auto">
-                        <button type="button" class="btn btn-secondary me-2" id="btnResetEditor"><i class="fa-solid fa-eraser"></i> 清空</button>
+                    <div class="col-md-4 text-end mt-auto chapter-editor-actions">
+                        <button type="button" class="btn btn-secondary" id="btnResetEditor"><i class="fa-solid fa-eraser"></i> 清空</button>
                         <button type="button" class="btn btn-primary fw-bold" id="btnSaveChapter"><i class="fa-solid fa-cloud-arrow-up"></i> 保存章节</button>
                     </div>
                 </div>

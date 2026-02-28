@@ -103,7 +103,6 @@ if (isPostRequest()) {
             <?php if ($message !== ''): ?>
                 <div class="alert alert-<?php echo htmlspecialchars($msgType); ?> alert-dismissible fade show">
                     <?php echo $message; ?>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 </div>
             <?php endif; ?>
 

@@ -10,6 +10,7 @@ $currentUrl = '/dashboard.php?view=tags';
 $perm = hasPagePermission($conn, $currentUrl);
 
 checkPermissionError('view', $perm);
+$pageName = getDynamicPageName($conn, $perm, $currentUrl);
 
 $tagTable = NOVEL_TAGS;
 $auditPage = 'Tag Management';
@@ -243,7 +244,7 @@ if ($isEmbeddedTagForm): ?>
             <div class="card-header bg-white py-3">
                 <?php echo generateBreadcrumb($conn, $currentUrl); ?>
                 <h4 class="m-0 text-primary">
-                    <i class="fa-solid fa-tag me-2"></i> <?php echo $isEditMode ? "编辑标签" : "新增标签"; ?>
+                    <i class="fa-solid fa-tag me-2"></i> <?php echo ($isEditMode ? '编辑' : '新增') . htmlspecialchars($pageName); ?>
                 </h4>
             </div>
             <div class="card-body">
@@ -286,7 +287,7 @@ if ($isEmbeddedTagForm): ?>
         <div class="card-header bg-white py-3">
             <?php echo generateBreadcrumb($conn, $currentUrl); ?>
             <h4 class="m-0 text-primary">
-                <i class="fa-solid fa-tag me-2"></i> <?php echo $isEditMode ? "编辑标签" : "新增标签"; ?>
+                <i class="fa-solid fa-tag me-2"></i> <?php echo ($isEditMode ? '编辑' : '新增') . htmlspecialchars($pageName); ?>
             </h4>
         </div>
         <div class="card-body">

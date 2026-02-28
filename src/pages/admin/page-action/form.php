@@ -7,6 +7,7 @@ $formRow = ['id' => 0, 'name' => '', 'status' => 'A'];
 
 // 1. Check Base View Permission
 checkPermissionError('view', $perm);
+$pageName = getDynamicPageName($conn, $perm, $currentUrl);
 
 // 2. Check Add/Edit Permission for initial load
 $actionToCheck = $isEditMode ? 'edit' : 'add';
@@ -156,7 +157,7 @@ if ($isEditMode) {
         <div class="card-header bg-white d-flex justify-content-between align-items-center py-3 flex-wrap gap-2">
             <div>
                 <?php echo generateBreadcrumb($conn, $currentUrl); ?>
-                <h4 class="m-0 text-primary"><i class="fa-solid fa-gears me-2"></i><?php echo $isEditMode ? '编辑页面操作' : '新增页面操作'; ?></h4>
+                <h4 class="m-0 text-primary"><i class="fa-solid fa-gears me-2"></i><?php echo ($isEditMode ? '编辑' : '新增') . htmlspecialchars($pageName); ?></h4>
             </div>
             <a href="<?php echo $baseListUrl; ?>" class="btn btn-outline-secondary">返回列表</a>
         </div>
