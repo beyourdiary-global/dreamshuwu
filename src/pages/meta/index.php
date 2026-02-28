@@ -40,7 +40,8 @@ $seoFields = [
 ];
 
 $activeSection = input('section') ?: 'global';
-if (input('page') !== '' || str_contains(post('form_type'), 'page')) {
+$formType = (string) post('form_type');
+if (input('page') !== '' || strpos($formType, 'page') !== false) {
     $activeSection = 'page';
 }
 

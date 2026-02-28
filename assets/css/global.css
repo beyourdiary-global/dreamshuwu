@@ -68,6 +68,10 @@ input[type="password"]::-ms-clear {
 }
 
 /* --- Password Toggle Positioning (Global) --- */
+.password-field {
+  position: relative;
+}
+
 .password-field .form-control,
 .password-field input {
   padding-right: 45px !important;

@@ -26,8 +26,12 @@ try {
     
     $auditPage = 'Author Verification Management';
 
-    // [FIX] Use input() global function for mode detection
-    $mode = strtolower(input('mode') ?: 'data');
+   // [CENTRALIZED] Safely pull the mode from GET or POST, defaulting to 'data'
+    $mode = strtolower(input('mode') ?: post('mode') ?: 'data');
+    $id        = (int)(post('id') ?: input('id') ?: 0);
+    $draw      = (int)(post('draw') ?: input('draw') ?: 1);
+    $start     = (int)(post('start') ?: input('start') ?: 0);
+    $length    = (int)(post('length') ?: input('length') ?: 10);
 
     // Helper Function
     if (!function_exists('authorVerificationFetchRow')) {
@@ -104,29 +108,33 @@ try {
     // CSRF Protection
     // =========================================================================
     if (in_array($mode, ['verify', 'delete'])) {
-        // [FIX] Use post() global function for CSRF token
-        $clientToken = input('HTTP_X_CSRF_TOKEN') ?: post('csrf_token');
+        $clientToken = getServer('HTTP_X_CSRF_TOKEN') ?: post('csrf_token');
 
         if (empty(session('csrf_token')) || !hash_equals(session('csrf_token'), (string)$clientToken)) {
             http_response_code(403);
             throw new Exception('安全校验失败：非法的请求 (Invalid CSRF Token)');
         }
     }
-
     // =========================================================================
     // MODE: DATA (DataTables) 
     // =========================================================================
     if ($mode === 'data') {
         checkPermissionError('view', $perm);
 
-        // [FIX] Use numberInput and getArray one-liners
-        $draw   = (int)(numberInput('draw') ?: 1);
-        $start  = max(0, (int)(numberInput('start') ?: 0));
-        $length = max(1, min(100, (int)(numberInput('length') ?: 10)));
+        // [FIX] Check both sources for custom dropdown filters
+        $statusInput = post('status_filter') !== '' ? post('status_filter') : input('status_filter');
+        $statusFilterRaw = $statusInput ?: 'pending,rejected';
 
-        $statusFilterRaw = postSpaceFilter('status_filter') ?: 'pending,rejected';
-        $searchValue = getArray('search')['value'] ?? '';
-
+        // [FIX] Handle DataTables search array whether it arrives via POST or GET
+        $searchArrPost = postSpaceFilter('search');
+        $searchArrGet = getArray('search');
+        
+        $searchValue = '';
+        if (is_array($searchArrPost) && isset($searchArrPost['value'])) {
+            $searchValue = $searchArrPost['value'];
+        } elseif (is_array($searchArrGet) && isset($searchArrGet['value'])) {
+            $searchValue = $searchArrGet['value'];
+        }
         $baseWhere = " WHERE status = 'A' ";
         
         if ($statusFilterRaw !== 'all' && $statusFilterRaw !== '') {
@@ -223,14 +231,18 @@ try {
     // MODE: VERIFY
     // =========================================================================
     if ($mode === 'verify') {
-        // [FIX] Use postSpaceFilter for strings and post() for simple checks
         $actionType = strtolower(postSpaceFilter('action_type'));
         
-        if ($actionType === 'approve' && empty($perm->approve)) throw new Exception('权限不足');
-        if ($actionType === 'reject' && empty($perm->reject)) throw new Exception('权限不足');
-        if ($actionType === 'resend' && empty($perm->resend) && empty($perm->{'resend email'})) throw new Exception('权限不足');
+        // [CRITICAL FIX] Corrected case sensitivity to match $actionType output (lowercase) 
+        // Also falls back to edit permission if specific action isn't registered
+        $canApprove = !empty($perm->approve) || !empty($perm->edit);
+        $canReject  = !empty($perm->reject)  || !empty($perm->edit);
+        $canResend  = !empty($perm->resend)  || !empty($perm->{'resend email'}) || !empty($perm->edit);
 
-        $id = (int)post('id');
+        if ($actionType === 'approve' && !$canApprove) throw new Exception('权限不足');
+        if ($actionType === 'reject' && !$canReject) throw new Exception('权限不足');
+        if ($actionType === 'resend' && !$canResend) throw new Exception('权限不足');
+
         $rejectReason = postSpaceFilter('reject_reason');
         
         if ($id <= 0) throw new Exception('无效记录ID');
@@ -322,7 +334,6 @@ try {
     if ($mode === 'delete') {
         checkPermissionError('delete', $perm);
 
-        $id = (int)post('id');
         if ($id <= 0) throw new Exception('无效记录ID');
 
         $oldRow = authorVerificationFetchRow($conn, $id, $authorProfileTable, $usersTable);
@@ -366,10 +377,7 @@ try {
     if (ob_get_length()) ob_clean(); 
     header('Content-Type: application/json; charset=utf-8');
     
-    // [FIX] Use input() for mode detection in error handler
-    $modeStr = input('mode') ?: 'data';
-    
-    if ($modeStr === 'data') {
+    if ($mode === 'data') {
         echo safeJsonEncode([
             'draw' => (int)(input('draw') ?: 1),
             'recordsTotal' => 0,

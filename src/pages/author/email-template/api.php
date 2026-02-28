@@ -20,8 +20,10 @@ try {
     }
     $auditPage = 'Email Template Management';
 
-    // [FIX] Use input() global function
-    $mode = strtolower(input('mode') ?: 'data');
+    // [CENTRALIZED] Safely pull the mode from GET or POST, defaulting to 'data'
+    $mode = strtolower(input('mode') ?: post('mode') ?: 'data');
+    // [CENTRALIZED] Safely pull the ID from GET or POST
+    $id = (int)(post('id') ?: input('id') ?: 0);
 
     // --- CSRF Token Protection ---
     if (in_array($mode, ['create', 'update', 'delete'])) {
@@ -244,7 +246,6 @@ try {
     if ($mode === 'update') {
         checkPermissionError('edit', $perm);
 
-        $id           = (int)post('id');
         $templateCode = strtoupper(postSpaceFilter('template_code'));
         $templateName = postSpaceFilter('template_name');
         $subject      = postSpaceFilter('subject');
@@ -343,7 +344,6 @@ try {
     if ($mode === 'delete') {
         checkPermissionError('delete', $perm);
 
-        $id = (int)post('id');
         if ($id <= 0) throw new Exception('无效ID');
 
         $oldRow = fetchEmailTemplateRowById($conn, $id);
@@ -397,7 +397,7 @@ try {
     if (ob_get_length()) ob_clean(); 
     header('Content-Type: application/json; charset=utf-8');
     
-    $modeStr = input('mode') ?: 'data';
+    $modeStr = post('mode') ?: input('mode') ?: 'data';
     
     if ($modeStr === 'data') {
         echo safeJsonEncode(['draw' => (int)(input('draw') ?: 1), 'recordsTotal' => 0, 'recordsFiltered' => 0, 'data' => [], 'error' => '接口错误']);

@@ -156,6 +156,7 @@ $quickActions = [
 ];
 
 $customCSS[] = 'dashboard.css';
+$customCSS[] = 'admin.css';
 
 // Page Meta Key Setting
 // Dynamically generate the key based on the current view instead of a switch statement

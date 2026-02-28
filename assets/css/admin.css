@@ -1,0 +1,310 @@
+/* Admin module responsive table rules */
+
+#authorVerificationTable thead th,
+#emailTemplateTable thead th,
+#pageActionTable thead th,
+#pageInfoTable thead th,
+#userRoleTable thead th {
+  white-space: nowrap !important;
+  word-break: normal !important;
+}
+
+@media (max-width: 766px) {
+  #authorVerificationTable,
+  #emailTemplateTable,
+  #pageActionTable,
+  #pageInfoTable,
+  #userRoleTable {
+    width: 100% !important;
+    min-width: 100% !important;
+    table-layout: fixed !important;
+  }
+
+  #authorVerificationApp .table-responsive,
+  #emailTemplateApp .table-responsive,
+  #pageActionApp .table-responsive,
+  .page-action-desktop-table {
+    overflow-x: hidden !important;
+    width: 100% !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  #authorVerificationTable thead th,
+  #authorVerificationTable tbody td,
+  #emailTemplateTable thead th,
+  #emailTemplateTable tbody td,
+  #pageActionTable thead th,
+  #pageActionTable tbody td,
+  #pageInfoTable thead th,
+  #pageInfoTable tbody td,
+  #userRoleTable thead th,
+  #userRoleTable tbody td {
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    vertical-align: middle !important;
+  }
+
+  #authorVerificationTable thead th:last-child,
+  #authorVerificationTable tbody td:last-child,
+  #emailTemplateTable thead th:last-child,
+  #emailTemplateTable tbody td:last-child,
+  #pageActionTable thead th:last-child,
+  #pageActionTable tbody td:last-child,
+  #pageInfoTable thead th:last-child,
+  #pageInfoTable tbody td:last-child,
+  #userRoleTable thead th:last-child,
+  #userRoleTable tbody td:last-child {
+    width: 140px !important;
+    min-width: 140px !important;
+    max-width: 140px !important;
+    text-align: center !important;
+    position: static !important;
+    right: auto !important;
+    z-index: auto !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+  }
+
+  #authorVerificationTable td:last-child,
+  #emailTemplateTable td:last-child {
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+  }
+
+  #authorVerificationTable td:last-child > div,
+  #emailTemplateTable td:last-child > div {
+    display: inline-flex !important;
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    gap: 4px !important;
+    width: 100% !important;
+    min-height: 32px;
+  }
+
+  #authorVerificationTable td:last-child .btn,
+  #emailTemplateTable td:last-child .btn {
+    margin: 2px !important;
+  }
+
+  /* Author Verification: keep user + action only */
+  #authorVerificationTable thead th:nth-child(1),
+  #authorVerificationTable tbody td:nth-child(1),
+  #authorVerificationTable thead th:nth-child(3),
+  #authorVerificationTable tbody td:nth-child(3),
+  #authorVerificationTable thead th:nth-child(4),
+  #authorVerificationTable tbody td:nth-child(4),
+  #authorVerificationTable thead th:nth-child(6),
+  #authorVerificationTable tbody td:nth-child(6),
+  #authorVerificationTable thead th:nth-child(7),
+  #authorVerificationTable tbody td:nth-child(7),
+  #authorVerificationTable thead th:nth-child(8),
+  #authorVerificationTable tbody td:nth-child(8),
+  #authorVerificationTable thead th:nth-child(5),
+  #authorVerificationTable tbody td:nth-child(5) {
+    display: none !important;
+  }
+
+  #authorVerificationTable thead th:nth-child(2),
+  #authorVerificationTable tbody td:nth-child(2) {
+    width: auto !important;
+  }
+
+  #authorVerificationTable tbody td:nth-child(2) small {
+    display: none !important;
+  }
+
+  /* Email Template: keep name + action only */
+  #emailTemplateTable thead th:nth-child(1),
+  #emailTemplateTable tbody td:nth-child(1),
+  #emailTemplateTable thead th:nth-child(2),
+  #emailTemplateTable tbody td:nth-child(2),
+  #emailTemplateTable thead th:nth-child(4),
+  #emailTemplateTable tbody td:nth-child(4),
+  #emailTemplateTable thead th:nth-child(6),
+  #emailTemplateTable tbody td:nth-child(6),
+  #emailTemplateTable thead th:nth-child(5),
+  #emailTemplateTable tbody td:nth-child(5) {
+    display: none !important;
+  }
+
+  #emailTemplateTable thead th:nth-child(3),
+  #emailTemplateTable tbody td:nth-child(3) {
+    width: auto !important;
+  }
+
+  /* Page Action: hide id/status, keep name/action */
+  #pageActionTable thead th:nth-child(1),
+  #pageActionTable tbody td:nth-child(1),
+  #pageActionTable thead th:nth-child(3),
+  #pageActionTable tbody td:nth-child(3) {
+    display: none !important;
+  }
+
+  #pageActionTable thead th:nth-child(2),
+  #pageActionTable tbody td:nth-child(2) {
+    width: auto !important;
+  }
+
+  /* Page Info: hide id/url/status, keep name/action */
+  #pageInfoTable thead th:nth-child(1),
+  #pageInfoTable tbody td:nth-child(1),
+  #pageInfoTable thead th:nth-child(3),
+  #pageInfoTable tbody td:nth-child(3),
+  #pageInfoTable thead th:nth-child(4),
+  #pageInfoTable tbody td:nth-child(4) {
+    display: none !important;
+  }
+
+  #pageInfoTable thead th:nth-child(2),
+  #pageInfoTable tbody td:nth-child(2) {
+    width: auto !important;
+  }
+
+  /* User Role: hide id/en/description/status, keep cn/action */
+  #userRoleTable thead th:nth-child(1),
+  #userRoleTable tbody td:nth-child(1),
+  #userRoleTable thead th:nth-child(3),
+  #userRoleTable tbody td:nth-child(3),
+  #userRoleTable thead th:nth-child(4),
+  #userRoleTable tbody td:nth-child(4),
+  #userRoleTable thead th:nth-child(5),
+  #userRoleTable tbody td:nth-child(5) {
+    display: none !important;
+  }
+
+  #userRoleTable thead th:nth-child(2),
+  #userRoleTable tbody td:nth-child(2) {
+    width: auto !important;
+  }
+}
+
+@media (min-width: 767px) and (max-width: 1023px) {
+  #authorVerificationApp .table-responsive,
+  #emailTemplateApp .table-responsive {
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  #authorVerificationTable {
+    width: 100% !important;
+    min-width: 100% !important;
+    table-layout: fixed !important;
+  }
+
+  #emailTemplateTable {
+    width: 100% !important;
+    min-width: 100% !important;
+    table-layout: fixed !important;
+  }
+
+  #authorVerificationTable thead th,
+  #authorVerificationTable tbody td,
+  #emailTemplateTable thead th,
+  #emailTemplateTable tbody td {
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    vertical-align: middle !important;
+  }
+
+  /* Author Verification tablet: keep user + status + action */
+  #authorVerificationTable thead th:nth-child(1),
+  #authorVerificationTable tbody td:nth-child(1),
+  #authorVerificationTable thead th:nth-child(3),
+  #authorVerificationTable tbody td:nth-child(3),
+  #authorVerificationTable thead th:nth-child(4),
+  #authorVerificationTable tbody td:nth-child(4),
+  #authorVerificationTable thead th:nth-child(6),
+  #authorVerificationTable tbody td:nth-child(6),
+  #authorVerificationTable thead th:nth-child(7),
+  #authorVerificationTable tbody td:nth-child(7),
+  #authorVerificationTable thead th:nth-child(8),
+  #authorVerificationTable tbody td:nth-child(8) {
+    display: none !important;
+  }
+
+  #authorVerificationTable thead th:nth-child(5),
+  #authorVerificationTable tbody td:nth-child(5) {
+    display: none !important;
+  }
+
+  #authorVerificationTable thead th:nth-child(2),
+  #authorVerificationTable tbody td:nth-child(2) {
+    width: calc(100% - 160px) !important;
+  }
+
+  #authorVerificationTable tbody td:nth-child(2) small {
+    display: none !important;
+  }
+
+  /* Email Template tablet: keep name + action */
+  #emailTemplateTable thead th:nth-child(1),
+  #emailTemplateTable tbody td:nth-child(1),
+  #emailTemplateTable thead th:nth-child(2),
+  #emailTemplateTable tbody td:nth-child(2),
+  #emailTemplateTable thead th:nth-child(4),
+  #emailTemplateTable tbody td:nth-child(4),
+  #emailTemplateTable thead th:nth-child(6),
+  #emailTemplateTable tbody td:nth-child(6) {
+    display: none !important;
+  }
+
+  #emailTemplateTable thead th:nth-child(5),
+  #emailTemplateTable tbody td:nth-child(5) {
+    display: none !important;
+  }
+
+  #emailTemplateTable thead th:nth-child(3),
+  #emailTemplateTable tbody td:nth-child(3) {
+    width: calc(100% - 160px) !important;
+  }
+
+  #authorVerificationTable thead th:last-child,
+  #authorVerificationTable tbody td:last-child,
+  #emailTemplateTable thead th:last-child,
+  #emailTemplateTable tbody td:last-child {
+    width: 160px !important;
+    min-width: 160px !important;
+    max-width: 160px !important;
+    white-space: nowrap !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+  }
+
+  #authorVerificationTable td:last-child,
+  #emailTemplateTable td:last-child {
+    white-space: normal !important;
+  }
+
+  #authorVerificationTable td:last-child > div,
+  #emailTemplateTable td:last-child > div {
+    display: inline-flex !important;
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    gap: 4px !important;
+    white-space: nowrap !important;
+  }
+
+  #authorVerificationTable td:last-child .btn,
+  #emailTemplateTable td:last-child .btn {
+    padding: 4px 6px !important;
+    font-size: 12px !important;
+    min-height: 28px !important;
+    margin: 2px !important;
+  }
+}
+
+@media (max-width: 420px) {
+  #authorVerificationTable td:last-child .btn,
+  #emailTemplateTable td:last-child .btn,
+  #pageActionTable td:last-child .btn,
+  #pageInfoTable td:last-child .btn,
+  #userRoleTable td:last-child .btn {
+    padding: 4px 6px !important;
+    font-size: 12px !important;
+    min-height: 28px !important;
+  }
+}

@@ -198,32 +198,47 @@ $deleteError = checkPermissionError('delete', $perm);
             'name' => $name,
         ];
     }
-
     // 2. Perform Delete
-    $stmt = $conn->prepare($deleteQuery);
-    $stmt->bind_param("i", $id);
-    
-    if ($stmt->execute()) {
-        if (function_exists('logAudit')) {
-            logAudit([
-                'page'           => $auditPage,
-                'action'         => 'D',
-                'action_message' => 'Deleted Category: ' . $name,
-                'query'          => $deleteQuery,
-                'query_table'    => $catTable,
-                'user_id'        => sessionInt('user_id'),
-                'record_id'      => $id,
-                'record_name'    => $name,
-                'old_value'      => $oldData // Pass the old data here
-            ]);
+    try {
+        // [FIX] Unlink tags from this category FIRST to avoid Foreign Key crashes
+        $delLink = $conn->prepare("DELETE FROM $linkTable WHERE category_id = ?");
+        if ($delLink) {
+            $delLink->bind_param("i", $id);
+            $delLink->execute();
+            $delLink->close();
         }
-        echo safeJsonEncode(['success' => true]);
-    } else {
-        echo safeJsonEncode(['success' => false, 'message' => '无法删除分类']);
+
+        $stmt = $conn->prepare($deleteQuery);
+        $stmt->bind_param("i", $id);
+        
+        if ($stmt->execute()) {
+            if (function_exists('logAudit')) {
+                logAudit([
+                    'page'           => $auditPage,
+                    'action'         => 'D',
+                    'action_message' => 'Deleted Category: ' . $name,
+                    'query'          => $deleteQuery,
+                    'query_table'    => $catTable,
+                    'user_id'        => sessionInt('user_id'),
+                    'record_id'      => $id,
+                    'record_name'    => $name,
+                    'old_value'      => $oldData
+                ]);
+            }
+            echo safeJsonEncode(['success' => true]);
+        } else {
+            echo safeJsonEncode(['success' => false, 'message' => '无法删除分类']);
+        }
+    } catch (mysqli_sql_exception $e) {
+        // [FIX] Catch constraint errors gracefully (e.g., if novels are using this category)
+        if ($e->getCode() == 1451) {
+            echo safeJsonEncode(['success' => false, 'message' => '无法删除：该分类下还有关联的小说，请先移除小说。']);
+        } else {
+            echo safeJsonEncode(['success' => false, 'message' => '删除失败: 数据库约束冲突']);
+        }
     }
     exit();
 }
-
 // API URL for DataTables
 $fullApiUrl = URL_NOVEL_CATS_API;
 
