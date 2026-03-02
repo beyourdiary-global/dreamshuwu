@@ -328,6 +328,27 @@ function safeJsonEncode($data) {
 }
 
 /**
+ * Send a standard JSON response and terminate request.
+ */
+function respondJsonAndExit($success, $message, $redirect = '') {
+    if (!headers_sent()) {
+        header('Content-Type: application/json; charset=utf-8');
+    }
+
+    $payload = [
+        'success' => (bool)$success,
+        'message' => (string)$message,
+    ];
+
+    if ($redirect !== '') {
+        $payload['redirect'] = (string)$redirect;
+    }
+
+    echo safeJsonEncode($payload);
+    exit();
+}
+
+/**
  * Decode a JSON string even when the json extension is disabled.
  * Returns the decoded value, or null on failure.
  * Sets $success by reference so the caller knows if decoding worked.

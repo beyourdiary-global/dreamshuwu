@@ -1,8 +1,7 @@
 /* assets/css/webSetting.css */
-/* [FIX] Cleaned up to only include styles specific to the Web Settings page form layout */
 
 /* Tablet Action Buttons (768px - 1023px) */
-@media (min-width: 768px) and (max-width: 1023px) {
+body.is-tablet {
   #webSettingsForm .row.mt-5.pt-3.border-top {
     align-items: center;
   }

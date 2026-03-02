@@ -1,49 +1,47 @@
 /* assets/css/meta.css */
 
-/* 1. GLOBAL LAYOUT & CARD */
+/* GLOBAL LAYOUT & CARD */
 body {
-  background-color: #ffffff;
+  background-color: var(--bg-card);
   min-height: 100vh;
-  /* Adds extra scroll space at the bottom so the menu has room to go down */
   padding-bottom: 500px;
 }
 
 .meta-card {
   border: none;
-  border-radius: 12px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
-  background-color: #fff;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  background-color: var(--bg-card);
   margin-bottom: 30px;
-  /* CRITICAL: visible allows the dropdown to overflow the card boundaries */
   overflow: visible !important;
 }
 
 .meta-card-header {
-  background-color: #fff;
-  padding: 24px 30px;
-  border-bottom: 1px solid #f0f2f5;
+  background-color: var(--bg-card);
+  padding: var(--space-lg) var(--space-xl);
+  border-bottom: 1px solid var(--border-light);
 }
 
 .meta-card-body {
-  padding: 30px;
+  padding: var(--space-xl);
 }
 
-/* 2. MODERN PILL NAVIGATION */
+/* MODERN PILL NAVIGATION */
 .nav-pills-container {
-  background-color: #e9ecef;
+  background-color: var(--bg-body);
   padding: 6px;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   display: inline-flex;
   margin-bottom: 25px;
   width: 100%;
 }
 
 .nav-pills .nav-link {
-  border-radius: 8px;
-  padding: 10px 24px;
+  border-radius: var(--radius-md);
+  padding: 10px var(--space-lg);
   font-size: 15px;
   font-weight: 600;
-  color: #6c757d;
+  color: var(--text-muted);
   transition: all 0.2s ease;
   text-align: center;
   margin: 0;
@@ -52,27 +50,26 @@ body {
 }
 
 .nav-pills .nav-link.active {
-  background-color: #fff;
-  color: #212529;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  background-color: var(--bg-card);
+  color: var(--text-main);
+  box-shadow: var(--shadow-sm);
 }
 
 .nav-link:hover:not(.active) {
-  color: #212529;
+  color: var(--text-main);
   background-color: rgba(255, 255, 255, 0.5);
 }
 
 .nav-link i {
-  margin-right: 8px;
-  color: #adb5bd;
+  margin-right: var(--space-sm);
+  color: var(--text-light);
 }
 
 .nav-link.active i {
-  color: #0d6efd;
+  color: var(--primary-color);
 }
 
-/* 3. FORM ELEMENTS */
-
+/* FORM ELEMENTS */
 .page-select {
   width: 100%;
   max-width: 560px;
@@ -91,27 +88,27 @@ body {
 .page-select-toggle {
   width: 100%;
   padding: 12px 16px;
-  border-radius: 10px;
-  border: 1px solid #dee2e6;
-  background: #fff;
-  color: #212529;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-main);
   font-size: 14px;
   text-align: left;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  box-shadow: 0 0 0 4px rgba(13, 110, 253, 0.1);
+  box-shadow: 0 0 0 4px rgba(35, 61, 210, 0.05); /* Match primary color tint */
 }
 
 .page-select-toggle:focus {
   outline: none;
-  border-color: #86b7fe;
-  box-shadow: 0 0 0 4px rgba(13, 110, 253, 0.15);
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 4px rgba(35, 61, 210, 0.15);
 }
 
 .page-select-caret {
-  color: #6c757d;
+  color: var(--text-muted);
   font-size: 12px;
 }
 
@@ -120,10 +117,10 @@ body {
   left: 0;
   right: 0;
   top: calc(100% + 8px);
-  background: #fff;
-  border: 1px solid #e6e8ec;
-  border-radius: 10px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
   max-height: 280px;
   overflow-y: auto;
   z-index: 1040;
@@ -140,19 +137,19 @@ body {
   text-align: left;
   border: 0;
   background: transparent;
-  color: #212529;
+  color: var(--text-main);
   font-size: 14px;
   cursor: pointer;
 }
 
 .page-select-item:hover {
-  background: #f1f5ff;
+  background: var(--bg-body);
 }
 
 .form-control:focus,
 .form-select:focus {
-  border-color: #86b7fe;
-  box-shadow: 0 0 0 4px rgba(13, 110, 253, 0.15);
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 4px rgba(35, 61, 210, 0.15);
   outline: 0;
 }
 
@@ -173,8 +170,8 @@ body {
 /* Empty State Icon */
 .empty-state-icon {
   font-size: 48px;
-  color: #dee2e6;
-  margin-bottom: 16px;
+  color: var(--border-color);
+  margin-bottom: var(--space-md);
   animation: bounce 2s infinite;
 }
 
@@ -194,36 +191,35 @@ body {
   }
 }
 
-/* Targeted styling for the dropdown menu scrollbar */
+/* Scrollbar support */
 .page-select-menu::-webkit-scrollbar {
-  width: 10px; /* Makes the bar wide enough to see and grab */
+  width: 10px;
 }
 
 .page-select-menu::-webkit-scrollbar-track {
-  background: #f8f9fa; /* Light background for the track */
-  border-radius: 0 10px 10px 0; /* Rounds the corners to match the menu */
+  background: var(--bg-body);
+  border-radius: 0 10px 10px 0;
 }
 
 .page-select-menu::-webkit-scrollbar-thumb {
-  background-color: #adb5bd; /* A distinct grey color for the bar itself */
-  border-radius: 10px; /* Round styling for the bar */
-  border: 2px solid #f8f9fa; /* Creates a nice padding effect */
+  background-color: var(--text-light);
+  border-radius: 10px;
+  border: 2px solid var(--bg-body);
 }
 
 .page-select-menu::-webkit-scrollbar-thumb:hover {
-  background-color: #6c757d; /* Darker grey when you hover over it */
+  background-color: var(--text-muted);
 }
 
-/* Firefox Support */
 .page-select-menu {
   scrollbar-width: thin;
-  scrollbar-color: #adb5bd #f8f9fa;
+  scrollbar-color: var(--text-light) var(--bg-body);
 }
 
-/* 4. RESPONSIVE MEDIA QUERIES */
+/* RESPONSIVE MEDIA QUERIES */
 
-/* MOBILE (767px and below) */
-@media (max-width: 767px) {
+/* Mobile */
+body.is-mobile {
   .nav-pills-container {
     flex-direction: column;
     background-color: transparent;
@@ -233,8 +229,8 @@ body {
   .nav-pills .nav-link {
     width: 100%;
     margin-bottom: 10px;
-    background-color: #fff;
-    border: 1px solid #e9ecef;
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-light);
     padding: 14px;
     justify-content: flex-start;
     display: flex;
@@ -242,9 +238,9 @@ body {
   }
 
   .nav-pills .nav-link.active {
-    border-color: #0d6efd;
-    background-color: #e7f1ff;
-    color: #0d6efd;
+    border-color: var(--primary-color);
+    background-color: var(--bg-body);
+    color: var(--primary-color);
   }
 
   .meta-card-header,
@@ -252,25 +248,22 @@ body {
     padding: 20px;
   }
 
-  .page-select {
-    max-width: 100%;
-  }
-
+  .page-select,
   .page-select-wrap {
     max-width: 100%;
   }
 }
 
-/* TABLET (768px - 1199px) */
-@media (min-width: 768px) and (max-width: 1199px) {
+/* Tablet */
+body.is-tablet {
   .nav-pills-container {
     width: auto;
     min-width: 400px;
   }
 }
 
-/* DESKTOP (1200px and above) */
-@media (min-width: 1200px) {
+/* Desktop */
+body.is-desktop {
   .nav-pills-container {
     width: 450px;
   }

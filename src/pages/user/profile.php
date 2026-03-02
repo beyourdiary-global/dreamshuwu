@@ -248,9 +248,8 @@ if (getServer('REQUEST_METHOD') === 'GET' && function_exists('logAudit')){
     ]);
 }
 
-$pageScripts = ['user-profile.js?v=' . filemtime(BASE_PATH . 'assets/js/user-profile.js')];
+$pageScripts = ['src/pages/user/js/user-profile.js?v=' . filemtime(BASE_PATH . 'src/pages/user/js/user-profile.js')];
 ?>
-
 <div class="profile-container">
     <div class="section-header">
         <div class="header-text-content">

@@ -263,8 +263,8 @@ if ($pageActionMode === 'list') {
 
 if ($isEmbeddedPageAction):
     $pageScripts = ($pageActionMode === 'list')
-        ? ['jquery.dataTables.min.js', 'dataTables.bootstrap.min.js', 'admin.js']
-        : ['admin.js'];
+    ? ['jquery.dataTables.min.js', 'dataTables.bootstrap.min.js', 'src/pages/admin/js/admin.js']
+    : ['src/pages/admin/js/admin.js'];
 ?>
 
 <?php if ($pageActionMode === 'form'): ?>

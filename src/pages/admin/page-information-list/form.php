@@ -23,6 +23,8 @@ $pageName = getDynamicPageName($conn, $perm, $currentUrl);
 // 2. Check Add/Edit Permission for loading the form
 $actionToCheck = $isEditMode ? 'edit' : 'add';
 checkPermissionError($actionToCheck, $perm);
+$isSaveSubmit = isPostRequest() && empty(post('mode')) && post('action_type') === 'save';
+$wantsJson = isAjax();
 
 // [FIX] Use global post method
 if (isPostRequest() && empty(post('mode'))) {
@@ -37,60 +39,77 @@ if (isPostRequest() && empty(post('mode'))) {
         $submitActionToCheck = $isEditMode ? 'edit' : 'add';
         checkPermissionError($submitActionToCheck, $perm);
 
-        // [FIX] Use global postSpaceFilter method
         $name_en = postSpaceFilter('name_en');
         $name_cn = postSpaceFilter('name_cn');
         $public_url = postSpaceFilter('public_url');
         $file_path = postSpaceFilter('file_path');
         $description = postSpaceFilter('description');
 
-        // [FIX] Use global post method for array retrieval
-        $rawActions = post('action_ids');
-        $selectedActions = is_array($rawActions) ? array_map('intval', $rawActions) : [];
+        $rawActionIds = postSpaceFilter('action_ids');
+        $selectedActions = array_map('intval', is_array($rawActionIds) ? $rawActionIds : []);
         sort($selectedActions);
 
-        $redirectTo = $recordId > 0 ? ($formBaseUrl . '&id=' . $recordId) : $formBaseUrl;
+        $formRow['name_en'] = $name_en;
+        $formRow['name_cn'] = $name_cn;
+        $formRow['public_url'] = $public_url;
+        $formRow['file_path'] = $file_path;
+        $formRow['description'] = $description;
+        $boundActions = $selectedActions;
 
+        $canContinue = true;
         if ($name_en === '' || $name_cn === '' || $public_url === '') {
+            if ($wantsJson) {
+                respondJsonAndExit(false, 'Required fields cannot be empty.');
+            }
             setSession('flash_msg', 'Required fields cannot be empty.');
             setSession('flash_type', 'danger');
-            pageInfoRedirect($redirectTo);
-        }
-
-        if ($public_url[0] !== '/' || !preg_match('#^/[A-Za-z0-9/_\-.?=&]*$#', $public_url)) {
+            $canContinue = false;
+        } elseif ($public_url[0] !== '/' || !preg_match('#^/[A-Za-z0-9/_\-.?=&]*$#', $public_url)) {
+            if ($wantsJson) {
+                respondJsonAndExit(false, 'Public URL 格式无效，必须以 / 开头且仅包含字母、数字、/、_、-、. 以及 ? = &');
+            }
             setSession('flash_msg', 'Public URL 格式无效，必须以 / 开头且仅包含字母、数字、/、_、-、. 以及 ? = &');
             setSession('flash_type', 'danger');
-            pageInfoRedirect($redirectTo);
+            $canContinue = false;
         }
 
-        $dupSql = "SELECT id FROM {$tableInfo} WHERE (name_en = ? OR name_cn = ? OR public_url = ?) AND status = 'A' "
-            . ($recordId > 0 ? 'AND id != ?' : '')
-            . ' LIMIT 1';
-        $dupStmt = $conn->prepare($dupSql);
-        if (!$dupStmt) {
-            setSession('flash_msg', '数据库错误：无法检查重复数据');
-            setSession('flash_type', 'danger');
-            pageInfoRedirect($redirectTo);
-        }
-        if ($recordId > 0) {
-            $dupStmt->bind_param('sssi', $name_en, $name_cn, $public_url, $recordId);
-        } else {
-            $dupStmt->bind_param('sss', $name_en, $name_cn, $public_url);
-        }
-        $dupStmt->execute();
-        $dupStmt->store_result();
-        $dupExists = $dupStmt->num_rows > 0;
-        $dupStmt->close();
+        if ($canContinue) {
+            $dupSql = "SELECT id FROM {$tableInfo} WHERE (name_en = ? OR name_cn = ? OR public_url = ?) AND status = 'A' "
+                . ($recordId > 0 ? 'AND id != ?' : '')
+                . ' LIMIT 1';
+            $dupStmt = $conn->prepare($dupSql);
+            if (!$dupStmt) {
+                if ($wantsJson) {
+                    respondJsonAndExit(false, '数据库错误：无法检查重复数据');
+                }
+                setSession('flash_msg', '数据库错误：无法检查重复数据');
+                setSession('flash_type', 'danger');
+                $canContinue = false;
+            } else {
+                if ($recordId > 0) {
+                    $dupStmt->bind_param('sssi', $name_en, $name_cn, $public_url, $recordId);
+                } else {
+                    $dupStmt->bind_param('sss', $name_en, $name_cn, $public_url);
+                }
+                $dupStmt->execute();
+                $dupStmt->store_result();
+                $dupExists = $dupStmt->num_rows > 0;
+                $dupStmt->close();
 
-        if ($dupExists) {
-            setSession('flash_msg', 'Name (EN/CN) 或 Public URL 已存在。');
-            setSession('flash_type', 'danger');
-            pageInfoRedirect($redirectTo);
+                if ($dupExists) {
+                    if ($wantsJson) {
+                        respondJsonAndExit(false, 'Name (EN/CN) 或 Public URL 已存在。');
+                    }
+                    setSession('flash_msg', 'Name (EN/CN) 或 Public URL 已存在。');
+                    setSession('flash_type', 'danger');
+                    $canContinue = false;
+                }
+            }
         }
 
         $oldPageInfo = null;
         $oldActionIds = [];
-        if ($recordId > 0) {
+        if ($canContinue && $recordId > 0) {
             $oldPageInfo = fetchPageInfoRowById($conn, $tableInfo, $recordId);
             if (!$oldPageInfo || $oldPageInfo['status'] !== 'A') {
                 setSession('flash_msg', '记录不存在或已删除');
@@ -111,8 +130,9 @@ if (isPostRequest() && empty(post('mode'))) {
             }
         }
 
-        $conn->begin_transaction();
-        try {
+        if ($canContinue) {
+            $conn->begin_transaction();
+            try {
             $targetId = 0;
             $mainActionType = '';
             $executedSql = '';
@@ -184,18 +204,24 @@ if (isPostRequest() && empty(post('mode'))) {
 
             setSession('flash_msg', '保存成功.');
             setSession('flash_type', 'success');
+            if ($wantsJson) {
+                respondJsonAndExit(true, '保存成功.', $baseListUrl);
+            }
             pageInfoRedirect($baseListUrl);
-        } catch (Exception $e) {
-            $conn->rollback();
-            error_log('Database error in page-information-list form: ' . $e->getMessage());
-            setSession('flash_msg', '数据库错误，请稍后重试或联系管理员。');
-            setSession('flash_type', 'danger');
-            pageInfoRedirect($redirectTo);
+            } catch (Exception $e) {
+                $conn->rollback();
+                error_log('Database error in page-information-list form: ' . $e->getMessage());
+                if ($wantsJson) {
+                    respondJsonAndExit(false, '数据库错误，请稍后重试或联系管理员。');
+                }
+                setSession('flash_msg', '数据库错误，请稍后重试或联系管理员。');
+                setSession('flash_type', 'danger');
+            }
         }
     }
 }
 
-if ($isEditMode) {
+if ($isEditMode && !$isSaveSubmit) {
     $loaded = fetchPageInfoRowById($conn, $tableInfo, $recordId);
     if ($loaded && $loaded['status'] === 'A') {
         $formRow = $loaded;
@@ -248,7 +274,7 @@ if ($res) {
                 <?php unsetSession('flash_msg'); unsetSession('flash_type'); ?>
             <?php endif; ?>
 
-            <form id="pageInfoForm" method="POST" action="<?php echo htmlspecialchars($formBaseUrl . ($isEditMode ? '&id=' . $recordId : '')); ?>" class="<?php echo $isEditMode ? 'check-changes' : ''; ?>">
+            <form id="pageInfoForm" method="POST" action="<?php echo htmlspecialchars($formBaseUrl . ($isEditMode ? '&id=' . $recordId : '')); ?>" class="<?php echo $isEditMode ? 'check-changes' : ''; ?>" data-ajax-error-inline="1">
                 <input type="hidden" name="action_type" value="save">
                 <?php if ($isEditMode): ?><input type="hidden" name="id" value="<?php echo $recordId; ?>"><?php endif; ?>
 

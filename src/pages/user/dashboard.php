@@ -137,8 +137,8 @@ $profileComponents = [
 
 // --- SIDEBAR ITEMS ---
 $sidebarItems = [
-    ['label' => '首页',     'url' => URL_USER_DASHBOARD, 'icon' => 'fa-solid fa-house-user', 'active' => (!$isTagSection && !$isCatSection && !$isProfileView && !$isMetaView && !$isWebSettingView && !$isAdminSection), 'permission' => !empty($permDashboard->view)],
-    ['label' => '账号中心', 'url' => URL_HOME,           'icon' => 'fa-solid fa-id-card',   'active' => false, 'permission' => !empty($permProfile->view)],
+    ['label' => '首页',     'url' => URL_HOME, 'icon' => 'fa-solid fa-house-user', 'active' => false, 'permission' => !empty($permDashboard->view)],
+    ['label' => '账号中心', 'url' => URL_USER_DASHBOARD, 'icon' => 'fa-solid fa-id-card', 'active' => (!$isTagSection && !$isCatSection && !$isProfileView && !$isMetaView && !$isWebSettingView && !$isAdminSection), 'permission' => !empty($permProfile->view)],
     ['label' => '写小说',   'url' => URL_AUTHOR_DASHBOARD, 'icon' => 'fa-solid fa-pen-nib',  'active' => false],
     ['label' => '小说分类', 'url' => URL_NOVEL_CATS,     'icon' => 'fa-solid fa-layer-group','active' => $isCatSection, 'permission' => !empty($permCategories->view)],
     ['label' => '小说标签', 'url' => URL_NOVEL_TAGS,     'icon' => 'fa-solid fa-tags',      'active' => $isTagSection, 'permission' => !empty($permTags->view)],
@@ -155,8 +155,9 @@ $quickActions = [
     ['label' => '写小说',   'url' => URL_AUTHOR_DASHBOARD, 'icon' => 'fa-solid fa-feather-pointed',      'style' => '']
 ];
 
-$customCSS[] = 'dashboard.css';
-$customCSS[] = 'admin.css';
+$customCSS[] = 'src/pages/user/css/dashboard.css';
+$customCSS[] = 'src/pages/user/css/profile.css';
+$customCSS[] = 'src/pages/admin/css/admin.css';
 
 // Page Meta Key Setting
 // Dynamically generate the key based on the current view instead of a switch statement
@@ -298,10 +299,13 @@ $pageMetaKey = ($currentView === 'home' || empty($currentView)) ? '/dashboard.ph
 
 <?php if (!empty($pageScripts)): ?>
     <?php foreach ($pageScripts as $__script): ?>
+    <?php if (strpos($__script, '/') !== false): ?>
+    <script src="<?php echo SITEURL . '/' . ltrim($__script, '/'); ?>"></script>
+    <?php else: ?>
     <script src="<?php echo URL_ASSETS; ?>/js/<?php echo $__script; ?>"></script>
+    <?php endif; ?>
     <?php endforeach; ?>
 <?php endif; ?>
 <script src="<?php echo URL_ASSETS; ?>/js/auth.js"></script>
-<script src="<?php echo URL_ASSETS; ?>/js/logout-handler.js"></script>
 </body>
 </html>

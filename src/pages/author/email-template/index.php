@@ -39,7 +39,7 @@ if (!$isEmbeddedEmailTemplate) {
         $customCSS = [];
     }
     $customCSS[] = 'dataTables.bootstrap.min.css';
-    $customCSS[] = 'admin.css';
+    $customCSS[] = 'src/pages/admin/css/admin.css';
     $pageMetaKey = $currentUrl;
 }
 
@@ -182,6 +182,6 @@ if ($isEmbeddedEmailTemplate) {
 <script src="<?php echo URL_ASSETS; ?>/js/sweetalert2@11.js"></script>
 <script src="<?php echo URL_ASSETS; ?>/js/jquery.dataTables.min.js"></script>
 <script src="<?php echo URL_ASSETS; ?>/js/dataTables.bootstrap.min.js"></script>
-<script src="<?php echo URL_ASSETS; ?>/js/admin.js"></script>
+<script src="<?php echo SITEURL; ?>/src/pages/author/js/author.js"></script>
 </body>
 </html>

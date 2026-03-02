@@ -311,13 +311,35 @@ document.addEventListener("DOMContentLoaded", () => {
       let hasError = false;
 
       requiredInputs.forEach((input) => {
+        // 1. Check if the field is empty
         if (window.AuthUtils.isEmpty(input)) {
           hasError = true;
           const msg =
             input.id === "terms" ? "必须同意条款与条件" : "此字段不能为空";
           window.AuthUtils.showError(input, msg);
         } else {
+          // Clear previous errors first
           window.AuthUtils.clearError(input);
+
+          // 2. Perform specific format validations if the field is NOT empty
+          if (
+            input.id === "email" &&
+            !window.AuthUtils.isValidEmail(input.value.trim())
+          ) {
+            hasError = true;
+            window.AuthUtils.showError(input, "邮箱格式不正确");
+          }
+
+          if (
+            input.id === "password" &&
+            !window.AuthUtils.isStrongPassword(input.value)
+          ) {
+            hasError = true;
+            window.AuthUtils.showError(
+              input,
+              "密码不符合要求 (最低8个字符，需包含大小写字母、数字和特殊字符)",
+            );
+          }
         }
       });
 

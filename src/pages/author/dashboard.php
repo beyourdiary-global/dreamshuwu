@@ -50,7 +50,7 @@ $novelPageName = getDynamicPageName($conn, $permNovel, $novelUrlPath);
 <!DOCTYPE html>
 <head>
     <?php require_once BASE_PATH . 'include/header.php'; ?>
-    <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/author.css">
+    <link rel="stylesheet" href="<?php echo SITEURL; ?>/src/pages/author/css/author.css">
 </head>
 <body style="background-color: #f4f7f6;">
 

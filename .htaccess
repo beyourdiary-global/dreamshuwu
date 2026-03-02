@@ -4,7 +4,10 @@ RewriteEngine On
 # Chapter Management Dynamic Routing
 RewriteRule ^author/novel/([0-9]+)/chapters/?$ src/pages/author/chapter-management/index.php?novel_id=$1 [QSA,L]
 
-# 2. Security: Block direct access to "src", EXCEPT for specific files
+# 2. Allow static assets under src/ (CSS/JS/fonts/images)
+RewriteRule ^src/.*\.(?:css|js|mjs|map|png|jpe?g|gif|webp|svg|ico|bmp|woff2?|ttf|eot|otf)$ - [L,NC]
+
+# 3. Security: Block direct access to PHP in src/, EXCEPT approved endpoints
 RewriteCond %{REQUEST_URI} !^/src/pages/category/index\.php$
 RewriteCond %{REQUEST_URI} !^/src/pages/tags/index\.php$
 RewriteCond %{REQUEST_URI} !^/src/pages/meta/index\.php$
@@ -18,9 +21,10 @@ RewriteCond %{REQUEST_URI} !^/src/pages/author/novel-management/api\.php$
 RewriteCond %{REQUEST_URI} !^/src/pages/author/chapter-management/api\.php$
 # Allow the internal router target to be accessed
 RewriteCond %{REQUEST_URI} !^/src/pages/author/chapter-management/index\.php$
+RewriteRule ^src/.*\.php$ - [F,L,NC]
 
-# If none of the files above match, block access to anything inside src/
-RewriteRule ^src/ - [F,L]
+# 4. Extra hardening: block sensitive non-public files in src/
+RewriteRule ^src/.*\.(?:env|ini|log|sql|bak|yml|yaml|md|txt|lock)$ - [F,L,NC]
 
-# 3. Error Pages
+# 5. Error Pages
 ErrorDocument 404 /error404.php

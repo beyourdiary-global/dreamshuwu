@@ -65,15 +65,39 @@ $finalOgUrl     = !empty($specificSeo['og_url']) ? $specificSeo['og_url'] : ($gl
     if (isset($customCSS)) {
         if (is_array($customCSS)) {
             foreach ($customCSS as $cssFile) {
-                echo '<link rel="stylesheet" href="' . URL_ASSETS . '/css/' . $cssFile . '">' . PHP_EOL;
+                $cssFile = (string)$cssFile;
+                if ($cssFile === '') continue;
+
+                if (preg_match('#^https?://#i', $cssFile)) {
+                    $cssHref = $cssFile;
+                } elseif (strpos($cssFile, '/') === 0) {
+                    $cssHref = SITEURL . $cssFile;
+                } elseif (strpos($cssFile, '/') !== false) {
+                    $cssHref = SITEURL . '/' . ltrim($cssFile, '/');
+                } else {
+                    $cssHref = URL_ASSETS . '/css/' . $cssFile;
+                }
+
+                echo '<link rel="stylesheet" href="' . $cssHref . '">' . PHP_EOL;
             }
         } else {
-            echo '<link rel="stylesheet" href="' . URL_ASSETS . '/css/' . $customCSS . '">' . PHP_EOL;
+            $cssFile = (string)$customCSS;
+            if ($cssFile !== '') {
+                if (preg_match('#^https?://#i', $cssFile)) {
+                    $cssHref = $cssFile;
+                } elseif (strpos($cssFile, '/') === 0) {
+                    $cssHref = SITEURL . $cssFile;
+                } elseif (strpos($cssFile, '/') !== false) {
+                    $cssHref = SITEURL . '/' . ltrim($cssFile, '/');
+                } else {
+                    $cssHref = URL_ASSETS . '/css/' . $cssFile;
+                }
+
+                echo '<link rel="stylesheet" href="' . $cssHref . '">' . PHP_EOL;
+            }
         }
     }
     ?>
-
-    <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/webSetting.css">
 
     <style>
         :root {
@@ -85,7 +109,7 @@ $finalOgUrl     = !empty($specificSeo['og_url']) ? $specificSeo['og_url'] : ($gl
         }
     </style>
 
-    <meta name="staradmin-email-regex" content="<?php echo htmlspecialchars(defined('EMAIL_REGEX_PATTERN') ? EMAIL_REGEX_PATTERN : '^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$', ENT_QUOTES, 'UTF-8'); ?>">
-    <meta name="staradmin-pwd-regex" content="<?php echo htmlspecialchars(defined('PWD_REGEX_PATTERN') ? PWD_REGEX_PATTERN : '^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[\\W_]).{8,}$', ENT_QUOTES, 'UTF-8'); ?>">
+    <meta name="email-regex" content="<?php echo htmlspecialchars(defined('EMAIL_REGEX_PATTERN') ? EMAIL_REGEX_PATTERN : '^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$', ENT_QUOTES, 'UTF-8'); ?>">
+    <meta name="pwd-regex" content="<?php echo htmlspecialchars(defined('PWD_REGEX_PATTERN') ? PWD_REGEX_PATTERN : '^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[\\W_]).{8,}$', ENT_QUOTES, 'UTF-8'); ?>">
     <script src="<?php echo URL_ASSETS; ?>/js/global.js"></script>
 </head>

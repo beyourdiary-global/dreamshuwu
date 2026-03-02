@@ -1,4 +1,16 @@
 <?php
+// Session lifetime: 30 days
+$sessionLifetime = 60 * 60 * 24 * 30;
+ini_set('session.gc_maxlifetime', (string)$sessionLifetime);
+ini_set('session.cookie_lifetime', (string)$sessionLifetime);
+session_set_cookie_params([
+    'lifetime' => $sessionLifetime,
+    'path' => '/',
+    'domain' => '',
+    'secure' => (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'),
+    'httponly' => true,
+    'samesite' => 'Lax',
+]);
 session_start();
 // $livemode = false; // true = test link, false = live link
 // Auto-detect local environment
@@ -14,7 +26,7 @@ $dbUser = $siteOrlocalMode ? 'beyourdi_cms' : 'root';
 define('dbuser', $dbUser);
 define('dbpwd', $siteOrlocalMode ? 'Byd1234@Global' : '');
 define('dbhost', $siteOrlocalMode ? '127.0.0.1:3306' : 'localhost');
-define('dbname', $siteOrlocalMode ? 'beyourdi_dreamshuwu' : 'star_admin');
+define('dbname', $siteOrlocalMode ? 'beyourdi_dreamshuwu' : 'dreamshuwu');
 define('dbFinance', 'beyourdi_financial');
 
 // Calculate SITEURL based on project root directory (where init.php lives)

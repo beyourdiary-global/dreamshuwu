@@ -101,8 +101,8 @@ if (!isset($customCSS) || !is_array($customCSS)) {
     $customCSS = [];
 }
 $customCSS[] = 'dataTables.bootstrap.min.css';
-$customCSS[] = 'author.css';
-$customCSS[] = 'admin.css';
+$customCSS[] = 'src/pages/author/css/author.css';
+$customCSS[] = 'src/pages/admin/css/admin.css';
 $pageMetaKey = $currentUrl;
 
 // --- Arrays for Rendering UI ---
@@ -336,6 +336,6 @@ $pageContent = ob_get_clean();
 <script src="<?php echo URL_ASSETS; ?>/js/sweetalert2@11.js"></script>
 <script src="<?php echo URL_ASSETS; ?>/js/jquery.dataTables.min.js"></script>
 <script src="<?php echo URL_ASSETS; ?>/js/dataTables.bootstrap.min.js"></script>
-<script src="<?php echo URL_ASSETS; ?>/js/admin.js"></script>
+<script src="<?php echo SITEURL; ?>/src/pages/author/js/author.js"></script>
 </body>
 </html>

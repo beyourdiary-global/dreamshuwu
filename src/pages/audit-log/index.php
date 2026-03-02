@@ -99,15 +99,22 @@ if (input('mode') === 'data') {
         $totalRecords = $countRow['total'];
         $countResult->free();
 
-        // 5. Sorting
-        $sortCols = ['page', 'action', 'action_message', 'user_id', 'created_at', 'created_at']; 
+        // 5. Sorting (Mapped to frontend table column indices)
+        $sortCols = [
+            2 => 'page', 
+            3 => 'action', 
+            4 => 'action_message', 
+            5 => 'user_id', 
+            6 => 'created_at', 
+            7 => 'created_at'
+        ]; 
 
         // Fetch the array safely through the global function
         $orderParams = getArray('order');
 
-        // Safely access the nested array keys with strict integer casting
-        $colIdx = (int)($orderParams[0]['column'] ?? 5); 
-        $colName = $sortCols[($colIdx > 0) ? $colIdx - 1 : 4] ?? 'created_at';
+        // Default sort on Date (which is now Index 6)
+        $colIdx = (int)($orderParams[0]['column'] ?? 6); 
+        $colName = $sortCols[$colIdx] ?? 'created_at';
         $dir = ($orderParams[0]['dir'] ?? 'desc') === 'asc' ? 'ASC' : 'DESC';
 
         // 6. Fetch Data
@@ -213,17 +220,17 @@ if (input('mode') === 'data') {
 
 $pageMetaKey = $currentUrl;
 ?>
-<head></head></head>
+<head>
     <?php require_once BASE_PATH . 'include/header.php'; ?>
     <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/dataTables.bootstrap.min.css">
     <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/responsive.bootstrap.min.css">
-    <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/audit-log.css?v=<?php echo time(); ?>">
+    <link rel="stylesheet" href="<?php echo SITEURL; ?>/src/pages/audit-log/css/audit-log.css?v=<?php echo time(); ?>">
 </head>
 <body>
 <?php require_once BASE_PATH . 'common/menu/header.php'; ?>
 
 <main class="dashboard-main">
-<div class="container-fluid mt-4" style="max-width: 1400px;">
+<div class="container-fluid px-0 mt-4">
     <div class="card shadow-sm">
         <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
             <div>
@@ -231,16 +238,18 @@ $pageMetaKey = $currentUrl;
                 <h4 class="m-0 text-primary"><i class="fa-solid fa-file-shield"></i> <?php echo htmlspecialchars($pageName); ?></h4>
             </div>
             <div class="d-flex align-items-center gap-2">
-                <label class="text-muted small m-0">Filter:</label>
-                <select id="actionFilter" class="form-select form-select-sm" style="width: 150px;">
-                    <option value="">All Actions</option>
-                    <?php foreach ($auditActions as $code => $label): echo "<option value='$code'>$label</option>"; endforeach; ?>
+                <label class="text-muted small m-0">筛选:</label> <select id="actionFilter" class="form-select form-select-sm" style="width: 150px;">
+                    <option value="">所有操作</option> <?php foreach ($auditActions as $code => $label): echo "<option value='$code'>$label</option>"; endforeach; ?>
                 </select>
             </div>
         </div>
         <div class="card-body">
             <table id="auditTable" class="table table-hover w-100" data-api-url="<?php echo htmlspecialchars(getServer('PHP_SELF')); ?>?mode=data">
-                <thead><tr><th style="width: 30px;"></th><th>Page</th><th>Action</th><th>Message</th><th>User</th><th>Date</th><th>Time</th></tr></thead>
+                <thead>
+                <tr>
+                    <th style="width: 30px;"></th>
+                    <th style="width: 50px;">序号</th> <th>页面</th> <th>操作</th> <th>信息</th> <th>用户</th> <th>日期</th> <th>时间</th> </tr>
+                </thead>
             </table>
         </div>
     </div>
@@ -250,6 +259,6 @@ $pageMetaKey = $currentUrl;
 <script src="<?php echo URL_ASSETS; ?>/js/jquery-3.6.0.min.js"></script>
 <script src="<?php echo URL_ASSETS; ?>/js/jquery.dataTables.min.js"></script>
 <script src="<?php echo URL_ASSETS; ?>/js/dataTables.bootstrap.min.js"></script>
-<script src="<?php echo URL_ASSETS; ?>/js/audit-log.js?v=<?php echo time(); ?>"></script>
+<script src="<?php echo SITEURL; ?>/src/pages/audit-log/js/audit-log.js?v=<?php echo time(); ?>"></script>
 </body>
 </html>

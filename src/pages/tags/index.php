@@ -289,7 +289,7 @@ if (function_exists('logAudit')) {
 }
 
 if ($isEmbeddedInDashboard):
-    $pageScripts = ['jquery.dataTables.min.js', 'dataTables.bootstrap.min.js', 'tag.js'];
+    $pageScripts = ['jquery.dataTables.min.js', 'dataTables.bootstrap.min.js', 'src/pages/tags/js/tag.js'];
 ?>
     <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/dataTables.bootstrap.min.css">
     <div class="tag-container">
@@ -381,7 +381,7 @@ if ($isEmbeddedInDashboard):
 <script src="<?php echo URL_ASSETS; ?>/js/dataTables.bootstrap.min.js"></script>
 <script src="<?php echo URL_ASSETS; ?>/js/sweetalert2@11.js"></script>
 <script src="<?php echo URL_ASSETS; ?>/js/bootstrap.bundle.min.js"></script>
-<script src="<?php echo URL_ASSETS; ?>/js/tag.js"></script>
+<script src="<?php echo SITEURL; ?>/src/pages/tags/js/tag.js"></script>
 </body>
 </html>
 <?php endif; ?>
