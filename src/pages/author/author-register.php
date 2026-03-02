@@ -244,7 +244,7 @@ $pageMetaKey = $currentUrl;
 <!DOCTYPE html>
 <head>
     <?php require_once BASE_PATH . 'include/header.php'; ?>
-    <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/author.css?v=<?php echo time(); ?>">
+    <link rel="stylesheet" href="<?php echo SITEURL; ?>/src/pages/author/css/author.css?v=<?php echo time(); ?>">
 </head>
 <body>
 <?php require_once BASE_PATH . 'common/menu/header.php'; ?>
@@ -389,6 +389,6 @@ $pageMetaKey = $currentUrl;
 <script src="<?php echo URL_ASSETS; ?>/js/jquery-3.6.0.min.js"></script>
 <script src="<?php echo URL_ASSETS; ?>/js/bootstrap.bundle.min.js"></script>
 <script src="<?php echo URL_ASSETS; ?>/js/sweetalert2@11.js"></script>
-<script src="<?php echo URL_ASSETS; ?>/js/author.js?v=<?php echo time(); ?>"></script>
+<script src="<?php echo SITEURL; ?>/src/pages/author/js/author.js?v=<?php echo time(); ?>"></script>
 </body>
 </html>

@@ -12,6 +12,8 @@ $pageName = getDynamicPageName($conn, $perm, $currentUrl);
 // 2. Check Add/Edit Permission for initial load
 $actionToCheck = $isEditMode ? 'edit' : 'add';
 checkPermissionError($actionToCheck, $perm);
+$isSaveSubmit = isPostRequest() && empty(post('mode')) && post('form_action') === 'save';
+$wantsJson = isAjax();
 
 if (isPostRequest() && empty(post('mode'))) {
     
@@ -28,17 +30,20 @@ if (isPostRequest() && empty(post('mode'))) {
         $submitAction = $isEditMode ? 'edit' : 'add';
         checkPermissionError($submitAction, $perm);
 
-        // [FIX] Use global postSpaceFilter to automatically trim inputs
         $name = postSpaceFilter('name');
-        $redirectTo = $recordId > 0 ? ($formBaseUrl . '&id=' . $recordId) : $formBaseUrl;
+        $formRow['name'] = $name;
+        $canContinue = true;
 
         if ($name === '') {
-            setSession('flash_msg', '名称不能为空');
-            setSession('flash_type', 'danger');
-            pageActionRedirect($redirectTo);
+            if ($wantsJson) {
+                respondJsonAndExit(false, '名称不能为空');
+            }
+            $flashMsg = '名称不能为空';
+            $flashType = 'danger';
+            $canContinue = false;
         }
 
-        if ($recordId > 0) {
+        if ($canContinue && $recordId > 0) {
             $oldValue = fetchPageActionRowById($conn, $table, $recordId);
             if (!$oldValue || $oldValue['status'] !== 'A') {
                 setSession('flash_msg', '记录不存在');
@@ -46,7 +51,14 @@ if (isPostRequest() && empty(post('mode'))) {
                 pageActionRedirect($baseListUrl);
             }
 
-            checkNoChangesAndRedirect(['name' => $name], $oldValue, null);
+            if ($wantsJson) {
+                $oldName = trim((string)($oldValue['name'] ?? ''));
+                if ($oldName === $name) {
+                    respondJsonAndExit(false, '无需保存');
+                }
+            } else {
+                checkNoChangesAndRedirect(['name' => $name], $oldValue, null);
+            }
 
             $dupSql = "SELECT id FROM {$table} WHERE name = ? AND status = 'A' AND id != ? LIMIT 1";
             $dupStmt = $conn->prepare($dupSql);
@@ -57,91 +69,113 @@ if (isPostRequest() && empty(post('mode'))) {
             $dupStmt->close();
 
             if ($dupExists) {
-                setSession('flash_msg', '名称已存在，请使用其他名称');
-                setSession('flash_type', 'danger');
-                pageActionRedirect($redirectTo);
+                if ($wantsJson) {
+                    respondJsonAndExit(false, '名称已存在，请使用其他名称');
+                }
+                $flashMsg = '名称已存在，请使用其他名称';
+                $flashType = 'danger';
+                $canContinue = false;
             }
 
-            $sqlUpdate = "UPDATE {$table} SET name = ?, updated_by = ?, updated_at = NOW() WHERE id = ? AND status = 'A'";
-            $stmtUpdate = $conn->prepare($sqlUpdate);
-            $stmtUpdate->bind_param('sii', $name, $currentUserId, $recordId);
-            $ok = $stmtUpdate->execute();
-            $stmtUpdate->close();
+            if ($canContinue) {
+                $sqlUpdate = "UPDATE {$table} SET name = ?, updated_by = ?, updated_at = NOW() WHERE id = ? AND status = 'A'";
+                $stmtUpdate = $conn->prepare($sqlUpdate);
+                $stmtUpdate->bind_param('sii', $name, $currentUserId, $recordId);
+                $ok = $stmtUpdate->execute();
+                $stmtUpdate->close();
+
+                if ($ok) {
+                    $newValue = fetchPageActionRowById($conn, $table, $recordId);
+                    if (function_exists('logAudit')) {
+                        logAudit([
+                            'page' => $auditPage,
+                            'action' => 'E',
+                            'action_message' => 'Updated page action: ' . $name,
+                            'query' => $sqlUpdate,
+                            'query_table' => $table,
+                            'user_id' => $currentUserId,
+                            'record_id' => $recordId,
+                            'record_name' => $name,
+                            'old_value' => $oldValue,
+                            'new_value' => $newValue
+                        ]);
+                    }
+                    setSession('flash_msg', '保存成功');
+                    setSession('flash_type', 'success');
+                    if ($wantsJson) {
+                        respondJsonAndExit(true, '保存成功', $baseListUrl);
+                    }
+                    pageActionRedirect($baseListUrl);
+                }
+
+                if ($wantsJson) {
+                    respondJsonAndExit(false, '保存失败，请稍后重试');
+                }
+                $flashMsg = '保存失败，请稍后重试';
+                $flashType = 'danger';
+            }
+        }
+
+        if ($canContinue && !$isEditMode) {
+            $dupSql = "SELECT id FROM {$table} WHERE name = ? AND status = 'A' LIMIT 1";
+            $dupStmt = $conn->prepare($dupSql);
+            $dupStmt->bind_param('s', $name);
+            $dupStmt->execute();
+            $dupStmt->store_result();
+            $dupExists = $dupStmt->num_rows > 0;
+            $dupStmt->close();
+
+            if ($dupExists) {
+                if ($wantsJson) {
+                    respondJsonAndExit(false, '名称已存在，请使用其他名称');
+                }
+                $flashMsg = '名称已存在，请使用其他名称';
+                $flashType = 'danger';
+                $canContinue = false;
+            }
+        }
+
+        if ($canContinue && !$isEditMode) {
+            $sqlInsert = "INSERT INTO {$table} (name, status, created_by, updated_by, created_at, updated_at) VALUES (?, 'A', ?, ?, NOW(), NOW())";
+            $stmtInsert = $conn->prepare($sqlInsert);
+            $stmtInsert->bind_param('sii', $name, $currentUserId, $currentUserId);
+            $ok = $stmtInsert->execute();
+            $newId = $conn->insert_id;
+            $stmtInsert->close();
 
             if ($ok) {
-                $newValue = fetchPageActionRowById($conn, $table, $recordId);
+                $newValue = fetchPageActionRowById($conn, $table, $newId);
                 if (function_exists('logAudit')) {
                     logAudit([
                         'page' => $auditPage,
-                        'action' => 'E',
-                        'action_message' => 'Updated page action: ' . $name,
-                        'query' => $sqlUpdate,
+                        'action' => 'A',
+                        'action_message' => 'Added page action: ' . $name,
+                        'query' => $sqlInsert,
                         'query_table' => $table,
                         'user_id' => $currentUserId,
-                        'record_id' => $recordId,
+                        'record_id' => $newId,
                         'record_name' => $name,
-                        'old_value' => $oldValue,
                         'new_value' => $newValue
                     ]);
                 }
-                setSession('flash_msg', '保存成功');
+                setSession('flash_msg', '新增成功');
                 setSession('flash_type', 'success');
+                if ($wantsJson) {
+                    respondJsonAndExit(true, '新增成功', $baseListUrl);
+                }
                 pageActionRedirect($baseListUrl);
             }
 
-            setSession('flash_msg', '保存失败，请稍后重试');
-            setSession('flash_type', 'danger');
-            pageActionRedirect($redirectTo);
-        }
-
-        $dupSql = "SELECT id FROM {$table} WHERE name = ? AND status = 'A' LIMIT 1";
-        $dupStmt = $conn->prepare($dupSql);
-        $dupStmt->bind_param('s', $name);
-        $dupStmt->execute();
-        $dupStmt->store_result();
-        $dupExists = $dupStmt->num_rows > 0;
-        $dupStmt->close();
-
-        if ($dupExists) {
-            setSession('flash_msg', '名称已存在，请使用其他名称');
-            setSession('flash_type', 'danger');
-            pageActionRedirect($redirectTo);
-        }
-
-        $sqlInsert = "INSERT INTO {$table} (name, status, created_by, updated_by, created_at, updated_at) VALUES (?, 'A', ?, ?, NOW(), NOW())";
-        $stmtInsert = $conn->prepare($sqlInsert);
-        $stmtInsert->bind_param('sii', $name, $currentUserId, $currentUserId);
-        $ok = $stmtInsert->execute();
-        $newId = $conn->insert_id;
-        $stmtInsert->close();
-
-        if ($ok) {
-            $newValue = fetchPageActionRowById($conn, $table, $newId);
-            if (function_exists('logAudit')) {
-                logAudit([
-                    'page' => $auditPage,
-                    'action' => 'A',
-                    'action_message' => 'Added page action: ' . $name,
-                    'query' => $sqlInsert,
-                    'query_table' => $table,
-                    'user_id' => $currentUserId,
-                    'record_id' => $newId,
-                    'record_name' => $name,
-                    'new_value' => $newValue
-                ]);
+            if ($wantsJson) {
+                respondJsonAndExit(false, '新增失败，请稍后重试');
             }
-            setSession('flash_msg', '新增成功');
-            setSession('flash_type', 'success');
-            pageActionRedirect($baseListUrl);
+            $flashMsg = '新增失败，请稍后重试';
+            $flashType = 'danger';
         }
-
-        setSession('flash_msg', '新增失败，请稍后重试');
-        setSession('flash_type', 'danger');
-        pageActionRedirect($redirectTo);
     }
 }
 
-if ($isEditMode) {
+if ($isEditMode && !$isSaveSubmit) {
     $loaded = fetchPageActionRowById($conn, $table, $recordId);
     if ($loaded && $loaded['status'] === 'A') {
         $formRow = $loaded;
@@ -151,6 +185,7 @@ if ($isEditMode) {
         pageActionRedirect($baseListUrl);
     }
 }
+
 ?>
 <div class="container-fluid px-0">
     <div class="card page-action-card">
@@ -170,7 +205,7 @@ if ($isEditMode) {
                 </div>
             <?php endif; ?>
 
-            <form method="POST" action="<?php echo htmlspecialchars($formBaseUrl . ($isEditMode ? '&id=' . $formRow['id'] : '')); ?>" autocomplete="off" class="<?php echo $isEditMode ? 'check-changes' : ''; ?>">
+            <form id="pageActionForm" method="POST" action="<?php echo htmlspecialchars($formBaseUrl . ($isEditMode ? '&id=' . $formRow['id'] : '')); ?>" autocomplete="off" class="<?php echo $isEditMode ? 'check-changes' : ''; ?>" data-ajax-error-inline="1">
                 <input type="hidden" name="form_action" value="save">
                 <?php if ($isEditMode): ?>
                     <input type="hidden" name="id" value="<?php echo $formRow['id']; ?>">

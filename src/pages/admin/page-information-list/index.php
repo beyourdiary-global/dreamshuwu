@@ -123,8 +123,8 @@ if (!in_array($perPage, $allowedSizes, true)) $perPage = 10;
 
 if ($isEmbedded):
     $pageScripts = ($viewMode === 'form')
-        ? ['admin.js']
-        : ['jquery.dataTables.min.js', 'dataTables.bootstrap.min.js', 'admin.js'];
+        ? ['src/pages/admin/js/admin.js']
+        : ['jquery.dataTables.min.js', 'dataTables.bootstrap.min.js', 'src/pages/admin/js/admin.js'];
 
     if (hasSession('flash_msg')) {
         echo '<div class="alert alert-' . htmlspecialchars(session('flash_type') ?: 'info') . ' alert-dismissible fade show"><button type="button" class="btn-close" data-bs-dismiss="alert"></button>' . htmlspecialchars(session('flash_msg')) . '</div>';

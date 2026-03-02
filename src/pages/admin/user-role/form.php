@@ -24,6 +24,8 @@ $pageName = getDynamicPageName($conn, $perm, $currentUrl);
 // 2. Check Add/Edit Permission for loading the form
 $actionToCheck = $isEditMode ? 'edit' : 'add';
 checkPermissionError($actionToCheck, $perm);
+$isSaveSubmit = isPostRequest() && empty(post('mode')) && post('action_type') === 'save';
+$wantsJson = isAjax();
 
 // 2. Form Submission Handling (POST)
 if (isPostRequest() && empty(post('mode'))) {
@@ -43,31 +45,53 @@ if (isPostRequest() && empty(post('mode'))) {
         $description = postSpaceFilter('description');
 
         // Collect selected permissions (array of strings "pageId_actionId")
-        $rawPerms = post('permissions');
-        $selectedPerms = is_array($rawPerms) ? $rawPerms : [];
+        $rawPermissions = postSpaceFilter('permissions');
+        $selectedPerms = is_array($rawPermissions) ? $rawPermissions : [];
         $selectedPerms = array_filter($selectedPerms); // Remove empty values
 
-        // Determine redirect URL (back to edit if editing, else list)
-        $redirectTo = $recordId > 0 ? ($formBaseUrl . '&id=' . $recordId) : $formBaseUrl;
+        $formRow['name_cn'] = $name_cn;
+        $formRow['name_en'] = $name_en;
+        $formRow['description'] = $description;
+
+        $assignedPerms = [];
+        foreach ($selectedPerms as $permKey) {
+            $parts = explode('_', (string)$permKey, 2);
+            if (count($parts) !== 2 || !isNumber($parts[0]) || !isNumber($parts[1])) {
+                continue;
+            }
+
+            $assignedPerms[] = [
+                'page_id' => (int)$parts[0],
+                'action_id' => (int)$parts[1],
+            ];
+        }
+
+        $canContinue = true;
 
         // Validation: Required fields
         if ($name_cn === '' || $name_en === '') {
+            if ($wantsJson) {
+                respondJsonAndExit(false, 'Required fields cannot be empty.');
+            }
             setSession('flash_msg', 'Required fields cannot be empty.');
             setSession('flash_type', 'danger');
-            userRoleRedirect($redirectTo);
+            $canContinue = false;
         }
 
         // Validation: Duplicate Name Check
-        if (checkRoleNameDuplicate($conn, $name_cn, $name_en, $recordId)) {
+        if ($canContinue && checkRoleNameDuplicate($conn, $name_cn, $name_en, $recordId)) {
+            if ($wantsJson) {
+                respondJsonAndExit(false, 'Role name (EN or CN) already exists.');
+            }
             setSession('flash_msg', 'Role name (EN or CN) already exists.');
             setSession('flash_type', 'danger');
-            userRoleRedirect($redirectTo);
+            $canContinue = false;
         }
 
         // Fetch Old Data for Audit Logging (Edit Mode)
         $oldRoleData = null;
         $oldPerms = [];
-        if ($recordId > 0) {
+        if ($canContinue && $recordId > 0) {
             $oldRoleData = fetchUserRoleById($conn, $recordId);
             if (!$oldRoleData || $oldRoleData['status'] !== 'A') {
                 setSession('flash_msg', 'Record not found or already deleted.');
@@ -86,8 +110,9 @@ if (isPostRequest() && empty(post('mode'))) {
         }
 
         // Begin Database Transaction
-        $conn->begin_transaction();
-        try {
+        if ($canContinue) {
+            $conn->begin_transaction();
+            try {
             $targetId = 0;
             $mainActionType = '';
             $executedSql = '';
@@ -184,20 +209,26 @@ if (isPostRequest() && empty(post('mode'))) {
 
             setSession('flash_msg', '保存成功.');
             setSession('flash_type', 'success');
+            if ($wantsJson) {
+                respondJsonAndExit(true, '保存成功.', $baseListUrl);
+            }
             userRoleRedirect($baseListUrl);
-        } catch (Exception $e) {
-            // Rollback on error
-            $conn->rollback();
-            error_log('Database error in user-role form: ' . $e->getMessage());
-            setSession('flash_msg', '数据库错误，请稍后重试或联系管理员。');
-            setSession('flash_type', 'danger');
-            userRoleRedirect($redirectTo);
+            } catch (Exception $e) {
+                // Rollback on error
+                $conn->rollback();
+                error_log('Database error in user-role form: ' . $e->getMessage());
+                if ($wantsJson) {
+                    respondJsonAndExit(false, '数据库错误，请稍后重试或联系管理员。');
+                }
+                setSession('flash_msg', '数据库错误，请稍后重试或联系管理员。');
+                setSession('flash_type', 'danger');
+            }
         }
     }
 }
 
 // 3. Load Data for Edit Mode
-if ($isEditMode) {
+if ($isEditMode && !$isSaveSubmit) {
     $loaded = fetchUserRoleById($conn, $recordId);
     if ($loaded && $loaded['status'] === 'A') {
         $formRow = $loaded;
@@ -262,7 +293,7 @@ if ($masterRes) {
                 <?php unsetSession('flash_msg'); unsetSession('flash_type'); ?>
             <?php endif; ?>
 
-            <form method="POST" action="<?php echo htmlspecialchars($formBaseUrl . ($isEditMode ? '&id=' . $recordId : '')); ?>" class="<?php echo $isEditMode ? 'check-changes' : ''; ?>">
+            <form id="userRoleForm" method="POST" action="<?php echo htmlspecialchars($formBaseUrl . ($isEditMode ? '&id=' . $recordId : '')); ?>" class="<?php echo $isEditMode ? 'check-changes' : ''; ?>" data-ajax-error-inline="1">
                 <input type="hidden" name="action_type" value="save">
                 <?php if ($isEditMode): ?><input type="hidden" name="id" value="<?php echo $recordId; ?>"><?php endif; ?>
 
@@ -287,6 +318,13 @@ if ($masterRes) {
                     </div>
                 </div>
 
+                <div class="d-flex justify-content-center align-items-center flex-wrap mt-2 mb-4 gap-2">
+                    <a href="<?php echo $baseListUrl; ?>" class="btn btn-light">取消</a>
+                    <?php if (($isEditMode && !empty($perm->edit)) || (!$isEditMode && !empty($perm->add))): ?>
+                    <button type="submit" class="btn btn-primary px-4"><i class="fa-solid fa-save"></i> 保存角色</button>
+                    <?php endif; ?>
+                </div>
+
                 <hr class="my-4">
 
                 <h5 class="mb-3 text-dark"><i class="fa-solid fa-lock me-2"></i>Page Permissions / 页面权限绑定</h5>
@@ -308,13 +346,13 @@ if ($masterRes) {
                             <?php foreach ($allPages as $page): ?>
                                 <div class="col-md-4 mb-3 page-card" data-page-name="<?php echo strtolower($page['name_en'] . ' ' . $page['name_cn']); ?>">
                                     <div class="card h-100">
-                                        <div class="card-header bg-white cursor-pointer" role="button" onclick="togglePageCard(this)">
-                                            <div class="d-flex justify-content-between align-items-center">
+                                        <div class="card-header bg-white cursor-pointer page-card-header" role="button" onclick="togglePageCard(this)">
+                                            <div class="d-flex justify-content-between align-items-center page-card-header-inner">
                                                 <div>
                                                     <h6 class="mb-0"><?php echo htmlspecialchars($page['name_en']); ?></h6>
                                                     <small class="text-muted"><?php echo htmlspecialchars($page['name_cn']); ?></small>
                                                 </div>
-                                                <i class="fa-solid fa-chevron-down"></i>
+                                                <i class="fa-solid fa-chevron-down page-card-chevron"></i>
                                             </div>
                                         </div>
                                         <div class="card-body" style="display:none;">
@@ -353,12 +391,6 @@ if ($masterRes) {
                     <?php endif; ?>
                 </div>
 
-                <div class="d-flex justify-content-end mt-4 gap-2">
-                    <a href="<?php echo $baseListUrl; ?>" class="btn btn-light">取消</a>
-                    <?php if (($isEditMode && !empty($perm->edit)) || (!$isEditMode && !empty($perm->add))): ?>
-                    <button type="submit" class="btn btn-primary px-4"><i class="fa-solid fa-save"></i> 保存角色</button>
-                    <?php endif; ?>
-                </div>
             </form>
         </div>
     </div>

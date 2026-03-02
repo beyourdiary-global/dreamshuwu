@@ -110,7 +110,6 @@ $navLinks = [
     createNavItem('分类', URL_CATEGORIES),
     createNavItem('排行榜', URL_RANKING),
     createNavItem('书架', URL_BOOKSHELF, true, 'fa-solid fa-book-open'),
-    createNavItem('我的', URL_PROFILE, true, 'fa-solid fa-user'),
 ];
 ?>
 <header class="site-header">

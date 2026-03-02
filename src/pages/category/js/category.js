@@ -51,6 +51,74 @@ $(document).ready(function () {
       },
     });
 
+    function buildCategoryMobileActions(rawActionHtml) {
+      const tempWrap = $("<div>").html(rawActionHtml || "");
+      const editBtn = tempWrap.find("a.btn-outline-primary").first();
+      const deleteBtn = tempWrap.find("button.delete-btn").first();
+
+      let mobileHtml = "";
+
+      if (editBtn.length) {
+        mobileHtml +=
+          '<a href="' +
+          (editBtn.attr("href") || "#") +
+          '" class="btn btn-sm btn-outline-primary me-2"><i class="fa-solid fa-pen"></i> 编辑</a>';
+      }
+
+      if (deleteBtn.length) {
+        mobileHtml +=
+          '<button type="button" class="btn btn-sm btn-outline-danger delete-btn" data-id="' +
+          (deleteBtn.attr("data-id") || "") +
+          '" data-name="' +
+          (deleteBtn.attr("data-name") || "") +
+          '"><i class="fa-solid fa-trash"></i> 删除</button>';
+      }
+
+      return mobileHtml || '<span class="text-muted small">无操作权限</span>';
+    }
+
+    function applyCategoryMobileActionMode() {
+      const isMobileView = document.body.classList.contains("is-mobile");
+      const viewportWidth =
+        window.innerWidth || document.documentElement.clientWidth || 0;
+
+      const hideTagsColumn = isMobileView && viewportWidth <= 560;
+      const hideIndexColumn = isMobileView && viewportWidth <= 380;
+
+      table.column(0).visible(!hideIndexColumn, false);
+      table.column(2).visible(!hideTagsColumn, false);
+      table.column(3).visible(!isMobileView, false);
+      table.columns.adjust().draw(false);
+    }
+
+    applyCategoryMobileActionMode();
+    let catResizeTimer;
+    $(window).on("resize", function () {
+      clearTimeout(catResizeTimer);
+      catResizeTimer = setTimeout(applyCategoryMobileActionMode, 120);
+    });
+
+    $("#categoryTable tbody").on("click", "tr", function (e) {
+      if (!document.body.classList.contains("is-mobile")) return;
+      if ($(e.target).closest("a,button,.btn,.delete-btn").length) return;
+
+      const row = table.row(this);
+      if (!row.data()) return;
+
+      const actionHtml = buildCategoryMobileActions(row.data()[3] || "");
+      if (!actionHtml) return;
+
+      if (row.child.isShown()) {
+        row.child.hide();
+        $(this).removeClass("shown");
+      } else {
+        row
+          .child('<div class="mobile-row-actions">' + actionHtml + "</div>")
+          .show();
+        $(this).addClass("shown");
+      }
+    });
+
     // Handle Delete Button Click
     $(document).on("click", ".delete-btn", function () {
       const id = $(this).data("id");

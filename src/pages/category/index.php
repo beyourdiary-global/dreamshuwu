@@ -285,7 +285,7 @@ if ($flashMsg !== '') {
 
 // HTML Output
 if ($isEmbeddedInDashboard):
-    $pageScripts = ['jquery.dataTables.min.js', 'dataTables.bootstrap.min.js', 'category.js'];
+    $pageScripts = ['jquery.dataTables.min.js', 'dataTables.bootstrap.min.js', 'src/pages/category/js/category.js'];
 ?>
 <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/dataTables.bootstrap.min.css">
 <div class="category-container">
@@ -320,8 +320,53 @@ if ($isEmbeddedInDashboard):
         </div>
     </div>
 </div>
-<?php if ($perm->add): ?>
-<a href="<?php echo URL_NOVEL_CATS_FORM; ?>" class="btn btn-primary btn-add-mobile"><i class="fa-solid fa-plus fa-lg"></i></a>
-<?php endif; ?>
 <?php else: ?>
+<?php $pageMetaKey = '/dashboard.php?view=categories'; ?>
+<!DOCTYPE html>
+<head>
+    <?php require_once BASE_PATH . 'include/header.php'; ?>
+    <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/dataTables.bootstrap.min.css">
+</head>
+<body>
+<?php require_once BASE_PATH . 'common/menu/header.php'; ?>
+<div class="category-container">
+    <div class="card category-card">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+            <div>
+                <?php echo generateBreadcrumb($conn, $currentUrl); ?>
+                <h4 class="m-0 text-primary"><i class="fa-solid fa-layer-group"></i> <?php echo htmlspecialchars($pageName); ?></h4>
+            </div>
+            <?php if ($perm->add): ?>
+            <a href="<?php echo URL_NOVEL_CATS_FORM; ?>" class="btn btn-primary desktop-add-btn"><i class="fa-solid fa-plus"></i> 新增分类</a>
+            <?php endif; ?>
+        </div>
+        <div class="card-body">
+            <?php if ($flashMsg): ?>
+                <div class="alert alert-<?php echo htmlspecialchars($flashType); ?> alert-dismissible fade show">
+                    <?php echo htmlspecialchars($flashMsg); ?> <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            <?php endif; ?>
+            <table id="categoryTable" class="table table-hover w-100" 
+                   data-api-url="<?php echo $fullApiUrl; ?>?mode=data"
+                   data-delete-url="<?php echo $fullApiUrl; ?>">
+                <thead>
+                    <tr>
+                        <th style="width:80px;">ID</th>
+                        <th>分类名称</th>
+                        <th>关联标签</th>
+                        <th style="width:100px;">操作</th>
+                    </tr>
+                </thead>
+            </table>
+        </div>
+    </div>
+</div>
+<script src="<?php echo URL_ASSETS; ?>/js/jquery-3.6.0.min.js"></script>
+<script src="<?php echo URL_ASSETS; ?>/js/jquery.dataTables.min.js"></script>
+<script src="<?php echo URL_ASSETS; ?>/js/dataTables.bootstrap.min.js"></script>
+<script src="<?php echo URL_ASSETS; ?>/js/sweetalert2@11.js"></script>
+<script src="<?php echo URL_ASSETS; ?>/js/bootstrap.bundle.min.js"></script>
+<script src="<?php echo SITEURL; ?>/src/pages/category/js/category.js"></script>
+</body>
+</html>
 <?php endif; ?>

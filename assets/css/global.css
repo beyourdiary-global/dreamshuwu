@@ -1,19 +1,78 @@
 /* src/assets/css/global.css */
 
-/* 1. Global Layout */
+/* ======================================================== */
+/* 1. GLOBAL VARIABLES (The "SASS" Standard)                */
+/* ======================================================== */
+:root {
+  /* Colors */
+  --primary-color: #233dd2;
+  --primary-hover: #1a2eb0;
+  --danger-color: #dc3545;
+  --success-color: #198754;
+  --warning-color: #ffc107;
+  --info-color: #0dcaf0;
+
+  --text-main: #212529;
+  --text-muted: #6c757d;
+  --text-light: #adb5bd;
+
+  --bg-body: #f4f7fb;
+  --bg-card: #ffffff;
+
+  --border-color: #e0e0e0;
+  --border-light: #eeeeee;
+
+  /* Legacy Dynamic Theme Overrides (Mapped to standards) */
+  --page-bg-color: var(--bg-body);
+  --theme-text-color: var(--text-main);
+  --theme-bg-color: var(--bg-card);
+  --btn-color: var(--primary-color);
+  --btn-text-color: #ffffff;
+
+  /* Global Widths */
+  --container-width: 1600px;
+  --container-audit-width: 1600px;
+  --auth-max-width: 420px;
+
+  /* Spacing (Padding & Margin) */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+
+  /* Borders & Radii */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-round: 50%;
+
+  /* Box Shadows */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+/* ======================================================== */
+/* 2. Global Layout */
+/* ======================================================== */
 body {
   font-family: "Roboto", "Segoe UI", Tahoma, sans-serif;
-  background: #ffffff;
+  background-color: var(--page-bg-color) !important;
+  color: var(--theme-text-color) !important;
   min-height: 100vh;
   margin: 0;
 }
 
-/* 2. Form Elements (Generic) */
+/* ======================================================== */
+/* 3. Form Elements (Generic) */
+/* ======================================================== */
 .form-label {
   font-size: 14px;
   font-weight: 600;
-  margin-bottom: 8px;
+  margin-bottom: var(--space-sm);
   display: block;
+  color: var(--theme-text-color) !important;
 }
 
 .form-control,
@@ -22,21 +81,46 @@ input[type="email"],
 input[type="password"],
 input[type="date"],
 textarea.form-control,
-select.form-control,
-.form-select {
+select.form-control {
   width: 100%;
-  padding: 12px 16px; /* [FIX] Unified padding */
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  background-color: #fff;
-  color: #212529 !important;
+  padding: 12px var(--space-md);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background-color: var(--bg-card);
+  color: var(--text-main) !important;
   box-sizing: border-box;
   font-size: 14px;
-  transition: all 0.2s ease-in-out;
+  transition:
+    border-color 0.2s ease-in-out,
+    box-shadow 0.2s ease-in-out;
+}
+
+.form-select {
+  width: 100%;
+  padding: 12px 36px 12px var(--space-md) !important;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background-color: var(--bg-card);
+  color: var(--text-main) !important;
+  box-sizing: border-box;
+  font-size: 14px;
+  transition:
+    border-color 0.2s ease-in-out,
+    box-shadow 0.2s ease-in-out;
+}
+
+.dataTables_length select,
+select[name="per_page"].form-select {
+  width: auto !important;
+  min-width: 68px !important;
+  padding: 6px 36px 6px 12px !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: var(--radius-md) !important;
+  color: var(--text-main) !important;
 }
 
 ::placeholder {
-  color: #adb5bd !important;
+  color: var(--text-light) !important;
   font-size: 13px;
   opacity: 1;
 }
@@ -45,74 +129,69 @@ select.form-control,
 input:focus,
 select:focus,
 .form-select:focus {
-  border-color: var(--btn-color, #233dd2) !important;
-  box-shadow: 0 0 0 3.2px rgba(35, 61, 210, 0.15) !important; /* [FIX] Unified focus state */
+  border-color: var(--btn-color) !important;
+  box-shadow: 0 0 0 3.2px rgba(35, 61, 210, 0.15) !important;
   outline: none;
 }
 
-/* Form Label Responsiveness */
-@media (max-width: 767px) {
+body.is-mobile {
   .form-label {
     text-align: left !important;
   }
 }
-@media (min-width: 768px) and (max-width: 1199px) {
-  .form-label {
-    font-size: 13px;
-  }
-}
 
+/* ======================================================== */
+/* 4. Password Toggle Positioning (Global) */
+/* ======================================================== */
 input[type="password"]::-ms-reveal,
 input[type="password"]::-ms-clear {
   display: none;
 }
 
-/* --- Password Toggle Positioning (Global) --- */
 .password-field {
   position: relative;
 }
-
 .password-field .form-control,
 .password-field input {
   padding-right: 45px !important;
 }
 
-/* 1. Keep the Bootstrap (!) icon on the far right, but make room for both */
 .password-field .form-control.is-invalid {
-  background-position: right 12px center !important; /* Forces ! to the right edge */
+  background-position: right 12px center !important;
   padding-right: 70px !important;
 }
-
-/* 2. Dynamically push the Eye Icon to the left ONLY when there is an error */
 .password-field .form-control.is-invalid ~ .toggle-password {
   right: 40px !important;
 }
 
-/* 3. Base Toggle Icon Styling */
 .password-field .toggle-password {
   position: absolute;
-  right: 15px; /* Default position when no error */
+  right: 15px;
   top: 36px;
   background: none;
   border: none;
   z-index: 10;
   cursor: pointer;
-  color: #666;
+  color: var(--text-muted);
   padding: 0;
-  height: 24px;
+  height: var(--space-lg);
   display: flex;
   align-items: center;
-  transition: right 0.2s ease; /* Adds a smooth sliding effect when it moves */
+  transition: right 0.2s ease;
 }
 
-/* 3. Buttons (Generic) */
+/* ======================================================== */
+/* 5. Buttons (Generic) */
+/* ======================================================== */
 .btn-primary,
-.btn-reg {
-  background: #233dd2;
-  color: white;
+.btn-reg,
+.btn-save,
+.desktop-add-btn {
+  background: var(--btn-color) !important;
+  color: var(--btn-text-color) !important;
   border: none;
   padding: 10px 20px;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   font-weight: 600;
   font-size: 16px;
   cursor: pointer;
@@ -124,27 +203,34 @@ input[type="password"]::-ms-clear {
 }
 
 .btn-primary:hover,
-.btn-reg:hover {
-  background: #1a2eb0;
-  color: #fff;
-}
-.btn-primary:disabled {
-  background: #c9d1f7;
-  cursor: not-allowed;
+.btn-reg:hover,
+.btn-save:hover,
+.desktop-add-btn:hover {
+  background: var(--primary-hover) !important;
+  opacity: 0.9;
 }
 
-/* Action Buttons Spacing */
+.btn-danger {
+  background: var(--danger-color);
+  color: white;
+  border: none;
+  padding: 12px 25px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-weight: 600;
+}
+
 .btn-action {
   padding: 6px 10px;
   font-size: 13px;
-  margin-right: 8px !important;
+  margin-right: var(--space-sm) !important;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: var(--space-xs);
   min-height: 32px;
   min-width: 36px;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   transition:
     background-color 0.2s ease,
     color 0.2s ease;
@@ -153,250 +239,38 @@ input[type="password"]::-ms-clear {
   margin-right: 0 !important;
 }
 
-/* 4. Dashboard UI */
+/* ======================================================== */
+/* 6. Dashboard Cards & Containers */
+/* ======================================================== */
 .tag-container,
 .category-container,
-.meta-container {
-  padding: 0 !important; /* Removes padding causing top/left gap */
-  max-width: 1200px !important; /* Matches dashboard width */
-  margin: 0 !important; /* Keeps containers flush left */
+.meta-container,
+.profile-container {
+  padding: 0 !important;
+  max-width: var(--container-width) !important;
+  margin: 0 !important;
   width: 100%;
   box-sizing: border-box;
 }
 
 .tag-card,
-.category-card {
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+.category-card,
+.profile-form-card,
+.page-action-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
   border: none;
 }
+
 .card-body {
-  padding: 24px;
+  padding: var(--space-lg);
 }
 
-/* --- Dashboard Layout Alignment Fix --- */
-.dashboard-main .profile-card {
-  padding: 32px !important; /* Forces left and right padding to be identical */
-  display: flex !important;
-  align-items: center !important;
-  box-sizing: border-box !important;
-}
-
-.dashboard-main .profile-card .settings-btn {
-  position: static !important; /* Removes absolute positioning */
-  margin-left: auto !important; /* Flexbox trick pushes the gear to the right */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* --- Dashboard Mobile Layout Overflow Fix --- */
-.dashboard-main .profile-info {
-  min-width: 0; /* Allows text to shrink rather than stretch the card */
-  flex: 1;
-}
-
-/* Hide the settings arrow icon on ultra-small screens to prevent run-off */
-@media screen and (max-width: 360px) {
-  .dashboard-main .profile-card .settings-btn {
-    display: none !important;
-  }
-}
-
-/* 4.1 Profile Page */
-.profile-container {
-  max-width: 1200px !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.section-header {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  margin-bottom: 30px;
-  border-bottom: 1px solid #eee;
-  padding-bottom: 15px;
-}
-
-.section-header h2 {
-  font-size: 24px;
-  color: inherit;
-  margin: 0;
-  line-height: 1.2;
-}
-
-.header-text-content {
-  display: flex;
-  flex-direction: column;
-}
-
-.profile-form-card {
-  background: #fff;
-  border-radius: 12px;
-  padding: 30px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  margin-bottom: 30px;
-}
-
-.form-title {
-  font-size: 18px;
-  font-weight: 600;
-  margin-bottom: 20px;
-  color: inherit;
-  display: flex;
-  align-items: center;
-}
-
-.form-title i {
-  margin-right: 10px;
-}
-
-.avatar-upload-wrapper {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin-bottom: 30px;
-}
-
-.avatar-preview {
-  width: 120px;
-  height: 120px;
-  border-radius: 50%;
-  border: 4px solid #f0f7ff;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-  object-fit: cover;
-  margin-bottom: 15px;
-  cursor: pointer;
-  transition: opacity 0.2s;
-}
-
-.avatar-preview:hover {
-  opacity: 0.8;
-}
-
-.upload-btn-wrapper {
-  position: relative;
-  overflow: hidden;
-  display: inline-block;
-}
-
-.btn-upload {
-  border: 1px solid #ddd;
-  color: #666;
-  background-color: white;
-  padding: 8px 20px;
-  border-radius: 8px;
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.upload-btn-wrapper input[type="file"] {
-  font-size: 100px;
-  position: absolute;
-  left: 0;
-  top: 0;
-  opacity: 0;
-  cursor: pointer;
-}
-
-.form-group {
-  margin-bottom: 20px;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 8px;
-  font-weight: 500;
-  color: inherit;
-}
-
-.form-row {
-  display: flex;
-  gap: 20px;
-}
-
-.col-half {
-  flex: 1;
-}
-
-.btn-save {
-  background: #233dd2;
-  color: #fff;
-  border: none;
-  padding: 12px 25px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: 600;
-}
-
-.btn-save:hover {
-  background: #1a2eb0;
-}
-
-.btn-cancel {
-  background: #f4f7f6;
-  color: #666;
-  border: 1px solid #ddd;
-  padding: 12px 25px;
-  border-radius: 8px;
-  cursor: pointer;
-  margin-left: 10px;
-  text-decoration: none;
-  display: inline-block;
-}
-
-.btn-danger {
-  background: #d9534f;
-  color: white;
-  border: none;
-  padding: 12px 25px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: 600;
-}
-
-.alert {
-  padding: 15px;
-  margin-bottom: 20px;
-  border: 1px solid transparent;
-  border-radius: 8px;
-  font-size: 14px;
-  display: flex;
-  align-items: center;
-}
-
-.alert-success {
-  color: #155724;
-  background-color: #d4edda;
-  border-color: #c3e6cb;
-}
-
-.alert-danger {
-  color: #721c24;
-  background-color: #f8d7da;
-  border-color: #f5c6cb;
-}
-
-.d-none {
-  display: none;
-}
-
-@media (max-width: 768px) {
-  .form-row {
-    flex-direction: column;
-    gap: 0;
-  }
-}
-
-/* Header Layout */
 .card-header {
-  background-color: #fff;
+  background-color: var(--bg-card);
   padding: 15px 20px;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--border-light);
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
@@ -404,29 +278,38 @@ input[type="password"]::-ms-clear {
   gap: 10px;
 }
 
-.card-header .desktop-add-btn i {
-  font-size: 13px;
+.card-header .desktop-add-btn {
+  padding: 12px 20px;
+  border-radius: 10px;
+  font-size: 15px;
+  box-shadow: var(--shadow-sm);
 }
 
-.card-header h4 {
-  margin: 0;
-  white-space: nowrap;
+/* Typography Overrides */
+.card-header h4,
+.card-header h5,
+.header-title,
+.section-header h2,
+.form-title,
+.table th,
+.table td,
+table.dataTable thead th,
+table.dataTable tbody td,
+.dataTables_wrapper .dataTables_info,
+.dataTables_wrapper .dataTables_length label,
+.dataTables_wrapper .dataTables_filter label {
+  color: var(--theme-text-color) !important;
 }
 
-/* Badge Styling */
-.badge {
-  font-weight: 500;
-  font-size: 13px;
-  padding: 5px 8px;
-  display: inline-block;
-  border-radius: 4px;
-}
-.bg-secondary {
-  background-color: #6c757d;
-  color: white;
+.text-primary,
+.header-title i,
+.card-header i {
+  color: var(--btn-color) !important;
 }
 
-/* 5. DataTables Styling */
+/* ======================================================== */
+/* 7. DataTables Styling */
+/* ======================================================== */
 .dataTables_wrapper .dataTables_paginate {
   display: flex;
   justify-content: flex-end;
@@ -436,38 +319,47 @@ input[type="password"]::-ms-clear {
 
 .dataTables_wrapper .dataTables_paginate .paginate_button {
   padding: 6px 12px;
-  margin-left: 2px;
   cursor: pointer;
-  color: #233dd2 !important;
-  border: 1px solid #dee2e6;
-  border-radius: 4px;
-  background: #fff;
+  color: var(--btn-color) !important;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
   font-size: 14px;
-  text-decoration: none !important;
 }
+
 .dataTables_wrapper .dataTables_paginate .paginate_button.current {
-  background-color: #233dd2 !important;
-  color: white !important;
-  font-weight: bold;
-  border-color: #233dd2;
-}
-.dataTables_wrapper .dataTables_paginate .paginate_button:hover {
-  background-color: #e9ecef !important;
-  color: #1a2eb0 !important;
-  text-decoration: underline !important;
+  background-color: var(--btn-color) !important;
+  color: var(--btn-text-color) !important;
+  border-color: var(--btn-color);
 }
 
-/* Pagination links: no underline unless hover */
-.dataTables_wrapper .dataTables_paginate a,
-.dataTables_wrapper .dataTables_paginate .page-link {
-  text-decoration: none !important;
-}
-.dataTables_wrapper .dataTables_paginate a:hover,
-.dataTables_wrapper .dataTables_paginate .page-link:hover {
-  text-decoration: underline !important;
+/* Fallback: keep pagination style consistent even if footer row is moved in DOM */
+.dataTables_paginate .paginate_button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  padding: 6px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--btn-color) !important;
+  background: var(--bg-card);
+  text-decoration: none;
 }
 
-/* DataTables Search Styling */
+.dataTables_paginate ul.pagination {
+  display: flex;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dataTables_paginate ul.pagination > li > a {
+  color: var(--btn-color) !important;
+  border-radius: var(--radius-sm) !important;
+}
+
 .dataTables_wrapper .dataTables_filter {
   width: 100%;
   display: flex;
@@ -475,986 +367,262 @@ input[type="password"]::-ms-clear {
 }
 
 .dataTables_wrapper .dataTables_filter label {
-  width: auto;
-  flex: 0 0 340px;
-  max-width: 100%;
   display: flex !important;
   align-items: center !important;
-  gap: 8px;
-  margin-bottom: 0;
+  gap: var(--space-sm);
 }
 
 .dataTables_wrapper .dataTables_filter input {
-  flex: 1;
-  width: 100% !important;
   padding: 11px 14px !important;
   border: 1px solid #dfe3f7;
-  border-radius: 12px;
-  background-color: #fff;
-  box-shadow: none;
-  transition:
-    border-color 0.2s ease,
-    box-shadow 0.2s ease;
+  border-radius: var(--radius-lg);
+  background-color: var(--bg-card);
+  box-shadow: none !important;
 }
 
 .dataTables_wrapper .dataTables_filter input:focus {
-  border-color: #233dd2;
-  box-shadow: none;
-  outline: none;
+  border-color: var(--btn-color);
 }
 
-/* Tag/Category: Keep action buttons aligned on tablet/desktop */
-.tag-container #tagTable tbody td:last-child:not(.dataTables_empty),
-.category-container #categoryTable tbody td:last-child:not(.dataTables_empty) {
-  text-align: center;
-  vertical-align: middle;
-  white-space: nowrap;
+/* Loading Overlay */
+.dataTables_wrapper {
+  position: relative;
+}
+.dataTables_wrapper .dataTables_processing {
+  position: absolute !important;
+  top: 120px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  text-align: center !important;
+  font-size: 14px !important;
+  color: var(--text-muted) !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  z-index: 10 !important;
+}
+.dataTables_wrapper .dataTables_processing::after {
+  display: none !important;
 }
 
-.tag-container #tagTable tbody td:last-child:not(.dataTables_empty) > div,
-.category-container
-  #categoryTable
-  tbody
-  td:last-child:not(.dataTables_empty)
-  > div {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  white-space: nowrap;
-}
-
-/* Tag & Category Table Search Alignment */
-.tag-container .dataTables_wrapper .dataTables_filter,
-.category-container .dataTables_wrapper .dataTables_filter {
-  justify-content: flex-end;
-}
-
-/* Tag/Category DataTables bootstrap row gutter reset (prevents visual misalignment) */
-.tag-container .dataTables_wrapper .row,
-.category-container .dataTables_wrapper .row {
-  margin-left: 0 !important;
-  margin-right: 0 !important;
-}
-
-.tag-container .dataTables_wrapper .row > [class*="col-"],
-.category-container .dataTables_wrapper .row > [class*="col-"] {
-  padding-left: 0;
-  padding-right: 0;
-}
-
-/* Keep action header/cells centered and stable */
-.tag-container #tagTable thead th:last-child,
-.tag-container #tagTable tbody td:last-child,
-.category-container #categoryTable thead th:last-child,
-.category-container #categoryTable tbody td:last-child {
-  text-align: center;
-  vertical-align: middle;
-}
-
-.category-container #categoryTable tbody td:nth-child(3) .badge {
-  max-width: 120px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  vertical-align: middle;
-}
-
-/* 6. Desktop View (Min Width 1024px) */
-@media screen and (min-width: 1024px) {
-  /* Search Bar - Right Align */
+/* ======================================================== */
+/* 8. Mobile Breakpoints */
+/* ======================================================== */
+body.is-desktop {
   .dataTables_wrapper .row:first-child {
     display: flex !important;
     justify-content: space-between !important;
     align-items: center !important;
-    width: 100% !important;
-  }
-
-  .dataTables_wrapper .dataTables_filter {
-    margin-left: auto !important;
-    text-align: right !important;
-  }
-
-  .dataTables_wrapper .dataTables_filter label {
-    display: inline-flex !important;
-    align-items: center !important;
-    margin-bottom: 0 !important;
-  }
-
-  /* Desktop Button Only */
-  .desktop-add-btn {
-    display: inline-flex !important;
-  }
-  .btn-add-mobile {
-    display: none !important;
-    visibility: hidden !important;
   }
 }
 
-/* 7. Mobile View (280px - 767px) */
-@media screen and (max-width: 767px) {
+body.is-mobile {
   .tag-container,
   .category-container {
-    padding: 10px;
+    padding: 10px !important;
   }
+
+  /* Keep content above fixed bottom nav */
+  .dashboard-main,
+  .dashboard-container,
+  .container.mt-4,
+  .container-fluid.mt-4 {
+    padding-bottom: 90px !important;
+  }
+
   .card-header {
-    padding: 15px;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 15px !important;
   }
-
-  /* 1. BUTTONS: Hide Floating Button, Wrap Main Button */
-  .btn-add-mobile {
-    display: none !important;
-    visibility: hidden !important;
-  }
-
   .desktop-add-btn {
-    display: inline-flex !important;
-    width: 100%;
-    justify-content: center;
-    margin-top: 5px;
+    width: 100% !important;
+    justify-content: center !important;
   }
 
-  /* 2. SEARCH BAR: Vertical Stack */
   .dataTables_wrapper .row:first-child {
     display: flex !important;
     flex-direction: column !important;
     align-items: flex-start !important;
     gap: 10px !important;
-    width: 100% !important;
-    margin: 0 !important;
   }
-
-  .dataTables_wrapper .row:first-child > * {
-    width: 100% !important;
-    max-width: 100% !important;
-    flex: 0 0 100% !important;
-  }
-
   .dataTables_wrapper .dataTables_length,
   .dataTables_wrapper .dataTables_filter {
     text-align: left !important;
     width: 100% !important;
-    margin: 0 !important;
-    float: none !important;
+  }
+
+  .dataTables_wrapper .dataTables_length {
+    margin-bottom: 8px !important;
+  }
+
+  .dataTables_wrapper .dataTables_filter {
+    display: block !important;
+    justify-content: flex-start !important;
   }
 
   .dataTables_wrapper .dataTables_filter label {
+    display: block !important;
     width: 100% !important;
-    max-width: 100% !important;
-    display: flex !important;
+    margin: 0 !important;
   }
 
   .dataTables_wrapper .dataTables_filter input {
+    display: block !important;
+    width: 100% !important;
+    margin: 8px 0 0 0 !important;
+  }
+  .dataTables_wrapper .row.mt-3.align-items-center {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important; /* Center align */
+    gap: 12px !important;
+    margin-top: 10px !important;
     width: 100% !important;
     margin-left: 0 !important;
-    display: block !important;
+    margin-right: 0 !important;
   }
 
-  /* Tag/Category: keep page size + search on one line */
-  .tag-container .dataTables_wrapper .row:first-child,
-  .category-container .dataTables_wrapper .row:first-child {
-    flex-direction: row !important;
-    align-items: center !important;
-    justify-content: space-between !important;
-    flex-wrap: nowrap !important;
-    gap: 8px !important;
-  }
-
-  .tag-container .dataTables_wrapper .row:first-child > [class*="col-"],
-  .category-container .dataTables_wrapper .row:first-child > [class*="col-"] {
-    width: auto !important;
-    max-width: none !important;
-    flex: 0 0 auto !important;
-  }
-
-  .tag-container .dataTables_wrapper .dataTables_length,
-  .category-container .dataTables_wrapper .dataTables_length {
-    flex: 0 0 auto;
-    white-space: nowrap;
-    margin-right: 6px;
-  }
-
-  .tag-container .dataTables_wrapper .dataTables_filter,
-  .category-container .dataTables_wrapper .dataTables_filter {
-    flex: 1 1 auto;
-    min-width: 0;
-    display: flex;
-    justify-content: flex-end;
-  }
-
-  .tag-container .dataTables_wrapper .dataTables_filter label,
-  .category-container .dataTables_wrapper .dataTables_filter label {
+  .dataTables_wrapper .dataTables_info {
     width: 100% !important;
-    max-width: 280px !important;
-    min-width: 120px;
+    text-align: center !important; /* Center text */
+    white-space: normal !important; /* Allow wrapping */
   }
 
-  /* 3. TABLE: Horizontal Scroll */
-  .card-body {
-    padding: 10px !important;
-    overflow-x: auto !important;
-    display: block !important;
-    width: 100% !important;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  table.dataTable {
-    min-width: 100% !important;
-    table-layout: auto !important;
-  }
-
-  table.dataTable tbody td {
-    padding: 10px 5px !important;
-    font-size: 14px;
-  }
-
-  /* 4. PAGINATION: Wrap */
   .dataTables_wrapper .dataTables_paginate {
+    width: 100% !important;
     justify-content: center !important;
     flex-wrap: wrap !important;
-    float: none !important;
+    gap: 4px !important;
+    margin-top: 5px !important;
+    padding: 0 4px !important; /* Add padding to prevent edge touching */
   }
 
-  .tag-container table.dataTable,
-  .category-container table.dataTable {
-    min-width: 100% !important;
-    width: 100% !important;
-    table-layout: fixed;
-  }
-
-  #authorVerificationTable {
-    min-width: 880px !important;
-  }
-
-  #emailTemplateTable {
-    min-width: 760px !important;
-  }
-
-  .table-responsive {
-    overflow-x: auto !important;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .tag-container table.dataTable th,
-  .tag-container table.dataTable td,
-  .category-container table.dataTable th,
-  .category-container table.dataTable td,
-  #authorVerificationTable th,
-  #authorVerificationTable td,
-  #emailTemplateTable th,
-  #emailTemplateTable td {
-    white-space: nowrap;
-    vertical-align: middle;
-  }
-
-  .tag-container table.dataTable th:last-child,
-  .tag-container table.dataTable td:last-child,
-  .category-container table.dataTable th:last-child,
-  .category-container table.dataTable td:last-child {
-    width: 90px !important;
-    min-width: 90px !important;
-    max-width: 90px !important;
+  /* Ensure individual buttons shrink if needed on 280px */
+  .dataTables_wrapper .dataTables_paginate .paginate_button {
+    margin: 2px !important;
+    padding: 4px 8px !important;
+    font-size: 12px !important;
+    min-width: 28px !important; /* Touch target size */
     text-align: center !important;
-  }
-
-  /* Keep action buttons visible without horizontal scrolling */
-  .tag-container table.dataTable th:nth-child(1),
-  .tag-container table.dataTable td:nth-child(1),
-  .category-container table.dataTable th:nth-child(1),
-  .category-container table.dataTable td:nth-child(1),
-  .category-container table.dataTable th:nth-child(3),
-  .category-container table.dataTable td:nth-child(3) {
-    display: none !important;
-  }
-
-  .tag-container table.dataTable td:nth-child(2),
-  .category-container table.dataTable td:nth-child(2) {
-    width: auto;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  #authorVerificationTable th:last-child,
-  #authorVerificationTable td:last-child,
-  #emailTemplateTable th:last-child,
-  #emailTemplateTable td:last-child {
-    width: 170px !important;
-    min-width: 170px !important;
-    text-align: center !important;
-  }
-
-  .tag-container table.dataTable td:last-child > div,
-  .category-container table.dataTable td:last-child > div,
-  #authorVerificationTable td:last-child > div,
-  #emailTemplateTable td:last-child > div {
-    display: inline-flex !important;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    white-space: nowrap;
-  }
-
-  /* Filter form stacking for author verification / email template */
-  #authorVerifyFilterForm,
-  #emailTemplateFilterForm {
-    flex-direction: column !important;
-    align-items: stretch !important;
-    gap: 10px !important;
-  }
-
-  #authorVerifyFilterForm > div,
-  #emailTemplateFilterForm > div {
-    width: 100% !important;
-    max-width: 100% !important;
-  }
-
-  #authorVerifyFilterForm .d-flex,
-  #emailTemplateFilterForm .d-flex {
-    flex-wrap: wrap !important;
-  }
-
-  #authorVerifyFilterForm select,
-  #authorVerifyFilterForm input,
-  #emailTemplateFilterForm select,
-  #emailTemplateFilterForm input {
-    max-width: 100% !important;
-  }
-
-  /* Container padding on mobile */
-  .container.mt-4 {
-    padding-left: 10px !important;
-    padding-right: 10px !important;
-  }
-}
-
-/* 8. Ultra-small Mobile (280px - 420px) */
-@media screen and (max-width: 420px) {
-  .dataTables_wrapper .dataTables_info {
-    display: none !important;
-  }
-
-  .dataTables_wrapper .dataTables_paginate {
-    justify-content: flex-start !important;
-    overflow-x: auto;
-    white-space: nowrap;
-    -webkit-overflow-scrolling: touch;
   }
 
   .dataTables_wrapper .dataTables_paginate .paginate_button {
-    padding: 4px 8px;
-    font-size: 12px;
+    padding: 4px 10px !important;
+    font-size: 13px !important;
   }
 
-  .tag-container .dataTables_wrapper .dataTables_length,
-  .category-container .dataTables_wrapper .dataTables_length {
-    font-size: 13px;
-    margin-right: 4px;
-    flex: 0 0 auto;
-    white-space: nowrap;
-  }
-
-  .tag-container .dataTables_wrapper .dataTables_length select,
-  .category-container .dataTables_wrapper .dataTables_length select {
-    width: 56px !important;
-    min-width: 56px !important;
-    padding: 6px 6px !important;
-  }
-
-  .tag-container .dataTables_wrapper .dataTables_filter,
-  .category-container .dataTables_wrapper .dataTables_filter {
-    flex: 1 1 0 !important;
-    min-width: 0 !important;
-  }
-
-  .tag-container .dataTables_wrapper .dataTables_filter label,
-  .category-container .dataTables_wrapper .dataTables_filter label {
+  /* Tag table: lock mobile widths and allow JS to hide columns by viewport */
+  #tagTable {
     width: 100% !important;
-    max-width: none !important;
-    min-width: 0 !important;
-  }
-
-  .tag-container .dataTables_wrapper .dataTables_filter input,
-  .category-container .dataTables_wrapper .dataTables_filter input {
-    padding: 8px 10px !important;
-    min-width: 0 !important;
-    width: 100% !important;
-  }
-
-  .tag-container .dataTables_wrapper .row:first-child,
-  .category-container .dataTables_wrapper .row:first-child {
-    gap: 4px !important;
-  }
-
-  /* Smaller action buttons on ultra-small screens */
-  .btn-action {
-    padding: 4px 6px !important;
-    font-size: 12px !important;
-    min-width: 28px !important;
-    min-height: 28px !important;
-  }
-
-  .tag-container table.dataTable,
-  .category-container table.dataTable {
     min-width: 100% !important;
-  }
-
-  #authorVerificationTable,
-  #emailTemplateTable {
-    min-width: 640px !important;
-  }
-
-  .category-container table.dataTable th:last-child,
-  .category-container table.dataTable td:last-child,
-  .tag-container table.dataTable th:last-child,
-  .tag-container table.dataTable td:last-child {
-    width: 82px !important;
-    min-width: 82px !important;
-    max-width: 82px !important;
-  }
-
-  /* Hide non-essential columns on ultra-small screens */
-  #authorVerificationTable thead th:nth-child(6),
-  #authorVerificationTable tbody td:nth-child(6),
-  #authorVerificationTable thead th:nth-child(7),
-  #authorVerificationTable tbody td:nth-child(7),
-  #authorVerificationTable thead th:nth-child(8),
-  #authorVerificationTable tbody td:nth-child(8) {
-    display: none !important;
-  }
-
-  #emailTemplateTable thead th:nth-child(4),
-  #emailTemplateTable tbody td:nth-child(4),
-  #emailTemplateTable thead th:nth-child(6),
-  #emailTemplateTable tbody td:nth-child(6) {
-    display: none !important;
-  }
-}
-
-/* 8.1 Category tag area: auto expand on mobile */
-.tag-checkbox-area {
-  max-height: none !important;
-  overflow-y: visible !important;
-}
-
-/* Category form: prevent long tag labels from overflowing */
-.category-container .tag-checkbox-area .row > [class*="col-"] {
-  min-width: 0;
-}
-
-.category-container .tag-checkbox-area .form-check {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  min-width: 0;
-}
-
-.category-container .tag-checkbox-area .form-check-input {
-  flex: 0 0 auto;
-  margin-top: 4px;
-}
-
-.category-container .tag-checkbox-area .form-check-label {
-  display: block;
-  min-width: 0;
-  max-width: 100%;
-  white-space: normal;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-  line-height: 1.35;
-}
-
-/* 8.2 Tablet View (768px - 1023px) */
-@media screen and (min-width: 768px) and (max-width: 1023px) {
-  .tag-container .card-header,
-  .category-container .card-header {
-    flex-wrap: wrap !important;
-    gap: 10px;
-  }
-
-  .tag-container .desktop-add-btn,
-  .category-container .desktop-add-btn {
-    margin-left: auto;
-  }
-
-  .tag-container .dataTables_wrapper .row:first-child,
-  .category-container .dataTables_wrapper .row:first-child {
-    display: flex !important;
-    flex-direction: row !important;
-    align-items: center !important;
-    justify-content: space-between !important;
-    flex-wrap: nowrap !important;
-    gap: 10px !important;
-    margin: 0 !important;
-  }
-
-  .tag-container .dataTables_wrapper .row:first-child > [class*="col-"],
-  .category-container .dataTables_wrapper .row:first-child > [class*="col-"] {
-    width: auto !important;
-    max-width: none !important;
-    flex: 0 0 auto !important;
-  }
-
-  .tag-container .dataTables_wrapper .dataTables_length,
-  .tag-container .dataTables_wrapper .dataTables_filter,
-  .category-container .dataTables_wrapper .dataTables_length,
-  .category-container .dataTables_wrapper .dataTables_filter {
-    width: auto !important;
-    margin: 0 !important;
-    text-align: inherit !important;
-    float: none !important;
-  }
-
-  .tag-container .dataTables_wrapper .dataTables_length,
-  .category-container .dataTables_wrapper .dataTables_length {
-    flex: 0 0 auto;
-    white-space: nowrap;
-  }
-
-  .tag-container .dataTables_wrapper .dataTables_filter,
-  .category-container .dataTables_wrapper .dataTables_filter {
-    flex: 1 1 auto;
-    min-width: 0;
-    display: flex;
-    justify-content: flex-end;
-  }
-
-  .tag-container .dataTables_wrapper .dataTables_filter label,
-  .category-container .dataTables_wrapper .dataTables_filter label {
-    width: 100% !important;
-    max-width: 340px !important;
-    display: flex !important;
-  }
-
-  .tag-container .dataTables_wrapper .dataTables_filter input,
-  .category-container .dataTables_wrapper .dataTables_filter input {
-    width: 100% !important;
-    margin-left: 0 !important;
-  }
-
-  .table-responsive {
-    overflow-x: auto !important;
-  }
-
-  .tag-container table.dataTable,
-  .category-container table.dataTable {
-    min-width: 100% !important;
-    width: 100% !important;
-    table-layout: fixed;
-  }
-
-  .tag-container table.dataTable th:last-child,
-  .tag-container table.dataTable td:last-child,
-  .category-container table.dataTable th:last-child,
-  .category-container table.dataTable td:last-child {
-    width: 94px !important;
-    min-width: 94px !important;
-    max-width: 94px !important;
-  }
-
-  /* Tablet compact layout: hide ID to prevent table breakage */
-  .tag-container table.dataTable th:nth-child(1),
-  .tag-container table.dataTable td:nth-child(1),
-  .category-container table.dataTable th:nth-child(1),
-  .category-container table.dataTable td:nth-child(1) {
-    display: none !important;
-  }
-
-  .category-container table.dataTable td:nth-child(3) {
-    white-space: normal !important;
-    overflow-wrap: anywhere;
-  }
-
-  #authorVerificationTable {
-    min-width: 960px !important;
-  }
-
-  #emailTemplateTable {
-    min-width: 840px !important;
-  }
-
-  #authorVerificationTable tbody td,
-  #emailTemplateTable tbody td {
-    max-width: 220px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  #authorVerificationTable tbody td:last-child,
-  #emailTemplateTable tbody td:last-child {
-    width: 170px !important;
-    min-width: 170px !important;
-    max-width: 170px !important;
-    white-space: nowrap;
-    overflow: visible;
-  }
-}
-
-/* --- 404 Error Page Responsive Image --- */
-.container .text-center img[alt="404 Error"] {
-  width: 100%;
-  height: auto;
-  max-width: 500px;
-}
-
-@media screen and (max-width: 1023px) {
-  .container .text-center img[alt="404 Error"] {
-    max-width: 80%;
-    margin-bottom: 20px;
-  }
-}
-
-@media screen and (max-width: 480px) {
-  .container .text-center img[alt="404 Error"] {
-    max-width: 100%;
-  }
-}
-
-/* --- Final Safety Rules: Tag/Category action buttons always visible (<=1023px) --- */
-@media screen and (max-width: 1023px) {
-  .tag-container #tagTable,
-  .category-container #categoryTable {
-    width: 100% !important;
     table-layout: fixed !important;
   }
 
-  .tag-container #tagTable thead th:nth-child(1),
-  .tag-container #tagTable tbody td:nth-child(1),
-  .category-container #categoryTable thead th:nth-child(1),
-  .category-container #categoryTable tbody td:nth-child(1),
-  .category-container #categoryTable thead th:nth-child(3),
-  .category-container #categoryTable tbody td:nth-child(3) {
-    display: none !important;
+  #tagTable thead th {
+    white-space: nowrap !important;
+    word-break: keep-all !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
   }
 
-  .tag-container #tagTable thead th:last-child,
-  .tag-container #tagTable tbody td:last-child,
-  .category-container #categoryTable thead th:last-child,
-  .category-container #categoryTable tbody td:last-child {
-    width: 86px !important;
-    min-width: 86px !important;
-    max-width: 86px !important;
+  #tagTable thead th:nth-child(1),
+  #tagTable tbody td:nth-child(1) {
+    width: 56px !important;
+    min-width: 56px !important;
     text-align: center !important;
     white-space: nowrap !important;
   }
 
-  .tag-container #tagTable thead th:nth-child(2),
-  .category-container #categoryTable thead th:nth-child(2) {
-    width: calc(100% - 86px) !important;
-  }
-
-  .tag-container #tagTable tbody td:nth-child(2),
-  .category-container #categoryTable tbody td:nth-child(2) {
-    width: calc(100% - 86px) !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    white-space: nowrap !important;
-  }
-
-  .tag-container #tagTable tbody td:last-child > div,
-  .category-container #categoryTable tbody td:last-child > div {
+  #tagTable thead th:nth-child(2),
+  #tagTable tbody td:nth-child(2) {
     width: auto !important;
     min-width: 0 !important;
-    display: inline-flex !important;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
+    white-space: normal !important;
+    word-break: break-word !important;
+    overflow: hidden !important;
   }
 
-  .tag-container .card-body,
-  .category-container .card-body,
-  .tag-container .dataTables_wrapper,
-  .category-container .dataTables_wrapper {
+  #tagTable_wrapper .table-responsive,
+  #categoryTable_wrapper .table-responsive {
+    overflow-x: hidden !important;
+    width: 100% !important;
+  }
+
+  /* Category table: avoid horizontal clipping and let JS hide extra columns */
+  #categoryTable {
+    width: 100% !important;
+    min-width: 100% !important;
+    table-layout: fixed !important;
+  }
+
+  #categoryTable thead th {
+    white-space: nowrap !important;
+    word-break: keep-all !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  #categoryTable thead th:nth-child(1),
+  #categoryTable tbody td:nth-child(1) {
+    width: 56px !important;
+    min-width: 56px !important;
+    text-align: center !important;
+  }
+
+  #categoryTable thead th:nth-child(2),
+  #categoryTable tbody td:nth-child(2) {
+    width: auto !important;
+    min-width: 0 !important;
+    white-space: normal !important;
+    word-break: break-word !important;
+    overflow: hidden !important;
+  }
+
+  .card-body {
     overflow-x: hidden !important;
   }
-}
-
-/* --- Page Action Specific Styles --- */
-.page-action-card {
-  border: none;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-}
-.page-action-breadcrumb {
-  font-size: 13px;
-}
-
-/* --- Responsive Table & Sticky Actions Fix --- */
-
-/* 1. View Logic: Force Table View on almost all screens */
-@media (min-width: 280px) {
-  .page-action-mobile-list {
-    display: none !important;
-  }
-}
-@media (max-width: 280px) {
-  .page-action-desktop-table {
-    display: none !important;
+  table.dataTable {
+    min-width: 100% !important;
   }
 }
 
-/* 2. Content Truncation */
-.page-action-desktop-table td {
-  max-width: 150px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  vertical-align: middle;
-}
-
-/* 3. Action Column Settings */
-.page-action-desktop-table th:last-child,
-.page-action-desktop-table td:last-child {
-  width: 1%;
-  white-space: nowrap;
-  overflow: visible;
-  max-width: none;
-  text-align: center;
-}
-
-.page-action-desktop-table .btn-action {
-  margin-right: 4px !important;
-  margin-bottom: 0 !important;
-}
-.page-action-desktop-table .btn-action:last-child {
-  margin-right: 0 !important;
-}
-
-/* 4. Sticky Right Column (The "Always Visible" Fix) */
-@media screen and (max-width: 991px) {
-  .page-action-desktop-table table {
-    border-collapse: separate;
-    border-spacing: 0;
-  }
-
-  .page-action-desktop-table th:last-child,
-  .page-action-desktop-table td:last-child {
-    position: sticky;
-    right: 0;
-    z-index: 5;
-    background-color: #fff;
-    box-shadow: -4px 0 8px -4px rgba(0, 0, 0, 0.15);
-    border-left: 1px solid #f0f0f0;
-  }
-
-  .table-hover tbody tr:hover td:last-child {
-    background-color: #e9ecef;
-  }
-}
-
-/* 5. Hide Non-Essential Columns on Small Screens */
-@media screen and (max-width: 576px) {
-  .page-action-desktop-table th:first-child,
-  .page-action-desktop-table td:first-child {
-    display: none;
-  }
-}
-
-/* ======================================================== */
-/* [FIX] GLOBAL THEME OVERRIDES (Moved from webSetting.css) */
-/* ======================================================== */
-:root {
-  --header-default-hover-color: #80aaff;
-}
-
-body {
-  background-color: var(--page-bg-color) !important;
-  color: var(--theme-text-color) !important;
-}
-
-.site-header {
-  background: var(--theme-bg-color) !important;
-}
-
-.site-header::after {
-  display: none !important;
-  background: transparent !important;
-}
-
-.site-header a,
-.site-header .nav-link,
-.site-header .author-link,
-.site-header .logo-text,
-.site-header .auth-buttons a,
-.mobile-top-bar .user-trigger {
-  color: var(--theme-text-color) !important;
-}
-
-.site-header .nav-link:not(.active):hover,
-.site-header .author-link:not(.active):hover,
-.site-header .auth-buttons a:not(.active):hover,
-.site-header .user-name-link:not(.active):hover,
-.site-header .user-name-link:not(.active):hover i,
-.mobile-top-bar .user-trigger:hover {
-  color: var(--header-default-hover-color) !important;
-}
-
-.nav-link.active::after,
-.author-link.active::after,
-.user-name-link.active::after {
-  background-color: var(--btn-color) !important;
-}
-
-.nav-link.active,
-.author-link.active,
-.user-name-link.active {
-  color: var(--btn-color) !important;
-}
-
-.sidebar-menu a {
-  color: var(--theme-text-color) !important;
-}
-
-.sidebar-menu a:hover:not(.active) {
-  color: var(--btn-color) !important;
-  background-color: rgba(0, 0, 0, 0.03);
-}
-
-.sidebar-menu a.active {
-  background-color: var(--btn-color) !important;
-  color: var(--btn-text-color) !important;
-  border-radius: 8px;
-  font-weight: 600;
-}
-.sidebar-menu a.active i {
-  color: var(--btn-text-color) !important;
-}
-
-.btn-primary,
-.btn-save,
-.btn-reg,
-.btn-success,
-.desktop-add-btn,
-.btn-add-mobile {
-  background-color: var(--btn-color) !important;
-  color: var(--btn-text-color) !important;
-  border-color: var(--btn-color) !important;
-}
-
-.btn-primary:hover,
-.btn-save:hover,
-.btn-reg:hover,
-.btn-success:hover,
-.desktop-add-btn:hover {
-  opacity: 0.9;
-}
-
-.btn-outline-primary {
-  color: var(--btn-color) !important;
-  border-color: var(--btn-color) !important;
-}
-.btn-outline-primary:hover {
-  background-color: var(--btn-color) !important;
-  color: var(--btn-text-color) !important;
-}
-
-.text-primary,
-.header-title i,
-.card-header i {
-  color: var(--btn-color) !important;
-}
-
-.dataTables_wrapper .dataTables_paginate .paginate_button.current {
-  background-color: var(--btn-color) !important;
-  border-color: var(--btn-color) !important;
-  color: var(--btn-text-color) !important;
-}
-
-.dashboard-main,
-.dashboard-container {
-  background-color: var(--page-bg-color) !important;
-  color: var(--theme-text-color) !important;
-}
-
-/* Theme Text Color Overrides for Cards/Tables */
-.card-header h4,
-.card-header h5,
-.header-title,
-.section-header h2,
-.form-title,
-.meta-card-header h4,
-.meta-card-header .header-title,
-.header-subtitle,
-.meta-card-header .header-subtitle,
-.table th,
-.table td,
-table.dataTable thead th,
-table.dataTable tbody td,
-.dataTables_wrapper .dataTables_info,
-.dataTables_wrapper .dataTables_length,
-.dataTables_wrapper .dataTables_length label,
-.dataTables_wrapper .dataTables_filter label,
-.table .text-muted,
-table.dataTable .text-muted,
-.form-label,
-.col-form-label,
-.form-group label,
-small.text-muted,
-.form-text,
-.nav-pills .nav-link,
-.nav-pills .nav-link.active,
-h5.text-primary,
-.category-container,
-.tag-container,
-.audit-container,
-.meta-card,
-.web-settings-container,
-.profile-container h2,
-.profile-form-card .form-title,
-.page-select-toggle,
-.page-select-item,
-.card-body,
-.meta-card-body,
-.text-center p,
-.text-center h5 {
-  color: var(--theme-text-color) !important;
-}
-
-.dataTables_wrapper .dataTables_paginate .paginate_button {
-  color: var(--btn-color) !important;
-}
-
-.card-header .desktop-add-btn {
-  padding: 12px 20px;
-  padding-left: 12px;
-  border-radius: 10px;
-  font-size: 15px;
-  font-weight: 600;
-  white-space: nowrap;
-  display: inline-flex;
-  align-items: center;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  transition:
-    opacity 0.2s,
-    box-shadow 0.2s;
-}
-
-.card-header .desktop-add-btn:hover {
-  opacity: 0.92;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-@media (max-width: 767px) {
-  .card-header {
-    flex-direction: column !important;
-    align-items: stretch !important;
-    gap: 15px !important;
-    padding: 15px !important;
-  }
-  .card-header h4 {
-    text-align: center;
-    margin-bottom: 5px;
-    width: 100%;
-  }
-  .card-header .desktop-add-btn {
-    width: 100% !important;
+body.is-tablet {
+  .dataTables_wrapper .row.mt-3.align-items-center {
     display: flex !important;
-    justify-content: center !important;
-    margin-left: 0 !important;
-    margin-top: 0 !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 10px !important;
   }
-  .mobile-full-width {
-    width: 100% !important;
-    display: block;
+
+  .dataTables_wrapper .dataTables_info {
+    margin-right: auto !important;
+  }
+
+  .dataTables_wrapper .dataTables_paginate {
+    margin-left: auto !important;
+    gap: 6px !important;
+  }
+}
+
+body.is-mobile {
+  #tagTable > tbody > tr > td,
+  #categoryTable > tbody > tr > td {
+    cursor: pointer;
+  }
+
+  .mobile-row-actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 0;
+    flex-wrap: wrap;
+  }
+
+  .mobile-row-actions .btn {
+    white-space: nowrap;
+    margin: 0 !important;
+    min-height: 32px;
   }
 }

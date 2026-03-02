@@ -36,6 +36,7 @@
         text: text,
         timer: 2000,
         showConfirmButton: false,
+        showCloseButton: true,
       });
     } else {
       alert("没有修改，" + text);
@@ -117,11 +118,198 @@
     });
   }
 
+  function initLogoutHandler() {
+    var logoutBtn = document.querySelector(".logout-btn");
+    if (!logoutBtn) return;
+
+    logoutBtn.addEventListener("click", function (e) {
+      e.preventDefault();
+
+      var logoutUrl = this.getAttribute("href");
+      var apiUrl = this.getAttribute("data-api-url");
+      var pageName = document.title;
+
+      if (typeof Swal === "undefined") {
+        window.location.href = logoutUrl;
+        return;
+      }
+
+      Swal.fire({
+        title: "确定要退出吗?",
+        text: "您将退出当前会话",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#d9534f",
+        cancelButtonColor: "#3085d6",
+        confirmButtonText: "是的, 退出",
+        cancelButtonText: "取消",
+      }).then(function (result) {
+        if (result.isConfirmed) {
+          window.location.href = logoutUrl;
+          return;
+        }
+
+        if (apiUrl) {
+          fetch(apiUrl, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              action: "Logout Cancelled",
+              message: "User clicked logout but cancelled the prompt",
+              page: pageName,
+            }),
+          }).catch(function () {});
+        }
+      });
+    });
+  }
+
+  window.GlobalFormValidation = {
+    showError: function (input, message) {
+      var isCheck = input.type === "checkbox" || input.type === "radio";
+      var container = input.parentElement;
+
+      var errorDiv = container.querySelector(".custom-error-msg");
+      if (!errorDiv) {
+        errorDiv = document.createElement("div");
+        errorDiv.className = "custom-error-msg text-danger small mt-1";
+        errorDiv.style.cssText =
+          "font-size: 12px; color: #dc3545; margin-top: 4px; display: block;";
+
+        if (input.nextSibling) {
+          container.insertBefore(errorDiv, input.nextSibling);
+        } else {
+          container.appendChild(errorDiv);
+        }
+      }
+
+      errorDiv.innerText = message;
+      input.classList.add("is-invalid");
+      if (!isCheck) {
+        input.style.setProperty("border-color", "#dc3545", "important");
+      }
+    },
+
+    clearError: function (input) {
+      var container = input.parentElement;
+      var errorDiv = container.querySelector(".custom-error-msg");
+
+      if (errorDiv) {
+        errorDiv.remove();
+      }
+
+      input.classList.remove("is-invalid");
+      input.style.removeProperty("border-color");
+    },
+
+    isEmpty: function (input) {
+      if (input.type === "checkbox" || input.type === "radio")
+        return !input.checked;
+      return input.value.trim() === "";
+    },
+  };
+
+  // 2. Initialize global form validation for ALL pages
+  function initGlobalValidation() {
+    document.querySelectorAll("form").forEach(function (form) {
+      form.setAttribute("novalidate", "novalidate");
+
+      var requiredInputs = form.querySelectorAll(
+        "input[required], select[required], textarea[required]",
+      );
+
+      requiredInputs.forEach(function (input) {
+        var eventType =
+          input.type === "checkbox" || input.type === "radio"
+            ? "change"
+            : "input";
+        input.addEventListener(eventType, function () {
+          if (!window.GlobalFormValidation.isEmpty(input)) {
+            window.GlobalFormValidation.clearError(input);
+          }
+        });
+
+        input.addEventListener("invalid", function (e) {
+          e.preventDefault();
+        });
+      });
+
+      form.addEventListener("submit", function (e) {
+        var authForms = ["loginForm", "regForm", "forgotForm", "resetForm"];
+        if (authForms.indexOf(form.id) !== -1) return;
+
+        var hasError = false;
+
+        requiredInputs.forEach(function (input) {
+          if (window.GlobalFormValidation.isEmpty(input)) {
+            hasError = true;
+            var msg =
+              input.type === "checkbox" ? "必须同意此选项" : "此字段不能为空";
+            window.GlobalFormValidation.showError(input, msg);
+          }
+        });
+
+        if (hasError) {
+          e.preventDefault();
+          e.stopImmediatePropagation();
+
+          var firstError = form.querySelector(".is-invalid");
+          if (firstError) {
+            firstError.scrollIntoView({ behavior: "smooth", block: "center" });
+          }
+        }
+      });
+    });
+  }
+
   window.showNoChangeWarning = showNoChangeWarning;
 
   buildConfig();
+
   document.addEventListener("DOMContentLoaded", function () {
+    initGlobalValidation();
     initCheckChangesForms();
     initBreadcrumbConsolidation();
+    initLogoutHandler();
+
+    if (typeof jQuery !== "undefined") {
+      // Automatically add the .form-select class whenever a table loads or redraws
+      jQuery(document).on("draw.dt init.dt", function () {
+        jQuery(".dataTables_length select").addClass("form-select");
+      });
+    }
   });
 })();
+
+function updateDeviceClass() {
+  const width = window.innerWidth;
+  const body = document.body;
+
+  // Clear existing classes
+  body.classList.remove(
+    "is-mobile",
+    "is-tablet",
+    "is-desktop",
+    "is-mobile-480",
+    "is-mobile-420",
+    "is-mobile-320",
+  );
+
+  // Apply the strict global standards
+  if (width <= 767) {
+    body.classList.add("is-mobile");
+    if (width <= 480) body.classList.add("is-mobile-480");
+    if (width <= 420) body.classList.add("is-mobile-420");
+    if (width <= 320) body.classList.add("is-mobile-320");
+  } else if (width >= 768 && width <= 1023) {
+    body.classList.add("is-tablet");
+  } else {
+    body.classList.add("is-desktop");
+  }
+}
+
+// Run on load and whenever the screen is resized
+window.addEventListener("resize", updateDeviceClass);
+document.addEventListener("DOMContentLoaded", updateDeviceClass);

@@ -116,7 +116,7 @@ $currentUrl = '/author/novel/' . $novelId . '/chapters/';
 <head>
     <?php require_once BASE_PATH . 'include/header.php'; ?>
     <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/dataTables.bootstrap.min.css">
-    <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/author.css">
+    <link rel="stylesheet" href="<?php echo SITEURL; ?>/src/pages/author/css/author.css">
     <style>
         .strict-textarea { resize: vertical; font-family: monospace; font-size: 15px; line-height: 1.6; }
         .word-warning { color: #dda20a; }
@@ -299,6 +299,6 @@ $currentUrl = '/author/novel/' . $novelId . '/chapters/';
 <script src="<?php echo URL_ASSETS; ?>/js/sweetalert2@11.js"></script>
 <script src="<?php echo URL_ASSETS; ?>/js/jquery.dataTables.min.js"></script>
 <script src="<?php echo URL_ASSETS; ?>/js/dataTables.bootstrap.min.js"></script>
-<script src="<?php echo URL_ASSETS; ?>/js/chapter.js"></script>
+<script src="<?php echo SITEURL; ?>/src/pages/author/chapter-management/js/chapter.js"></script>
 </body>
 </html>

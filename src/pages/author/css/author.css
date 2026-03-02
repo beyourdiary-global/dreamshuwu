@@ -1,29 +1,29 @@
 /* Path: src/assets/css/author.css */
 
 .author-reg-container {
-  max-width: 900px;
+  max-width: 100%;
   margin: 0 auto;
 }
 
 .author-section-title {
   font-size: 18px;
   font-weight: 700;
-  color: #233dd2;
-  border-bottom: 2px solid #e9ecef;
-  padding-bottom: 8px;
-  margin-bottom: 20px;
+  color: var(--primary-color);
+  border-bottom: 2px solid var(--border-light);
+  padding-bottom: var(--space-sm);
+  margin-bottom: var(--space-lg);
 }
 
 /* ID Upload Boxes */
 .id-photo-box {
-  border: 2px dashed #d1d5db;
-  border-radius: 12px;
+  border: 2px dashed var(--border-color);
+  border-radius: var(--radius-lg);
   height: 180px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background-color: #f9fafb;
+  background-color: var(--bg-body);
   cursor: pointer;
   position: relative;
   overflow: hidden;
@@ -31,12 +31,12 @@
 }
 
 .id-photo-box:hover {
-  border-color: #233dd2;
-  background-color: #f0f3ff;
+  border-color: var(--primary-color);
+  background-color: var(--bg-card);
 }
 
 .id-photo-box .placeholder {
-  color: #6b7280;
+  color: var(--text-muted);
   text-align: center;
   z-index: 1;
 }
@@ -55,9 +55,9 @@
 .avatar-upload-box {
   width: 150px;
   height: 150px;
-  border: 2px dashed #d1d5db;
-  border-radius: 50%;
-  background-color: #f9fafb;
+  border: 2px dashed var(--border-color);
+  border-radius: var(--radius-round);
+  background-color: var(--bg-body);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -68,11 +68,11 @@
 }
 
 .avatar-upload-box:hover {
-  border-color: #233dd2;
+  border-color: var(--primary-color);
 }
 
 .avatar-upload-box .placeholder {
-  color: #9ca3af;
+  color: var(--text-light);
   z-index: 1;
 }
 
@@ -86,9 +86,7 @@
   z-index: 2;
 }
 
-/* ======================================================== */
-/* --- Author Dashboard & Action Cards --- */
-/* ======================================================== */
+/* Author Dashboard & Action Cards */
 .hover-lift {
   transition:
     transform 0.2s ease,
@@ -97,11 +95,11 @@
 
 .hover-lift:hover {
   transform: translateY(-5px);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15) !important;
+  box-shadow: var(--shadow-lg) !important;
 }
 
 .action-card {
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
 }
 
 .chapter-editor-actions {
@@ -109,26 +107,22 @@
   justify-content: flex-end;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--space-sm);
 }
 
 .chapter-editor-actions .btn {
   margin: 0 !important;
 }
 
-/* ======================================================== */
-/* --- Novel Management Specific Styles --- */
-/* ======================================================== */
-
 /* Novel Statistics Cards */
 .novel-stat-card {
-  border-radius: 12px;
-  padding: 24px 20px;
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg) 20px;
   color: #fff;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-sm);
   transition: transform 0.2s ease;
   height: 100%;
 }
@@ -159,10 +153,10 @@
 /* Cover Image Upload Box (3:4 Ratio) */
 .cover-upload-box {
   width: 150px;
-  height: 200px; /* Forces 3:4 Aspect Ratio */
-  border: 2px dashed #d1d5db;
-  border-radius: 8px;
-  background-color: #f9fafb;
+  height: 200px;
+  border: 2px dashed var(--border-color);
+  border-radius: var(--radius-md);
+  background-color: var(--bg-body);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -174,12 +168,12 @@
 }
 
 .cover-upload-box:hover {
-  border-color: #233dd2;
-  background-color: #f0f3ff;
+  border-color: var(--primary-color);
+  background-color: var(--bg-card);
 }
 
 .cover-upload-box .placeholder {
-  color: #6b7280;
+  color: var(--text-muted);
   text-align: center;
   font-size: 13px;
   z-index: 1;
@@ -195,18 +189,15 @@
   object-fit: cover;
   z-index: 2;
 }
-/* ======================================================== */
-/* --- Mobile Table Responsiveness (Precision Fix) --- */
-/* ======================================================== */
 
-@media (max-width: 767px) {
-  /* Maximize screen space on mobile */
+/* Mobile Table Responsiveness (Precision Fix) */
+body.is-mobile {
   .main-content {
     padding-left: 5px !important;
     padding-right: 5px !important;
   }
   .card-body {
-    padding: 8px !important;
+    padding: var(--space-sm) !important;
   }
   .dataTables_wrapper .row {
     margin: 0 !important;
@@ -217,11 +208,10 @@
 
   .chapter-editor-actions {
     justify-content: flex-start;
-    margin-top: 8px;
-    gap: 8px;
+    margin-top: var(--space-sm);
+    gap: var(--space-sm);
   }
 
-  /* 1. Prevent horizontal scrolling - scoped to novel/chapter tables */
   #novelTable_wrapper .table-responsive,
   #novelTable_wrapper.dataTables_wrapper,
   #chapterTable_wrapper .table-responsive,
@@ -232,60 +222,99 @@
     width: 100% !important;
   }
 
-  /* 2. Force Table limits and override global 600px rule */
   table.dataTable#novelTable,
   table.dataTable#chapterTable {
     width: 100% !important;
-    max-width: 100% !important;
-    min-width: 100% !important;
-    table-layout: fixed !important;
-    border-collapse: collapse !important;
     margin-top: 10px !important;
   }
 
-  /* 3. Hide all columns by default - SCOPED to novel/chapter tables only */
+  /* Reset forced display properties to let DataTables Responsive handle it */
   table.dataTable#novelTable thead th,
   table.dataTable#novelTable tbody td,
   table.dataTable#chapterTable thead th,
   table.dataTable#chapterTable tbody td {
-    display: none !important;
-    padding: 6px 4px !important;
+    display: table-cell; /* Remove !important */
+    padding: 8px 4px !important;
     vertical-align: middle !important;
     box-sizing: border-box !important;
   }
 
-  /* 4. Base activation for the 3 visible columns - SCOPED */
-  table.dataTable#novelTable thead th:nth-child(1),
-  table.dataTable#novelTable tbody td:nth-child(1),
-  table.dataTable#novelTable thead th:nth-child(2),
-  table.dataTable#novelTable tbody td:nth-child(2),
+  /* Ensure Action Column is hidden on mobile so it moves to child row */
   table.dataTable#novelTable thead th:last-child,
   table.dataTable#novelTable tbody td:last-child,
-  table.dataTable#chapterTable thead th:nth-child(1),
-  table.dataTable#chapterTable tbody td:nth-child(1),
-  table.dataTable#chapterTable thead th:nth-child(2),
-  table.dataTable#chapterTable tbody td:nth-child(2),
   table.dataTable#chapterTable thead th:last-child,
   table.dataTable#chapterTable tbody td:last-child {
-    display: table-cell !important;
+    display: none !important; /* Start hidden on mobile */
   }
 
-  /* 5. Title Column (Middle) - SCOPED */
+  /* When expanded, show content in child row */
+  table.dataTable
+    > tbody
+    > tr.child
+    ul.dtr-details
+    > li[data-dtr-index]:last-child {
+    display: block !important;
+    width: 100% !important;
+  }
+
+  /* Make sure Action buttons wrap nicely in child row */
+  table.dataTable > tbody > tr.child ul.dtr-details .chapter-editor-actions,
+  table.dataTable > tbody > tr.child ul.dtr-details .actions {
+    justify-content: flex-start !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+
+  /* Ensure child row details show full width content for actions */
+  table.dataTable > tbody > tr.child ul.dtr-details {
+    display: block !important;
+    width: 100% !important;
+    padding: 0 !important;
+  }
+
+  table.dataTable > tbody > tr.child ul.dtr-details > li {
+    border-bottom: 1px solid var(--border-light) !important;
+    padding: 8px 0 !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    width: 100% !important;
+  }
+
+  /* Specifically target the action column in child row (usually last) */
+  table.dataTable > tbody > tr.child ul.dtr-details > li:last-child {
+    display: block !important;
+    text-align: left !important;
+  }
+
+  table.dataTable > tbody > tr.child ul.dtr-details > li:last-child .dtr-data {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    margin-top: 5px !important;
+  }
+
+  /* Force first column (Control/Image) to be visible */
+  table.dataTable#novelTable thead th:first-child,
+  table.dataTable#novelTable tbody td:first-child,
+  table.dataTable#chapterTable thead th:first-child,
+  table.dataTable#chapterTable tbody td:first-child {
+    width: 40px !important;
+    padding: 0 !important;
+    text-align: center !important;
+  }
+
+  /* Align Title column */
   table.dataTable#novelTable thead th:nth-child(2),
   table.dataTable#novelTable tbody td:nth-child(2),
   table.dataTable#chapterTable thead th:nth-child(2),
   table.dataTable#chapterTable tbody td:nth-child(2) {
     width: auto !important;
-    white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important; /* Cuts off long text */
-    text-align: left !important;
-    padding-left: 8px !important;
+    white-space: normal !important; /* Allow title wrap */
+    word-break: break-word !important;
   }
 
-  /* ================================================== */
-  /* NOVEL TABLE SPECIFIC SIZING                        */
-  /* ================================================== */
+  /* NOVEL TABLE SPECIFIC SIZING */
   table.dataTable#novelTable thead th:nth-child(1),
   table.dataTable#novelTable tbody td:nth-child(1) {
     width: 48px !important;
@@ -294,13 +323,12 @@
     padding: 2px !important;
   }
 
-  /* Force Cover Image to shrink securely within the column */
   table.dataTable#novelTable tbody td:nth-child(1) img {
     width: 100% !important;
     max-width: 40px !important;
     height: auto !important;
     object-fit: cover !important;
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     display: block;
     margin: 0 auto;
   }
@@ -311,9 +339,7 @@
     min-width: 85px !important;
   }
 
-  /* ================================================== */
-  /* CHAPTER TABLE SPECIFIC SIZING                      */
-  /* ================================================== */
+  /* CHAPTER TABLE SPECIFIC SIZING */
   table.dataTable#chapterTable thead th:nth-child(1),
   table.dataTable#chapterTable tbody td:nth-child(1) {
     width: 35px !important;
@@ -327,14 +353,12 @@
     min-width: 65px !important;
   }
 
-  /* ================================================== */
-  /* ACTION BUTTONS GRID - SCOPED to novel/chapter      */
-  /* ================================================== */
+  /* ACTION BUTTONS GRID */
   table.dataTable#novelTable tbody td:last-child .d-flex,
   table.dataTable#chapterTable tbody td:last-child .d-flex {
     display: flex !important;
     flex-direction: row !important;
-    flex-wrap: wrap !important; /* Allows wrapping into 2 rows if needed */
+    flex-wrap: wrap !important;
     gap: 3px !important;
     justify-content: center !important;
     width: 100% !important;
@@ -353,9 +377,8 @@
   }
 }
 
-/* Target extreme small screens (e.g. Galaxy Fold 280px) */
-@media (max-width: 320px) {
-  /* Shrink Novel specific columns slightly */
+/* Micro Mobile */
+body.is-mobile.is-mobile-320 {
   table.dataTable#novelTable thead th:nth-child(1),
   table.dataTable#novelTable tbody td:nth-child(1) {
     width: 38px !important;
@@ -368,7 +391,6 @@
     min-width: 75px !important;
   }
 
-  /* Shrink Chapter specific columns slightly */
   table.dataTable#chapterTable thead th:last-child,
   table.dataTable#chapterTable tbody td:last-child {
     width: 55px !important;
@@ -381,5 +403,32 @@
     height: 22px !important;
     min-width: 22px !important;
     font-size: 10px !important;
+  }
+}
+
+/* Author module action visibility parity with admin mobile/tablet rules */
+body.is-mobile,
+body.is-tablet {
+  #authorVerificationTable thead th:last-child,
+  #authorVerificationTable tbody td:last-child,
+  #emailTemplateTable thead th:last-child,
+  #emailTemplateTable tbody td:last-child {
+    min-width: 120px !important;
+    width: 120px !important;
+    white-space: nowrap !important;
+    overflow: visible !important;
+  }
+
+  #authorVerificationTable td:last-child .author-verify-actions,
+  #emailTemplateTable td:last-child > div {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    gap: 6px !important;
+  }
+
+  #authorVerificationTable td:last-child .btn,
+  #emailTemplateTable td:last-child .btn {
+    white-space: nowrap !important;
   }
 }

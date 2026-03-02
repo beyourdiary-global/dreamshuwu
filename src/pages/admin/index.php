@@ -14,7 +14,7 @@ $pageName = getDynamicPageName($conn, $perm, $currentUrl);
 // This handles the access check and redirects to /dashboard.php if denied
 checkPermissionError('view', $perm);
 
-$pageScripts = ['admin.js'];
+$pageScripts = ['src/pages/admin/js/admin.js'];
 
 // 3. Fetch permissions for child cards using the base path
 $permPageAction = hasPagePermission($conn, $baseViewPath . 'page_action');

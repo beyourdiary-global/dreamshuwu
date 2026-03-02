@@ -319,9 +319,9 @@ while ($cpRes && $row = $cpRes->fetch_assoc()) $customizedPages[] = $row['page_k
 
 // ========== RENDER ==========
 if ($isEmbeddedMeta):
-    $pageScripts = ['meta.js'];
+    $pageScripts = ['src/pages/meta/js/meta.js'];
 ?>
-    <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/meta.css">
+    <link rel="stylesheet" href="<?php echo SITEURL; ?>/src/pages/meta/css/meta.css">
     <div class="meta-settings-container" style="max-width: 1000px; margin: 0 auto;">
 
         <?php echo generateBreadcrumb($conn, $currentUrl); ?>
@@ -352,7 +352,7 @@ if ($isEmbeddedMeta):
     <!DOCTYPE html>
     <head>
         <?php require_once BASE_PATH . 'include/header.php'; ?>
-        <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/meta.css">
+        <link rel="stylesheet" href="<?php echo SITEURL; ?>/src/pages/meta/css/meta.css">
     </head>
     <body>
     <?php require_once BASE_PATH . 'common/menu/header.php'; ?>
@@ -383,7 +383,7 @@ if ($isEmbeddedMeta):
 
     </div>
 
-    <script src="<?php echo URL_ASSETS; ?>/js/meta.js"></script>
+    <script src="<?php echo SITEURL; ?>/src/pages/meta/js/meta.js"></script>
     <script src="<?php echo URL_ASSETS; ?>/js/sweetalert2@11.js"></script>
     <script src="<?php echo URL_ASSETS; ?>/js/bootstrap.bundle.min.js"></script>
     </body>

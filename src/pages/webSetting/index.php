@@ -288,7 +288,7 @@ if (isPostRequest()) {
 // ========== RENDER ==========
 ?>
 
-<link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/webSetting.css">
+<link rel="stylesheet" href="<?php echo SITEURL; ?>/src/pages/webSetting/css/webSetting.css">
 <div class="web-settings-container mt-4" style="max-width: 1000px; margin: 0 auto;">
     
     <div class="mb-3">
@@ -319,4 +319,4 @@ if (isPostRequest()) {
     </div>
 </div>
 
-<script src="<?php echo URL_ASSETS; ?>/js/webSetting.js"></script>
+<script src="<?php echo SITEURL; ?>/src/pages/webSetting/js/webSetting.js"></script>
