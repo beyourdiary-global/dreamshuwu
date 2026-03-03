@@ -1,0 +1,153 @@
+/* ================================================================
+ * Sidebar Component Styles
+ * Fixed sidebar navigation for authenticated users
+ * ================================================================ */
+
+/* Sidebar (Fixed Position - Global) */
+.dashboard-sidebar {
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 240px;
+  background: var(--theme-bg-color, var(--bg-card));
+  padding: calc(var(--header-height, 50px) + var(--space-xl)) var(--space-lg)
+    var(--space-lg);
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.04);
+  z-index: 1015;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.sidebar-menu {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.sidebar-menu li {
+  margin-bottom: var(--space-sm);
+}
+
+.sidebar-menu a {
+  display: flex;
+  align-items: center;
+  padding: 12px 15px;
+  color: var(--theme-text-color, var(--text-main));
+  text-decoration: none;
+  border-radius: var(--radius-md);
+  transition: all 0.2s;
+  font-weight: 500;
+}
+
+.sidebar-menu a i {
+  width: 24px;
+  margin-right: 10px;
+  color: var(--text-muted);
+}
+
+.sidebar-menu a:hover,
+.sidebar-menu a.active {
+  background: var(--interactive-hover-bg, var(--bg-body));
+  color: var(--primary-color);
+}
+
+.sidebar-menu a:hover i,
+.sidebar-menu a.active i {
+  color: var(--primary-color);
+}
+
+.sidebar-logout-item {
+  margin-top: 20px;
+  border-top: 1px solid var(--border-color);
+  padding-top: 10px;
+}
+
+.sidebar-menu .logout-btn {
+  color: var(--danger-color);
+}
+
+/* ================================================================
+ * Body Layout Offset when sidebar is present
+ * ================================================================ */
+body.has-sidebar {
+  padding-left: calc(240px + var(--space-xl));
+  padding-right: var(--space-xl);
+  overflow-x: hidden;
+}
+
+/* Keep header full-width despite body padding */
+body.has-sidebar > .site-header {
+  margin-left: calc(-1 * (240px + var(--space-xl)));
+  margin-right: calc(-1 * var(--space-xl));
+  width: calc(100% + 240px + (2 * var(--space-xl)));
+}
+
+/* Keep mobile bottom nav full-width */
+body.has-sidebar > .mobile-bottom-nav {
+  margin-left: calc(-1 * (240px + var(--space-xl)));
+  margin-right: calc(-1 * var(--space-xl));
+  width: calc(100% + 240px + (2 * var(--space-xl)));
+}
+
+/* Dashboard container no longer needs flex when sidebar is fixed */
+body.has-sidebar .dashboard-container {
+  display: block;
+  max-width: 1600px;
+  margin: var(--space-xl) auto;
+  padding: 0 var(--space-lg);
+}
+
+/* Dashboard main area takes full width */
+body.has-sidebar .dashboard-main {
+  width: 100%;
+  min-width: 0;
+}
+
+/* ================================================================
+ * Tablet Responsive
+ * ================================================================ */
+body.is-tablet .dashboard-sidebar {
+  width: 190px;
+  padding-left: 14px;
+  padding-right: 14px;
+}
+
+body.is-tablet .sidebar-menu a {
+  padding: 10px 12px;
+  font-size: 15px;
+}
+
+body.is-tablet.has-sidebar {
+  padding-left: calc(190px + 14px);
+  padding-right: 14px;
+}
+
+body.is-tablet.has-sidebar > .site-header {
+  margin-left: calc(-1 * (190px + 14px));
+  margin-right: -14px;
+  width: calc(100% + 190px + 28px);
+}
+
+body.is-tablet.has-sidebar > .mobile-bottom-nav {
+  margin-left: calc(-1 * (190px + 14px));
+  margin-right: -14px;
+  width: calc(100% + 190px + 28px);
+}
+
+/* ================================================================
+ * Mobile: hide sidebar entirely
+ * ================================================================ */
+body.is-mobile .dashboard-sidebar {
+  display: none;
+}
+
+body.is-mobile.has-sidebar {
+  padding-left: 0;
+}
+
+body.is-mobile.has-sidebar > .site-header,
+body.is-mobile.has-sidebar > .mobile-bottom-nav {
+  margin-left: 0;
+  width: 100%;
+}

@@ -59,25 +59,89 @@ if (isPostRequest() && empty(post('mode'))) {
             } else {
                 checkNoChangesAndRedirect(['name' => $name], $oldValue, null);
             }
+        }
 
-            $dupSql = "SELECT id FROM {$table} WHERE name = ? AND status = 'A' AND id != ? LIMIT 1";
+        $isRecoveryMode = false;
+        $recoveryId = null;
+
+        // [MODIFIED] Duplicate Check & Soft Delete Recovery logic
+        if ($canContinue) {
+            $dupSql = $isEditMode ? "SELECT id, status FROM {$table} WHERE name = ? AND id != ? LIMIT 1" : "SELECT id, status FROM {$table} WHERE name = ? LIMIT 1";
             $dupStmt = $conn->prepare($dupSql);
-            $dupStmt->bind_param('si', $name, $recordId);
+            if ($isEditMode) {
+                $dupStmt->bind_param('si', $name, $recordId);
+            } else {
+                $dupStmt->bind_param('s', $name);
+            }
             $dupStmt->execute();
             $dupStmt->store_result();
-            $dupExists = $dupStmt->num_rows > 0;
-            $dupStmt->close();
-
-            if ($dupExists) {
-                if ($wantsJson) {
-                    respondJsonAndExit(false, '名称已存在，请使用其他名称');
+            
+            if ($dupStmt->num_rows > 0) {
+                $dupStmt->bind_result($dupId, $dupStatus);
+                $dupStmt->fetch();
+                
+                if ($dupStatus === 'D' && !$isEditMode) {
+                    // Trigger recovery if it's a deleted action and we are adding a new one
+                    $isRecoveryMode = true;
+                    $recoveryId = $dupId;
+                } else {
+                    if ($wantsJson) {
+                        respondJsonAndExit(false, '名称已存在，请使用其他名称');
+                    }
+                    $flashMsg = '名称已存在，请使用其他名称';
+                    $flashType = 'danger';
+                    $canContinue = false;
                 }
-                $flashMsg = '名称已存在，请使用其他名称';
-                $flashType = 'danger';
-                $canContinue = false;
             }
+            $dupStmt->close();
+        }
 
-            if ($canContinue) {
+        if ($canContinue) {
+            if ($isRecoveryMode) {
+                // [NEW] Execute Soft Delete Recovery Update
+                $sqlRecover = "UPDATE {$table} SET status = 'A', updated_by = ?, updated_at = NOW(), created_by = ?, created_at = NOW() WHERE id = ?";
+                $stmtRecover = $conn->prepare($sqlRecover);
+                $stmtRecover->bind_param('iii', $currentUserId, $currentUserId, $recoveryId);
+                $ok = $stmtRecover->execute();
+                $stmtRecover->close();
+
+                if ($ok) {
+                    $newValue = fetchPageActionRowById($conn, $table, $recoveryId);
+                    $oldRecoveryValue = $newValue;
+                    $oldRecoveryValue['status'] = 'D'; // Indicate it transitioned from Deleted to Active in the log
+
+                    if (function_exists('logAudit')) {
+                        logAudit([
+                            'page' => $auditPage,
+                            'action' => 'A',
+                            'action_message' => 'Recovered soft-deleted page action: ' . $name,
+                            'query' => $sqlRecover,
+                            'query_table' => $table,
+                            'user_id' => $currentUserId,
+                            'record_id' => $recoveryId,
+                            'record_name' => $name,
+                            'old_value' => $oldRecoveryValue,
+                            'new_value' => $newValue
+                        ]);
+                    }
+                    
+                    setSession('flash_msg', '新增成功。');
+                    setSession('flash_type', 'success');
+
+                    if ($wantsJson) {
+                        respondJsonAndExit(true, '新增成功。', $baseListUrl);
+                    }
+                    pageActionRedirect($baseListUrl);
+                }
+
+                if ($wantsJson) {
+                    respondJsonAndExit(false, '新增失败，请稍后重试');
+                }
+                $flashMsg = '新增失败，请稍后重试';
+                $flashType = 'danger';
+
+            } elseif ($isEditMode) {
+                // Existing Edit Update Logic
                 $sqlUpdate = "UPDATE {$table} SET name = ?, updated_by = ?, updated_at = NOW() WHERE id = ? AND status = 'A'";
                 $stmtUpdate = $conn->prepare($sqlUpdate);
                 $stmtUpdate->bind_param('sii', $name, $currentUserId, $recordId);
@@ -100,10 +164,12 @@ if (isPostRequest() && empty(post('mode'))) {
                             'new_value' => $newValue
                         ]);
                     }
-                    setSession('flash_msg', '保存成功');
+                    
+                    setSession('flash_msg', '保存成功。');
                     setSession('flash_type', 'success');
+
                     if ($wantsJson) {
-                        respondJsonAndExit(true, '保存成功', $baseListUrl);
+                        respondJsonAndExit(true, '保存成功。', $baseListUrl);
                     }
                     pageActionRedirect($baseListUrl);
                 }
@@ -113,64 +179,47 @@ if (isPostRequest() && empty(post('mode'))) {
                 }
                 $flashMsg = '保存失败，请稍后重试';
                 $flashType = 'danger';
-            }
-        }
+                
+            } else {
+                // Existing Brand New Insert Logic
+                $sqlInsert = "INSERT INTO {$table} (name, status, created_by, updated_by, created_at, updated_at) VALUES (?, 'A', ?, ?, NOW(), NOW())";
+                $stmtInsert = $conn->prepare($sqlInsert);
+                $stmtInsert->bind_param('sii', $name, $currentUserId, $currentUserId);
+                $ok = $stmtInsert->execute();
+                $newId = $conn->insert_id;
+                $stmtInsert->close();
 
-        if ($canContinue && !$isEditMode) {
-            $dupSql = "SELECT id FROM {$table} WHERE name = ? AND status = 'A' LIMIT 1";
-            $dupStmt = $conn->prepare($dupSql);
-            $dupStmt->bind_param('s', $name);
-            $dupStmt->execute();
-            $dupStmt->store_result();
-            $dupExists = $dupStmt->num_rows > 0;
-            $dupStmt->close();
+                if ($ok) {
+                    $newValue = fetchPageActionRowById($conn, $table, $newId);
+                    if (function_exists('logAudit')) {
+                        logAudit([
+                            'page' => $auditPage,
+                            'action' => 'A',
+                            'action_message' => 'Added page action: ' . $name,
+                            'query' => $sqlInsert,
+                            'query_table' => $table,
+                            'user_id' => $currentUserId,
+                            'record_id' => $newId,
+                            'record_name' => $name,
+                            'new_value' => $newValue
+                        ]);
+                    }
 
-            if ($dupExists) {
-                if ($wantsJson) {
-                    respondJsonAndExit(false, '名称已存在，请使用其他名称');
+                    setSession('flash_msg', '新增成功。');
+                    setSession('flash_type', 'success');
+
+                    if ($wantsJson) {
+                        respondJsonAndExit(true, '新增成功。', $baseListUrl);
+                    }
+                    pageActionRedirect($baseListUrl);
                 }
-                $flashMsg = '名称已存在，请使用其他名称';
+
+                if ($wantsJson) {
+                    respondJsonAndExit(false, '新增失败，请稍后重试');
+                }
+                $flashMsg = '新增失败，请稍后重试';
                 $flashType = 'danger';
-                $canContinue = false;
             }
-        }
-
-        if ($canContinue && !$isEditMode) {
-            $sqlInsert = "INSERT INTO {$table} (name, status, created_by, updated_by, created_at, updated_at) VALUES (?, 'A', ?, ?, NOW(), NOW())";
-            $stmtInsert = $conn->prepare($sqlInsert);
-            $stmtInsert->bind_param('sii', $name, $currentUserId, $currentUserId);
-            $ok = $stmtInsert->execute();
-            $newId = $conn->insert_id;
-            $stmtInsert->close();
-
-            if ($ok) {
-                $newValue = fetchPageActionRowById($conn, $table, $newId);
-                if (function_exists('logAudit')) {
-                    logAudit([
-                        'page' => $auditPage,
-                        'action' => 'A',
-                        'action_message' => 'Added page action: ' . $name,
-                        'query' => $sqlInsert,
-                        'query_table' => $table,
-                        'user_id' => $currentUserId,
-                        'record_id' => $newId,
-                        'record_name' => $name,
-                        'new_value' => $newValue
-                    ]);
-                }
-                setSession('flash_msg', '新增成功');
-                setSession('flash_type', 'success');
-                if ($wantsJson) {
-                    respondJsonAndExit(true, '新增成功', $baseListUrl);
-                }
-                pageActionRedirect($baseListUrl);
-            }
-
-            if ($wantsJson) {
-                respondJsonAndExit(false, '新增失败，请稍后重试');
-            }
-            $flashMsg = '新增失败，请稍后重试';
-            $flashType = 'danger';
         }
     }
 }
@@ -185,9 +234,8 @@ if ($isEditMode && !$isSaveSubmit) {
         pageActionRedirect($baseListUrl);
     }
 }
-
 ?>
-<div class="container-fluid px-0">
+<div class="app-page-shell">
     <div class="card page-action-card">
         <div class="card-header bg-white d-flex justify-content-between align-items-center py-3 flex-wrap gap-2">
             <div>
@@ -227,7 +275,7 @@ if ($isEditMode && !$isSaveSubmit) {
                 <div class="mb-4 row">
                     <label class="col-md-3 col-form-label text-md-end form-label">Status</label>
                     <div class="col-md-9">
-                        <input type="text" class="form-control" value="A" readonly>
+                        <div class="form-control-plaintext fw-semibold">A</div>
                     </div>
                 </div>
 

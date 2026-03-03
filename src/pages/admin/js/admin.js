@@ -24,29 +24,67 @@
       body: body,
       credentials: "same-origin",
     })
-      .then(function (response) {
-        return response.json();
+      .then(function (res) {
+        return res.text();
       })
-      .then(function (payload) {
-        if (payload && payload.success) {
+      .then(function (text) {
+        var cleanText = (text || "").replace(/^\uFEFF/, "").trim();
+        var payload = null;
+
+        // 1. Robust JSON Extraction (ignores PHP warnings)
+        var jsonStart = cleanText.indexOf("{");
+        var jsonEnd = cleanText.lastIndexOf("}");
+        if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd >= jsonStart) {
+          try {
+            payload = JSON.parse(cleanText.substring(jsonStart, jsonEnd + 1));
+          } catch (e) {}
+        }
+
+        // 2. Handle the Payload
+        if (payload) {
+          if (payload.success) {
+            if (typeof Swal !== "undefined") {
+              Swal.fire({
+                title: "删除成功！",
+                icon: "success",
+                confirmButtonText: "OK",
+              }).then(function () {
+                window.location.reload(); // Refresh the page to show updated list
+              });
+            } else {
+              window.location.reload();
+            }
+          } else {
+            if (typeof Swal !== "undefined") {
+              Swal.fire("错误", payload.message || "删除失败", "error");
+            }
+          }
+          return;
+        }
+
+        // 3. Fallback if JSON completely failed but success was printed
+        if (
+          cleanText.indexOf('"success":true') !== -1 ||
+          cleanText.indexOf('"success": true') !== -1
+        ) {
           if (typeof Swal !== "undefined") {
-            Swal.fire("删除成功", "", "success").then(function () {
+            Swal.fire("删除成功！", "", "success").then(function () {
               window.location.reload();
             });
           } else {
             window.location.reload();
           }
-        } else {
-          var message =
-            payload && payload.message ? payload.message : "删除失败";
-          if (typeof Swal !== "undefined") {
-            Swal.fire("错误", message, "error");
-          }
+          return;
+        }
+
+        // If it reaches here, the server truly returned an error
+        if (typeof Swal !== "undefined") {
+          Swal.fire("错误", "服务器返回异常数据", "error");
         }
       })
-      .catch(function () {
+      .catch(function (err) {
         if (typeof Swal !== "undefined") {
-          Swal.fire("错误", "服务器通信失败", "error");
+          Swal.fire("错误", "网络请求或脚本执行失败", "error");
         }
       });
   }
@@ -554,10 +592,9 @@ function initInlineAjaxAdminForms() {
     form.dataset.ajaxInlineBound = "1";
 
     form.addEventListener("submit", function (event) {
-      if (event.defaultPrevented) {
-        return;
-      }
+      if (event.defaultPrevented) return;
 
+      // Required validation logic
       var requiredInputs = form.querySelectorAll(
         "input[required], select[required], textarea[required]",
       );
@@ -567,14 +604,11 @@ function initInlineAjaxAdminForms() {
           if (!input.checked) hasRequiredError = true;
           return;
         }
-        if ((input.value || "").trim() === "") {
-          hasRequiredError = true;
-        }
+        if ((input.value || "").trim() === "") hasRequiredError = true;
       });
-      if (hasRequiredError) {
-        return;
-      }
+      if (hasRequiredError) return;
 
+      // Check changes logic
       if (
         form.classList.contains("check-changes") &&
         form.dataset.originalData
@@ -587,9 +621,8 @@ function initInlineAjaxAdminForms() {
 
         var currentData = new URLSearchParams(new FormData(form)).toString();
         if (!hasFile && currentData === form.dataset.originalData) {
-          if (typeof window.showNoChangeWarning === "function") {
+          if (typeof window.showNoChangeWarning === "function")
             window.showNoChangeWarning("无需保存");
-          }
           return;
         }
       }
@@ -612,70 +645,88 @@ function initInlineAjaxAdminForms() {
         .then(function (text) {
           var cleanText = (text || "").replace(/^\uFEFF/, "").trim();
           var payload = null;
-          try {
-            payload = JSON.parse(cleanText);
-          } catch (e) {
-            payload = null;
+
+          // Secure JSON Extraction
+          var jsonStart = cleanText.indexOf("{");
+          var jsonEnd = cleanText.lastIndexOf("}");
+          if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd >= jsonStart) {
+            try {
+              payload = JSON.parse(cleanText.substring(jsonStart, jsonEnd + 1));
+            } catch (e) {}
           }
 
-          if (!payload) {
-            var mixedMessage = extractMessageFromMixedResponse(cleanText);
-            if (mixedMessage) {
-              renderInlineFormAlert(form, mixedMessage, "danger");
-              return;
-            }
+          // [FIX] URL Sanitizer to remove double slashes (e.g. localhost:8000//dashboard.php)
+          function sanitizeUrl(url) {
+            if (!url) return "";
+            // Unescape \/ and remove // except when following http: or https:
+            return url
+              .replace(/\\\//g, "/")
+              .replace(/([^:]\/)\/+/g, "$1")
+              .replace(/^\/\//, "/");
+          }
 
-            if (cleanText && cleanText.indexOf("无需保存") !== -1) {
-              if (typeof window.showNoChangeWarning === "function") {
-                window.showNoChangeWarning("无需保存");
-              }
-              return;
-            }
+          var cancelBtn =
+            form.querySelector("a.btn-light") ||
+            document.querySelector("a.btn-outline-secondary");
+          var fallbackListUrl = cancelBtn
+            ? cancelBtn.getAttribute("href")
+            : window.location.pathname +
+              "?view=" +
+              (new URLSearchParams(window.location.search).get("view") || "");
 
-            var extracted = extractAlertFromHtmlResponse(cleanText);
-            if (extracted && extracted.message) {
-              renderInlineFormAlert(form, extracted.message, extracted.type);
-              return;
+          // --- SCENARIO A: Valid JSON Payload ---
+          if (payload) {
+            if (payload.success) {
+              window.location.replace(
+                sanitizeUrl(payload.redirect || fallbackListUrl),
+              );
+            } else {
+              renderInlineFormAlert(
+                form,
+                payload.message || "保存失败",
+                "danger",
+              );
             }
-
-            if (cleanText) {
-              var plainMessage = cleanText
-                .replace(/<script[\s\S]*?<\/script>/gi, "")
-                .replace(/<style[\s\S]*?<\/style>/gi, "")
-                .replace(/<[^>]+>/g, " ")
-                .replace(/\s+/g, " ")
-                .trim();
-              if (plainMessage && plainMessage.length <= 200) {
-                renderInlineFormAlert(form, plainMessage, "danger");
-                return;
-              }
-            }
-
-            renderInlineFormAlert(form, "服务器通信失败", "danger");
             return;
           }
 
-          if (payload && payload.success) {
-            if (payload.redirect) {
-              window.location.href = payload.redirect;
-              return;
+          // --- SCENARIO B: Fallback if JSON fails entirely ---
+          if (cleanText.indexOf("无需保存") !== -1) {
+            if (typeof window.showNoChangeWarning === "function")
+              window.showNoChangeWarning("无需保存");
+            return;
+          }
+
+          var isSuccess =
+            cleanText.indexOf('"success":true') !== -1 ||
+            cleanText.indexOf('"success": true') !== -1;
+          if (isSuccess) {
+            var redirectMatch = cleanText.match(/"redirect"\s*:\s*"([^"]+)"/);
+            if (redirectMatch && redirectMatch[1]) {
+              window.location.replace(sanitizeUrl(redirectMatch[1]));
+            } else {
+              window.location.replace(sanitizeUrl(fallbackListUrl));
             }
-            renderInlineFormAlert(
-              form,
-              payload.message || "保存成功",
-              "success",
-            );
+            return;
+          }
+
+          var mixedMessage =
+            typeof extractMessageFromMixedResponse === "function"
+              ? extractMessageFromMixedResponse(cleanText)
+              : null;
+          if (mixedMessage) {
+            renderInlineFormAlert(form, mixedMessage, "danger");
             return;
           }
 
           renderInlineFormAlert(
             form,
-            (payload && payload.message) || "保存失败",
+            "服务器通信失败或返回了异常数据",
             "danger",
           );
         })
-        .catch(function () {
-          renderInlineFormAlert(form, "服务器通信失败", "danger");
+        .catch(function (err) {
+          renderInlineFormAlert(form, "网络请求失败", "danger");
         });
     });
   });

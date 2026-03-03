@@ -112,7 +112,7 @@ function isAjax() {
 
 function requireLogin() {
     if (!hasSession('logged_in') || session('logged_in') !== true) {
-        $loginUrl = defined('URL_LOGIN') ? URL_LOGIN : '/login.php';
+        $loginUrl = defined('URL_LOGIN') ? URL_LOGIN : '/login/';
 
         // 1. Handle JSON/AJAX/API requests (e.g., DataTables or background saves)
         $isAjax = isAjax();
@@ -286,6 +286,9 @@ function safeJsonEncode($data) {
             if (defined('JSON_INVALID_UTF8_SUBSTITUTE')) {
                 $flags |= JSON_INVALID_UTF8_SUBSTITUTE;
             }
+            if (defined('JSON_UNESCAPED_SLASHES')) {
+            $flags |= JSON_UNESCAPED_SLASHES;
+            }
             $encoded = json_encode($data, $flags);
             if ($encoded !== false) {
                 return $encoded;
@@ -331,6 +334,11 @@ function safeJsonEncode($data) {
  * Send a standard JSON response and terminate request.
  */
 function respondJsonAndExit($success, $message, $redirect = '') {
+    // Clean ALL output buffers safely without suppressing system errors
+    while (ob_get_level() > 0) {
+        ob_end_clean();
+    }
+
     if (!headers_sent()) {
         header('Content-Type: application/json; charset=utf-8');
     }
@@ -762,7 +770,7 @@ function processAuthorVerificationEmail($conn, $userId, $actionType, $rejectReas
         '{{real_name}}' => (string)($authorProfile['real_name'] ?? ''),
         '{{pen_name}}' => (string)($authorProfile['pen_name'] ?? ''),
         '{{reject_reason}}' => $resolvedRejectReason,
-        '{{dashboard_url}}' => (string)(defined('URL_USER_DASHBOARD') ? URL_USER_DASHBOARD : '/dashboard.php')
+        '{{dashboard_url}}' => (string)(defined('URL_USER_DASHBOARD') ? URL_USER_DASHBOARD : '/dashboard/')
     ];
 
     $mailSubject = strtr((string)$templateRow['subject'], $replacements);
@@ -1508,19 +1516,23 @@ function hasPagePermission($conn, $pageUrl) {
 
     // 3. Get Page ID
     $pageId = 0;
-    $stmt = $conn->prepare("SELECT id, name_cn FROM " . PAGE_INFO_LIST . " WHERE public_url = ? AND status = 'A' LIMIT 1");
-    if ($stmt) {
-        $stmt->bind_param("s", $pageUrl);
-        $stmt->execute();
-        $dbPageName = null;
-        $stmt->bind_result($pageId, $dbPageName);
-        if ($stmt->fetch()) {
-            // Save the dynamic database name into the permission object
-            if (!empty($dbPageName)) {
-                $perm->page_name = $dbPageName; 
+    $urlCandidates = getPageUrlCandidates($pageUrl, $conn);
+    foreach ($urlCandidates as $candidateUrl) {
+        $stmt = $conn->prepare("SELECT id, name_cn FROM " . PAGE_INFO_LIST . " WHERE public_url = ? AND status = 'A' LIMIT 1");
+        if ($stmt) {
+            $stmt->bind_param("s", $candidateUrl);
+            $stmt->execute();
+            $dbPageName = null;
+            $stmt->bind_result($pageId, $dbPageName);
+            if ($stmt->fetch()) {
+                if (!empty($dbPageName)) {
+                    $perm->page_name = $dbPageName;
+                }
+                $stmt->close();
+                break;
             }
+            $stmt->close();
         }
-        $stmt->close();
     }
     if (empty($pageId)) return $perm;
 
@@ -1570,6 +1582,126 @@ function hasPagePermission($conn, $pageUrl) {
     return $perm;
 }
 
+function buildPageUrlVariants($url) {
+    $rawUrl = trim((string)$url);
+    if ($rawUrl === '') {
+        return [];
+    }
+
+    $variants = [];
+    $addVariant = static function ($value) use (&$variants) {
+        $value = trim((string)$value);
+        if ($value === '') return;
+        if ($value[0] !== '/') {
+            $value = '/' . ltrim($value, '/');
+        }
+        if (!in_array($value, $variants, true)) {
+            $variants[] = $value;
+        }
+    };
+
+    $path = (string)parse_url($rawUrl, PHP_URL_PATH);
+    $query = (string)parse_url($rawUrl, PHP_URL_QUERY);
+
+    if ($path === '') {
+        $path = $rawUrl;
+    }
+
+    $normalizedPath = '/' . ltrim($path, '/');
+    $addVariant($rawUrl);
+    $addVariant($normalizedPath);
+
+    if ($query !== '') {
+        $addVariant($normalizedPath . '?' . $query);
+    }
+
+    if (substr($normalizedPath, -4) === '.php') {
+        $trimmed = substr($normalizedPath, 0, -4);
+        $pretty = rtrim('/' . ltrim($trimmed, '/'), '/');
+        $addVariant($pretty === '' ? '/' : ($pretty . '/'));
+
+        if (substr($normalizedPath, -10) === '/index.php') {
+            $base = substr($normalizedPath, 0, -10);
+            $base = rtrim($base, '/');
+            $addVariant($base === '' ? '/' : ($base . '/'));
+        }
+
+        if (substr($normalizedPath, -14) === '/dashboard.php') {
+            $base = substr($normalizedPath, 0, -14);
+            $base = rtrim($base, '/');
+            $addVariant($base === '' ? '/' : ($base . '/'));
+        }
+    }
+
+    if (substr($normalizedPath, -1) === '/' && strlen($normalizedPath) > 1) {
+        $base = rtrim($normalizedPath, '/');
+        $addVariant($base . '.php');
+        $addVariant($base . '/index.php');
+        $addVariant($base . '/dashboard.php');
+    }
+
+    if (
+        $normalizedPath !== '/' &&
+        substr($normalizedPath, -1) !== '/' &&
+        substr($normalizedPath, -4) !== '.php'
+    ) {
+        $base = rtrim($normalizedPath, '/');
+        $addVariant($base . '/');
+        $addVariant($base . '.php');
+        $addVariant($base . '/index.php');
+        $addVariant($base . '/dashboard.php');
+    }
+
+    return $variants;
+}
+
+function getPageUrlCandidates($url, $conn = null) {
+    $rawUrl = trim((string)$url);
+    if ($rawUrl === '') {
+        return [];
+    }
+
+    if ($conn === null && isset($GLOBALS['conn'])) {
+        $conn = $GLOBALS['conn'];
+    }
+
+    $candidates = buildPageUrlVariants($rawUrl);
+
+    if (!$conn) {
+        return $candidates;
+    }
+
+    static $dbUrlVariantCache = null;
+    if ($dbUrlVariantCache === null) {
+        $dbUrlVariantCache = [];
+        $result = $conn->query("SELECT public_url FROM " . PAGE_INFO_LIST . " WHERE status = 'A' AND public_url IS NOT NULL AND public_url != ''");
+        if ($result) {
+            while ($row = $result->fetch_assoc()) {
+                $publicUrl = trim((string)($row['public_url'] ?? ''));
+                if ($publicUrl === '') continue;
+                $dbUrlVariantCache[$publicUrl] = buildPageUrlVariants($publicUrl);
+            }
+            $result->free();
+        }
+    }
+
+    $matchedCanonicalUrls = [];
+    foreach ($dbUrlVariantCache as $canonicalUrl => $variants) {
+        if (!empty(array_intersect($candidates, $variants))) {
+            $matchedCanonicalUrls[] = $canonicalUrl;
+        }
+    }
+
+    foreach ($matchedCanonicalUrls as $canonicalUrl) {
+        $candidates = array_values(array_unique(array_merge($candidates, $dbUrlVariantCache[$canonicalUrl])));
+        if (!in_array($canonicalUrl, $candidates, true)) {
+            $candidates[] = $canonicalUrl;
+        }
+    }
+
+    return $candidates;
+}
+
 /**
  * Get dynamic page name from permission object or page registry.
  * Priority:
@@ -1612,24 +1744,26 @@ function getDynamicPageName($conn, $perm = null, $currentUrl = '') {
 
     // 4) Try DB lookup by public_url
     if ($conn && $lookupUrl !== '') {
-        $stmt = $conn->prepare("SELECT name_cn FROM " . PAGE_INFO_LIST . " WHERE public_url = ? AND status = 'A' LIMIT 1");
-        if ($stmt) {
-            $stmt->bind_param('s', $lookupUrl);
-            $stmt->execute();
-            $stmt->store_result();
+        $urlCandidates = getPageUrlCandidates($lookupUrl, $conn);
+        foreach ($urlCandidates as $candidateUrl) {
+            $stmt = $conn->prepare("SELECT name_cn FROM " . PAGE_INFO_LIST . " WHERE public_url = ? AND status = 'A' LIMIT 1");
+            if ($stmt) {
+                $stmt->bind_param('s', $candidateUrl);
+                $stmt->execute();
+                $stmt->store_result();
 
-            if ($stmt->num_rows > 0) {
-                $dbName = null;
-                $stmt->bind_result($dbName);
-                $stmt->fetch();
-                $stmt->close();
+                if ($stmt->num_rows > 0) {
+                    $dbName = null;
+                    $stmt->bind_result($dbName);
+                    $stmt->fetch();
+                    $stmt->close();
 
-                if (!empty($dbName)) {
-                    return (string)$dbName;
+                    if (!empty($dbName)) {
+                        return (string)$dbName;
+                    }
                 }
+                $stmt->close();
             }
-
-            $stmt->close();
         }
     }
 
@@ -1646,35 +1780,54 @@ function renderTableActions($htmlString) {
 }
 
 // Unified permission error handler (with forced redirection to dashboard home)
-// @param string $actionType Operation type ('view', 'add', 'edit', 'delete')
 // @param object $perm Permission object
+// Unified permission error handler (Dynamic Database Name Lookup)
+// @param string $actionType Operation type ('view', 'add', 'edit', 'delete', 'save')
 // Unified permission error handler (Dynamic Database Name Lookup)
 function checkPermissionError($actionType, $perm) {
     $errorMessage = null;
+    $requestedAction = trim((string)$actionType);
+    $normalizedAction = strtolower($requestedAction);
 
     // Resolve name from dynamic DB name, OR fallback
     $resolvedName = !empty($perm->page_name) ? $perm->page_name : '该页面';
 
     // Check if the permission object exists
-    if (empty($perm)) {
+    if (!is_object($perm)) {
         $errorMessage = "系统错误：无法获取 {$resolvedName} 的权限信息。";
     } else {
-        // Check specific permission based on the action type
-        switch ($actionType) {
-            case 'view':
-                if (empty($perm->view)) $errorMessage = "权限不足：您没有访问 {$resolvedName} 的权限。";
-                break;
-            case 'add':
-                if (empty($perm->add)) $errorMessage = "权限不足：您没有新增 {$resolvedName} 的权限。";
-                break;
-            case 'edit':
-                if (empty($perm->edit)) $errorMessage = "权限不足：您没有编辑 {$resolvedName} 的权限。";
-                break;
-            case 'delete':
-                if (empty($perm->delete)) $errorMessage = "权限不足：您没有删除 {$resolvedName} 的权限。";
-                break;
-            default:
-                $errorMessage = "权限不足：未知的操作类型。";
+        if ($normalizedAction === '') {
+            $errorMessage = "权限不足：未知的操作类型。";
+        } else {
+            // 1) Dynamically verify whether this action exists in PAGE_ACTION
+            static $activeActionMap = null;
+            if ($activeActionMap === null) {
+                $activeActionMap = [];
+                if (!empty($GLOBALS['conn'])) {
+                    // Fetch the original English 'name' from the DB
+                    $actionRes = $GLOBALS['conn']->query("SELECT name FROM " . PAGE_ACTION . " WHERE status = 'A'");
+                    if ($actionRes) {
+                        while ($row = $actionRes->fetch_assoc()) {
+                            $dbActionName = trim((string)($row['name'] ?? ''));
+                            $lowerKey = strtolower($dbActionName);
+                            if ($lowerKey !== '') {
+                                // Store it exactly as it appears in the DB (preserves capitalization like 'Edit')
+                                $activeActionMap[$lowerKey] = $dbActionName;
+                            }
+                        }
+                        $actionRes->free();
+                    }
+                }
+            }
+
+            if (!isset($activeActionMap[$normalizedAction])) {
+                $errorMessage = "权限不足：操作 {$requestedAction} 未在页面操作管理中启用。";
+            } elseif (empty($perm->$normalizedAction)) {
+                // Fetch the exact English name from the DB mapping
+                $actionLabel = $activeActionMap[$normalizedAction];
+                // Display it cleanly using brackets so mixing English and Chinese looks good
+                $errorMessage = "权限不足：您没有 [{$actionLabel}] {$resolvedName} 的权限。";
+            }
         }
     }
 
@@ -1694,7 +1847,7 @@ function checkPermissionError($actionType, $perm) {
         $currentView = input('view') ?? '';
         $isDashboardHome = (strpos(getServer('SCRIPT_NAME'), 'dashboard.php') !== false) && empty($currentView);
 
-        $targetRedirectUrl = ($isDashboardHome || $resolvedName === '仪表盘首页') ? (defined('URL_HOME') ? URL_HOME : '/index.php') : (defined('URL_USER_DASHBOARD') ? URL_USER_DASHBOARD : '/dashboard.php');
+        $targetRedirectUrl = ($isDashboardHome || $resolvedName === '仪表盘首页') ? (defined('URL_HOME') ? URL_HOME : '/index.php') : (defined('URL_USER_DASHBOARD') ? URL_USER_DASHBOARD : '/dashboard/');
         
         if (!headers_sent()) {
             header("Location: " . $targetRedirectUrl);
@@ -1715,13 +1868,13 @@ function checkPermissionError($actionType, $perm) {
  */
 function generateBreadcrumb($conn, $currentUrl, $fallbackName = '') {
     $homeText = '首页';
-    // Fallback to /dashboard.php if constant is not defined
-    $homeUrl = defined('URL_USER_DASHBOARD') ? URL_USER_DASHBOARD : '/dashboard.php'; 
+    // Fallback to /dashboard/ if constant is not defined
+    $homeUrl = defined('URL_USER_DASHBOARD') ? URL_USER_DASHBOARD : '/dashboard/'; 
     $pageName = $fallbackName;
 
     // Admin Info
     $adminCenterText = '管理员管理';
-    $adminCenterUrl = defined('URL_ADMIN_DASHBOARD') ? URL_ADMIN_DASHBOARD : ($homeUrl . '?view=admin');
+    $adminCenterUrl = defined('URL_ADMIN_DASHBOARD') ? URL_ADMIN_DASHBOARD : '/admin/';
     $isAdminPage = false;
     $isAdminHome = false;
 
@@ -1739,8 +1892,13 @@ function generateBreadcrumb($conn, $currentUrl, $fallbackName = '') {
 
         // Check if Admin Page
         $adminViews = ['admin', 'page_action', 'page_info', 'user_role'];
-        $isAdminPage = in_array($viewParam, $adminViews, true) || ($pathPart !== '' && strpos($pathPart, '/src/pages/admin/') !== false);
+        $isAdminPage = in_array($viewParam, $adminViews, true)
+            || ($pathPart !== '' && (strpos($pathPart, '/src/pages/admin/') !== false || strpos($pathPart, '/admin/') === 0));
         $isAdminHome = ($viewParam === 'admin');
+
+        if ($pathPart === '/admin/' || $pathPart === '/admin/dashboard.php') {
+            $isAdminHome = true;
+        }
 
         // Check if Author Page (URL starts with /author/)
         $isAuthorPage = ($pathPart !== '' && strpos($pathPart, '/author/') === 0);
@@ -1751,18 +1909,23 @@ function generateBreadcrumb($conn, $currentUrl, $fallbackName = '') {
 
     // Fetch translated/actual name from Database
     if ($conn && !empty($currentUrl)) {
-        $stmt = $conn->prepare("SELECT name_cn FROM " . PAGE_INFO_LIST . " WHERE public_url = ? AND status = 'A' LIMIT 1");
-        if ($stmt) {
-            $stmt->bind_param("s", $currentUrl);
-            $stmt->execute();
-            
-            $dbName = null; 
-            $stmt->bind_result($dbName);
-            
-            if ($stmt->fetch() && !empty($dbName)) {
-                $pageName = $dbName;
+        $urlCandidates = getPageUrlCandidates($currentUrl, $conn);
+        foreach ($urlCandidates as $candidateUrl) {
+            $stmt = $conn->prepare("SELECT name_cn FROM " . PAGE_INFO_LIST . " WHERE public_url = ? AND status = 'A' LIMIT 1");
+            if ($stmt) {
+                $stmt->bind_param("s", $candidateUrl);
+                $stmt->execute();
+
+                $dbName = null;
+                $stmt->bind_result($dbName);
+
+                if ($stmt->fetch() && !empty($dbName)) {
+                    $pageName = $dbName;
+                    $stmt->close();
+                    break;
+                }
+                $stmt->close();
             }
-            $stmt->close();
         }
     }
 
@@ -1942,7 +2105,7 @@ function getAuthorProfileStatus($conn, $userId) {
  */
 function requireApprovedAuthor($conn, $userId) {
     if (!$conn || empty($userId)) {
-        header("Location: " . (defined('URL_LOGIN') ? URL_LOGIN : '/login.php'));
+        header("Location: " . (defined('URL_LOGIN') ? URL_LOGIN : '/login/'));
         exit();
     }
 

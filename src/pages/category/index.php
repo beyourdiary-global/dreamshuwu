@@ -6,31 +6,29 @@ require_once dirname(__DIR__, 3) . '/common.php';
 requireLogin();
 
 // 1. Identify this specific view's URL as registered in your DB
-$currentUrl = '/dashboard.php?view=categories'; 
+$currentUrl = parse_url(URL_NOVEL_CATS, PHP_URL_PATH) ?: '/category.php'; 
 
 // [ADDED] Fetch the dynamic permission object for this page
 $perm = hasPagePermission($conn, $currentUrl);
 $pageName = getDynamicPageName($conn, $perm, $currentUrl);
 
-// --- 2. Check View Permission ---
 checkPermissionError('view', $perm);
 
 $catTable  = NOVEL_CATEGORY;
 $linkTable = CATEGORY_TAG;
 $tagTable  = NOVEL_TAGS;
-$auditPage = 'Category Management'; // Define audit page for logging
+$auditPage = 'Category Management';
 
-// [REVERTED] Back to standard fetching and Hard Delete
-$viewQuery = "SELECT id, name FROM " . $catTable;
-$deleteQuery = "DELETE FROM " . $catTable . " WHERE id = ?";
+// Soft Delete Queries
+$viewQuery = "SELECT id, name FROM " . $catTable . " WHERE status = 'A'";
+$deleteQuery = "UPDATE " . $catTable . " SET status = 'D', updated_by = ?, updated_at = NOW() WHERE id = ?";
 
-// 2. Embed Detection
-$isEmbeddedInDashboard = isset($EMBED_CATS_PAGE) && $EMBED_CATS_PAGE === true;
+// 2. Mode Detection
 $catMode = input(QUERY_CAT_MODE) !== '' ? input(QUERY_CAT_MODE) : input('pa_mode');
 $pageActionMode = ($catMode === QUERY_FORM_MODE) ? QUERY_FORM_MODE : 'list';
 
-if ($isEmbeddedInDashboard && $pageActionMode === 'form') {
-    $EMBED_CAT_FORM_PAGE = true;
+// When form mode is requested, include the form page directly
+if ($pageActionMode === 'form') {
     require BASE_PATH . PATH_NOVEL_CATS_FORM;
     return;
 }
@@ -46,9 +44,9 @@ if (input('mode') === 'data') {
     // Use getArray one-liner for DataTables nested search
     $search = getArray('search')['value'] ?? '';
 
-    // [REVERTED] Removed is_active filter
-    $sql = "SELECT id, name FROM $catTable WHERE 1=1";
-    $countSql = "SELECT COUNT(*) FROM $catTable WHERE 1=1";
+    // Only load active categories
+    $sql = "SELECT id, name FROM $catTable WHERE status = 'A'";
+    $countSql = "SELECT COUNT(*) FROM $catTable WHERE status = 'A'";
 
     $mainParams = []; $mainTypes = "";
     $countParams = []; $countTypes = "";
@@ -101,7 +99,7 @@ if (input('mode') === 'data') {
     }
     $stmt->close();
 
-    // Fetch Tags
+    // Fetch Tags (Only Active Tags `status = 'A'`)
     $tagsMap = [];
     if (!empty($categories)) {
         $catIds = array_column($categories, 'id');
@@ -110,7 +108,7 @@ if (input('mode') === 'data') {
             $tagSql = "SELECT ct.category_id, t.name 
                        FROM $linkTable ct 
                        JOIN $tagTable t ON ct.tag_id = t.id 
-                       WHERE ct.category_id IN ($idList)
+                       WHERE ct.category_id IN ($idList) AND t.status = 'A'
                        ORDER BY t.name ASC";
             $tRes = $conn->query($tagSql);
             if ($tRes) {
@@ -175,19 +173,20 @@ $deleteError = checkPermissionError('delete', $perm);
 
     $id = intval(post('id'));
     $name = post('name') ?? 'Unknown';
+    $currentUserId = sessionInt('user_id');
 
-    // 1. Fetch Old Data BEFORE Deleting
+    // 1. Fetch Old Data
     $oldData = null;
-    $fetchOld = $conn->prepare("SELECT id, name, created_at, updated_at, created_by, updated_by FROM " . $catTable . " WHERE id = ?");
+    $fetchOld = $conn->prepare("SELECT id, name, status, created_at, updated_at, created_by, updated_by FROM " . $catTable . " WHERE id = ?");
     if ($fetchOld) {
         $fetchOld->bind_param("i", $id);
         if ($fetchOld->execute()) {
-            $fetchOld->store_result(); // Buffer the result
+            $fetchOld->store_result(); 
             if ($fetchOld->num_rows > 0) {
-                $fetchOld->bind_result($oId, $oName, $oCr, $oUp, $oCb, $oUb);
+                $fetchOld->bind_result($oId, $oName, $oStatus, $oCr, $oUp, $oCb, $oUb);
                 $fetchOld->fetch();
                 $oldData = [
-                    'id' => $oId, 'name' => $oName, 'created_at' => $oCr, 
+                    'id' => $oId, 'name' => $oName, 'status' => $oStatus, 'created_at' => $oCr, 
                     'updated_at' => $oUp, 'created_by' => $oCb, 'updated_by' => $oUb
                 ];
             }
@@ -195,15 +194,11 @@ $deleteError = checkPermissionError('delete', $perm);
         $fetchOld->close();
     }
 
-    // Fallback: still log something useful even if old row can't be loaded
     if (empty($oldData)) {
-        $oldData = [
-            'id' => $id,
-            'name' => $name,
-        ];
+        $oldData = ['id' => $id, 'name' => $name];
     }
 
-    // 2. Logical Pre-Validation & Hard Deletion
+    // 2. Logic Validation & Soft Delete
     try {
         $checkSql = "SELECT COUNT(*) FROM " . NOVEL . " WHERE category_id = ?";
         $checkStmt = $conn->prepare($checkSql);
@@ -223,32 +218,28 @@ $deleteError = checkPermissionError('delete', $perm);
 
         $conn->begin_transaction();
 
-        // [RESTORED] Step 2: Unlink tags from this category FIRST (Required for Hard Delete)
-        $delLink = $conn->prepare("DELETE FROM $linkTable WHERE category_id = ?");
-        if ($delLink) {
-            $delLink->bind_param("i", $id);
-            if (!$delLink->execute()) throw new Exception("标签解绑失败");
-            $delLink->close();
-        }
-
-        // [REVERTED] Step 3: HARD DELETE the category 
+        // Soft Delete the Category
         $stmt = $conn->prepare($deleteQuery);
-        $stmt->bind_param("i", $id); 
+        $stmt->bind_param("ii", $currentUserId, $id); 
         if (!$stmt->execute()) throw new Exception($stmt->error);
 
         $conn->commit();
+
+        $newData = $oldData;
+        $newData['status'] = 'D';
 
         if (function_exists('logAudit')) {
             logAudit([
                 'page'           => $auditPage,
                 'action'         => 'D',
-                'action_message' => 'Deleted Category: ' . $name,
+                'action_message' => 'Soft Deleted Category: ' . $name,
                 'query'          => $deleteQuery,
                 'query_table'    => $catTable,
-                'user_id'        => sessionInt('user_id'),
+                'user_id'        => $currentUserId,
                 'record_id'      => $id,
                 'record_name'    => $name,
-                'old_value'      => $oldData
+                'old_value'      => $oldData,
+                'new_value'      => $newData
             ]);
         }
         echo safeJsonEncode(['success' => true]);
@@ -259,7 +250,7 @@ $deleteError = checkPermissionError('delete', $perm);
     }
     exit();
 }
-// API URL for DataTables
+
 $fullApiUrl = URL_NOVEL_CATS_API;
 
 // Log that user viewed this page
@@ -282,46 +273,8 @@ if ($flashMsg !== '') {
     unsetSession('flash_type');
 }
 
-
-// HTML Output
-if ($isEmbeddedInDashboard):
-    $pageScripts = ['jquery.dataTables.min.js', 'dataTables.bootstrap.min.js', 'src/pages/category/js/category.js'];
 ?>
-<link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/dataTables.bootstrap.min.css">
-<div class="category-container">
-    <div class="card category-card">
-        <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
-            <div>
-                <?php echo generateBreadcrumb($conn, $currentUrl); ?>
-                <h4 class="m-0 text-primary"><i class="fa-solid fa-layer-group"></i> <?php echo htmlspecialchars($pageName); ?></h4>
-            </div>
-            <?php if ($perm->add): ?>
-            <a href="<?php echo URL_NOVEL_CATS_FORM; ?>" class="btn btn-primary desktop-add-btn"><i class="fa-solid fa-plus"></i> 新增分类</a>
-            <?php endif; ?>
-        </div>
-        <div class="card-body">
-            <?php if ($flashMsg): ?>
-                <div class="alert alert-<?php echo htmlspecialchars($flashType); ?> alert-dismissible fade show">
-                    <?php echo htmlspecialchars($flashMsg); ?> <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-            <?php endif; ?>
-            <table id="categoryTable" class="table table-hover w-100" 
-                   data-api-url="<?php echo $fullApiUrl; ?>?mode=data"
-                   data-delete-url="<?php echo $fullApiUrl; ?>">
-                <thead>
-                    <tr>
-                        <th style="width:80px;">ID</th>
-                        <th>分类名称</th>
-                        <th>关联标签</th>
-                        <th style="width:100px;">操作</th>
-                    </tr>
-                </thead>
-            </table>
-        </div>
-    </div>
-</div>
-<?php else: ?>
-<?php $pageMetaKey = '/dashboard.php?view=categories'; ?>
+<?php $pageMetaKey = $currentUrl; ?>
 <!DOCTYPE html>
 <head>
     <?php require_once BASE_PATH . 'include/header.php'; ?>
@@ -329,7 +282,7 @@ if ($isEmbeddedInDashboard):
 </head>
 <body>
 <?php require_once BASE_PATH . 'common/menu/header.php'; ?>
-<div class="category-container">
+<div class="category-container app-page-shell">
     <div class="card category-card">
         <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
             <div>
@@ -369,4 +322,3 @@ if ($isEmbeddedInDashboard):
 <script src="<?php echo SITEURL; ?>/src/pages/category/js/category.js"></script>
 </body>
 </html>
-<?php endif; ?>

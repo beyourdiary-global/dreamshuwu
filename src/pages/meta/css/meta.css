@@ -1,10 +1,8 @@
 /* assets/css/meta.css */
 
 /* GLOBAL LAYOUT & CARD */
-body {
-  background-color: var(--bg-card);
+body.meta-page {
   min-height: 100vh;
-  padding-bottom: 500px;
 }
 
 .meta-card {
@@ -31,9 +29,10 @@ body {
   background-color: var(--bg-body);
   padding: 6px;
   border-radius: var(--radius-md);
-  display: inline-flex;
-  margin-bottom: 25px;
+  display: flex;
+  margin: 0 auto 25px;
   width: 100%;
+  max-width: 520px;
 }
 
 .nav-pills .nav-link {
@@ -46,7 +45,12 @@ body {
   text-align: center;
   margin: 0;
   border: none;
-  width: 50%;
+  width: auto;
+  flex: 1 1 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 50px;
 }
 
 .nav-pills .nav-link.active {
@@ -55,17 +59,20 @@ body {
   box-shadow: var(--shadow-sm);
 }
 
-.nav-link:hover:not(.active) {
+.meta-settings-container .nav-link:hover:not(.active),
+.container .nav-link:hover:not(.active) {
   color: var(--text-main);
-  background-color: rgba(255, 255, 255, 0.5);
+  background-color: var(--interactive-hover-bg, var(--bg-body));
 }
 
-.nav-link i {
+.meta-settings-container .nav-link i,
+.container .nav-link i {
   margin-right: var(--space-sm);
   color: var(--text-light);
 }
 
-.nav-link.active i {
+.meta-settings-container .nav-link.active i,
+.container .nav-link.active i {
   color: var(--primary-color);
 }
 
@@ -98,13 +105,13 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  box-shadow: 0 0 0 4px rgba(35, 61, 210, 0.05); /* Match primary color tint */
+  box-shadow: 0 0 0 4px var(--primary-soft-05);
 }
 
 .page-select-toggle:focus {
   outline: none;
   border-color: var(--primary-color);
-  box-shadow: 0 0 0 4px rgba(35, 61, 210, 0.15);
+  box-shadow: 0 0 0 4px var(--primary-soft-15);
 }
 
 .page-select-caret {
@@ -149,7 +156,7 @@ body {
 .form-control:focus,
 .form-select:focus {
   border-color: var(--primary-color);
-  box-shadow: 0 0 0 4px rgba(35, 61, 210, 0.15);
+  box-shadow: 0 0 0 4px var(--primary-soft-15);
   outline: 0;
 }
 

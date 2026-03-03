@@ -1,5 +1,9 @@
 /* assets/css/webSetting.css */
 
+#webSettingsForm .websetting-section-title {
+  color: var(--theme-text-color) !important;
+}
+
 /* Tablet Action Buttons (768px - 1023px) */
 body.is-tablet {
   #webSettingsForm .row.mt-5.pt-3.border-top {

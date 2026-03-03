@@ -73,8 +73,12 @@ if (isPostRequest() && empty(post('mode'))) {
             $canContinue = false;
         }
 
+        $isRecoveryMode = false;
+        $recoveryId = null;
+
         if ($canContinue) {
-            $dupSql = "SELECT id FROM {$tableInfo} WHERE (name_en = ? OR name_cn = ? OR public_url = ?) AND status = 'A' "
+            // [MODIFIED] Removed "AND status = 'A'" to find soft-deleted records as well
+            $dupSql = "SELECT id, status FROM {$tableInfo} WHERE (name_en = ? OR name_cn = ? OR public_url = ?) "
                 . ($recordId > 0 ? 'AND id != ?' : '')
                 . ' LIMIT 1';
             $dupStmt = $conn->prepare($dupSql);
@@ -93,17 +97,26 @@ if (isPostRequest() && empty(post('mode'))) {
                 }
                 $dupStmt->execute();
                 $dupStmt->store_result();
-                $dupExists = $dupStmt->num_rows > 0;
-                $dupStmt->close();
+                
+                if ($dupStmt->num_rows > 0) {
+                    $dupStmt->bind_result($dupId, $dupStatus);
+                    $dupStmt->fetch();
 
-                if ($dupExists) {
-                    if ($wantsJson) {
-                        respondJsonAndExit(false, 'Name (EN/CN) 或 Public URL 已存在。');
+                    if ($dupStatus === 'D' && !$isEditMode) {
+                        // Trigger recovery if it's a deleted record and we are adding a new one
+                        $isRecoveryMode = true;
+                        $recoveryId = $dupId;
+                    } else {
+                        // Conflict with an active record OR conflict during Edit mode
+                        if ($wantsJson) {
+                            respondJsonAndExit(false, 'Name (EN/CN) 或 Public URL 已存在。');
+                        }
+                        setSession('flash_msg', 'Name (EN/CN) 或 Public URL 已存在。');
+                        setSession('flash_type', 'danger');
+                        $canContinue = false;
                     }
-                    setSession('flash_msg', 'Name (EN/CN) 或 Public URL 已存在。');
-                    setSession('flash_type', 'danger');
-                    $canContinue = false;
                 }
+                $dupStmt->close();
             }
         }
 
@@ -115,7 +128,13 @@ if (isPostRequest() && empty(post('mode'))) {
                 setSession('flash_msg', '记录不存在或已删除');
                 setSession('flash_type', 'warning');
                 pageInfoRedirect($baseListUrl);
+            } elseif ($canContinue && $isRecoveryMode) {
+            // Fetch old info so the audit log shows transition from D to A
+            $oldPageInfo = fetchPageInfoRowById($conn, $tableInfo, $recoveryId);
+            if ($oldPageInfo) {
+                $oldPageInfo['status'] = 'D'; 
             }
+        }
 
             $oldActStmt = $conn->prepare("SELECT action_id FROM {$tableMaster} WHERE page_id = ?");
             if ($oldActStmt) {
@@ -137,7 +156,24 @@ if (isPostRequest() && empty(post('mode'))) {
             $mainActionType = '';
             $executedSql = '';
 
-            if ($recordId > 0) {
+            if ($isRecoveryMode) {
+                // [NEW] Execute Soft Delete Recovery Update
+                $executedSql = "UPDATE {$tableInfo} SET name_en=?, name_cn=?, description=?, public_url=?, file_path=?, status='A', created_by=?, created_at=NOW(), updated_by=?, updated_at=NOW() WHERE id=?";
+                $stmt = $conn->prepare($executedSql);
+                $stmt->bind_param('sssssiii', $name_en, $name_cn, $description, $public_url, $file_path, $currentUserId, $currentUserId, $recoveryId);
+                $stmt->execute();
+                $stmt->close();
+
+                // Clear any lingering action bindings just in case
+                $deleteSql = "DELETE FROM {$tableMaster} WHERE page_id = ?";
+                $deleteStmt = $conn->prepare($deleteSql);
+                $deleteStmt->bind_param('i', $recoveryId);
+                $deleteStmt->execute();
+                $deleteStmt->close();
+
+                $targetId = $recoveryId;
+                $mainActionType = 'A'; // Treated as Add/Recovery
+            } elseif ($recordId > 0) {
                 $executedSql = "UPDATE {$tableInfo} SET name_en=?, name_cn=?, description=?, public_url=?, file_path=?, updated_by=?, updated_at=NOW() WHERE id=? AND status='A'";
                 $stmt = $conn->prepare($executedSql);
                 $stmt->bind_param('sssssii', $name_en, $name_cn, $description, $public_url, $file_path, $currentUserId, $recordId);
@@ -175,12 +211,22 @@ if (isPostRequest() && empty(post('mode'))) {
 
             $conn->commit();
 
+            $permissionAuditParts = ["DELETE FROM {$tableMaster} WHERE page_id = {$targetId}"];
+            if (!empty($selectedActions)) {
+                $permissionRows = [];
+                foreach ($selectedActions as $actId) {
+                    $permissionRows[] = '(' . (int)$targetId . ', ' . (int)$actId . ', ' . (int)$currentUserId . ')';
+                }
+                $permissionAuditParts[] = "INSERT INTO {$tableMaster} (page_id, action_id, created_by) VALUES " . implode(', ', $permissionRows);
+            }
+            $permissionAuditQuery = implode('; ', $permissionAuditParts);
+
             $newPageInfo = fetchPageInfoRowById($conn, $tableInfo, $targetId);
             if (function_exists('logAudit')) {
                 logAudit([
                     'page' => $auditPage,
                     'action' => $mainActionType,
-                    'action_message' => ($mainActionType === 'A' ? 'Added' : 'Updated') . " Page Info: {$name_en}",
+                    'action_message' => ($isRecoveryMode ? 'Recovered Soft-Deleted' : ($mainActionType === 'A' ? 'Added' : 'Updated')) . " Page Info: {$name_en}",
                     'query' => $executedSql,
                     'query_table' => $tableInfo,
                     'user_id' => $currentUserId,
@@ -194,6 +240,8 @@ if (isPostRequest() && empty(post('mode'))) {
                         'page' => $auditPage,
                         'action' => $mainActionType === 'A' ? 'PAGE_ACTION_BIND' : 'PAGE_ACTION_UPDATE',
                         'action_message' => "Permissions updated for: {$name_en}",
+                        'query' => $permissionAuditQuery,
+                        'query_table' => $tableMaster,
                         'user_id' => $currentUserId,
                         'record_id' => $targetId,
                         'old_value' => ['action_ids' => $oldActionIds],
@@ -202,10 +250,16 @@ if (isPostRequest() && empty(post('mode'))) {
                 }
             }
 
-            setSession('flash_msg', '保存成功.');
+            // 1. Determine the correct message based on the mode
+            $successMsg = $isEditMode ? '保存成功。' : '新增成功。';
+
+            // 2. Set it for the List Page banner
+            setSession('flash_msg', $successMsg);
             setSession('flash_type', 'success');
+
+            // 3. Send it back to JavaScript
             if ($wantsJson) {
-                respondJsonAndExit(true, '保存成功.', $baseListUrl);
+                respondJsonAndExit(true, $successMsg, $baseListUrl);
             }
             pageInfoRedirect($baseListUrl);
             } catch (Exception $e) {
@@ -255,7 +309,7 @@ if ($res) {
 }
 ?>
 
-<div class="container-fluid px-0">
+<div class="app-page-shell">
     <div class="card page-action-card">
         <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
             <div>

@@ -164,9 +164,10 @@ $(document).ready(function () {
   });
 
   function applyMobileColumnVisibility() {
-    var isSmall = window.matchMedia("(max-width: 767px)").matches;
-    // Keep: [0]=details button, [1]=Page, [2]=Action
-    // Hide on small: Message/User/Date/Time
+    var isSmall = document.body.classList.contains("is-mobile");
+    // Keep: [0]=details button, [1]=序号(ID), [3]=Action
+    // Hide on small: [2]=Page, [4]=Message, [5]=User, [6]=Date, [7]=Time
+    table.column(2).visible(!isSmall, false);
     table.column(4).visible(!isSmall, false);
     table.column(5).visible(!isSmall, false);
     table.column(6).visible(!isSmall, false);

@@ -3,7 +3,7 @@ require_once dirname(__DIR__, 3) . '/common.php';
 // Auth Check
 requireLogin();
 
-$currentUrl = '/dashboard.php?view=profile';
+$currentUrl = parse_url(URL_PROFILE, PHP_URL_PATH) ?: '/profile.php';
 $perm = hasPagePermission($conn, $currentUrl);
 $pageName = getDynamicPageName($conn, $perm, $currentUrl);
 
@@ -16,8 +16,8 @@ $auditPage = 'User Profile';
 $passwordChangeSuccess = false;
 $passwordRedirectUrl = '';
 
-// Determine redirect URL based on context (embedded in dashboard or standalone)
-$profileRedirectUrl = defined('PROFILE_EMBEDDED') ? URL_USER_DASHBOARD . '?view=profile' : URL_PROFILE;
+// Determine redirect URL
+$profileRedirectUrl = URL_PROFILE;
 
 // Flash Message Check (This reads the message after redirect)
 if (hasSession('flash_msg')) {
@@ -248,13 +248,19 @@ if (getServer('REQUEST_METHOD') === 'GET' && function_exists('logAudit')){
     ]);
 }
 
-$pageScripts = ['src/pages/user/js/user-profile.js?v=' . filemtime(BASE_PATH . 'src/pages/user/js/user-profile.js')];
+$pageMetaKey = $currentUrl;
+$customCSS[] = 'src/pages/user/css/profile.css';
 ?>
-<div class="profile-container">
+<!DOCTYPE html>
+<head>
+    <?php require_once BASE_PATH . 'include/header.php'; ?>
+</head>
+<body>
+<?php require_once BASE_PATH . 'common/menu/header.php'; ?>
+<div class="profile-container app-page-shell">
     <div class="section-header">
         <div class="header-text-content">
             <?php echo generateBreadcrumb($conn, $currentUrl); ?>
-            <h2><?php echo htmlspecialchars($pageName); ?></h2>
         </div>
     </div>
 
@@ -365,3 +371,9 @@ $pageScripts = ['src/pages/user/js/user-profile.js?v=' . filemtime(BASE_PATH . '
     </div>
     <?php endif; ?>
 </div>
+<script src="<?php echo URL_ASSETS; ?>/js/jquery-3.6.0.min.js"></script>
+<script src="<?php echo URL_ASSETS; ?>/js/bootstrap.bundle.min.js"></script>
+<script src="<?php echo URL_ASSETS; ?>/js/sweetalert2@11.js"></script>
+<script src="<?php echo SITEURL; ?>/src/pages/user/js/user-profile.js?v=<?php echo filemtime(BASE_PATH . 'src/pages/user/js/user-profile.js'); ?>"></script>
+</body>
+</html>

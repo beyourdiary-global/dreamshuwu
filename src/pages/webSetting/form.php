@@ -2,7 +2,7 @@
     <input type="hidden" name="action_type" id="action_type_input" value="save">
     <?php $canSave = (!empty($perm->edit) || !empty($perm->add)); ?>
     
-    <h5 class="mb-3 text-primary border-bottom pb-2">Branding</h5>
+    <h5 class="mb-3 websetting-section-title border-bottom pb-2">Branding</h5>
     
     <div class="mb-4 row">
         <label class="col-md-3 col-form-label text-md-end form-label">Website Name</label>
@@ -51,7 +51,7 @@
         </div>
     </div>
 
-    <h5 class="mb-3 mt-5 text-primary border-bottom pb-2">Theme Colors</h5>
+    <h5 class="mb-3 mt-5 websetting-section-title border-bottom pb-2">Theme Colors</h5>
 
     <div class="row">
         <div class="col-md-6">

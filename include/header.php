@@ -33,6 +33,48 @@ if (!$specificSeo && isset($category['id'])) {
 
 $siteName = !empty($webSettings['website_name']) ? $webSettings['website_name'] : 'Website Name';
 
+$normalizeHexColor = function ($value, $default) {
+    $candidate = is_string($value) ? trim($value) : '';
+    return preg_match('/^#[0-9A-Fa-f]{6}$/', $candidate) ? strtoupper($candidate) : $default;
+};
+
+$hexToRgbTriplet = function ($hexColor) {
+    $cleanHex = ltrim($hexColor, '#');
+    return [
+        hexdec(substr($cleanHex, 0, 2)),
+        hexdec(substr($cleanHex, 2, 2)),
+        hexdec(substr($cleanHex, 4, 2))
+    ];
+};
+
+$darkenHexColor = function ($hexColor, $ratio) use ($hexToRgbTriplet) {
+    [$red, $green, $blue] = $hexToRgbTriplet($hexColor);
+    $ratio = max(0, min(1, (float) $ratio));
+    $newRed = (int) round($red * (1 - $ratio));
+    $newGreen = (int) round($green * (1 - $ratio));
+    $newBlue = (int) round($blue * (1 - $ratio));
+    return sprintf('#%02X%02X%02X', $newRed, $newGreen, $newBlue);
+};
+
+$hexToRgba = function ($hexColor, $alpha) use ($hexToRgbTriplet) {
+    [$red, $green, $blue] = $hexToRgbTriplet($hexColor);
+    $alpha = max(0, min(1, (float) $alpha));
+    return sprintf('rgba(%d, %d, %d, %.2f)', $red, $green, $blue, $alpha);
+};
+
+$resolvedThemeBgColor = $normalizeHexColor($webSettings['theme_bg_color'] ?? '', '#FFFFFF');
+$resolvedThemeTextColor = $normalizeHexColor($webSettings['theme_text_color'] ?? '', '#333333');
+$resolvedButtonColor = $normalizeHexColor($webSettings['button_color'] ?? '', '#233DD2');
+$resolvedButtonTextColor = $normalizeHexColor($webSettings['button_text_color'] ?? '', '#FFFFFF');
+$resolvedPageBgColor = defined('CUSTOM_PAGE_BG')
+    ? (string) CUSTOM_PAGE_BG
+    : $normalizeHexColor($webSettings['background_color'] ?? '', '#F4F7F6');
+
+$resolvedPrimaryHoverColor = $darkenHexColor($resolvedButtonColor, 0.14);
+$resolvedPrimarySoft05 = $hexToRgba($resolvedButtonColor, 0.05);
+$resolvedPrimarySoft10 = $hexToRgba($resolvedButtonColor, 0.10);
+$resolvedPrimarySoft15 = $hexToRgba($resolvedButtonColor, 0.15);
+
 $finalMetaTitle = !empty($specificSeo['meta_title']) ? $specificSeo['meta_title'] : ($globalSeo['meta_title'] ?? $siteName);
 $finalMetaDesc  = !empty($specificSeo['meta_description']) ? $specificSeo['meta_description'] : ($globalSeo['meta_description'] ?? '');
 $finalOgTitle   = !empty($specificSeo['og_title']) ? $specificSeo['og_title'] : ($globalSeo['og_title'] ?? $finalMetaTitle);
@@ -59,6 +101,7 @@ $finalOgUrl     = !empty($specificSeo['og_url']) ? $specificSeo['og_url'] : ($gl
     <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/bootstrap.min.css">
     <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/all.min.css">
     <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/header.css">
+    <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/sidebar.css">
     <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/global.css">
 
     <?php 
@@ -101,11 +144,18 @@ $finalOgUrl     = !empty($specificSeo['og_url']) ? $specificSeo['og_url'] : ($gl
 
     <style>
         :root {
-            --theme-bg-color: <?php echo htmlspecialchars($webSettings['theme_bg_color']); ?>;
-            --theme-text-color: <?php echo htmlspecialchars($webSettings['theme_text_color']); ?>;
-            --btn-color: <?php echo htmlspecialchars($webSettings['button_color']); ?>;
-            --btn-text-color: <?php echo htmlspecialchars($webSettings['button_text_color']); ?>;
-            --page-bg-color: <?php echo defined('CUSTOM_PAGE_BG') ? CUSTOM_PAGE_BG : htmlspecialchars($webSettings['background_color']); ?>;
+            --theme-bg-color: <?php echo htmlspecialchars($resolvedThemeBgColor, ENT_QUOTES, 'UTF-8'); ?>;
+            --theme-text-color: <?php echo htmlspecialchars($resolvedThemeTextColor, ENT_QUOTES, 'UTF-8'); ?>;
+            --btn-color: <?php echo htmlspecialchars($resolvedButtonColor, ENT_QUOTES, 'UTF-8'); ?>;
+            --btn-text-color: <?php echo htmlspecialchars($resolvedButtonTextColor, ENT_QUOTES, 'UTF-8'); ?>;
+            --page-bg-color: <?php echo htmlspecialchars($resolvedPageBgColor, ENT_QUOTES, 'UTF-8'); ?>;
+            --primary-color: <?php echo htmlspecialchars($resolvedButtonColor, ENT_QUOTES, 'UTF-8'); ?>;
+            --primary-hover: <?php echo htmlspecialchars($resolvedPrimaryHoverColor, ENT_QUOTES, 'UTF-8'); ?>;
+            --btn-hover-color: <?php echo htmlspecialchars($resolvedPrimaryHoverColor, ENT_QUOTES, 'UTF-8'); ?>;
+            --primary-soft-05: <?php echo htmlspecialchars($resolvedPrimarySoft05, ENT_QUOTES, 'UTF-8'); ?>;
+            --primary-soft-10: <?php echo htmlspecialchars($resolvedPrimarySoft10, ENT_QUOTES, 'UTF-8'); ?>;
+            --primary-soft-15: <?php echo htmlspecialchars($resolvedPrimarySoft15, ENT_QUOTES, 'UTF-8'); ?>;
+            --interactive-hover-bg: <?php echo htmlspecialchars($resolvedPrimarySoft10, ENT_QUOTES, 'UTF-8'); ?>;
         }
     </style>
 

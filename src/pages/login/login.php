@@ -59,6 +59,19 @@ if (isPostRequest()) {
                 if (session_status() !== PHP_SESSION_ACTIVE) session_start();
                 session_regenerate_id(true);
 
+                if (!headers_sent() && session_name() !== '' && session_id() !== '') {
+                    $lifetime = defined('SESSION_LIFETIME') ? (int)SESSION_LIFETIME : (60 * 60 * 24 * 30);
+                    $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+                    setcookie(session_name(), session_id(), [
+                        'expires' => time() + $lifetime,
+                        'path' => '/',
+                        'domain' => '',
+                        'secure' => $isHttps,
+                        'httponly' => true,
+                        'samesite' => 'Lax',
+                    ]);
+                }
+
                 // Set session variables including role_id
                 setSession('user_id', $user['id']);
                 setSession('user_name', $user['name'] ?? $email);
@@ -114,7 +127,7 @@ if (isPostRequest()) {
     }
 }
 ?>
-<?php $pageMetaKey = 'login'; ?>
+<?php $pageMetaKey = parse_url(URL_LOGIN, PHP_URL_PATH) ?: '/login.php'; ?>
 <!DOCTYPE html>
 <head>
     <?php require_once BASE_PATH . 'include/header.php'; ?>

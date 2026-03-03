@@ -43,6 +43,21 @@
   border-radius: var(--radius-md);
   border: 1px solid var(--border-color);
   margin: 10px 0;
+  text-align: left !important;
+}
+.detail-box * {
+  text-align: left !important;
+}
+.detail-box .row,
+.detail-box .col-xs-12,
+.detail-box .col-md-6,
+.detail-box .mb-2,
+.detail-box .mb-3,
+.detail-box strong {
+  text-align: left !important;
+}
+.detail-box strong {
+  display: block !important;
 }
 .detail-box pre {
   background: var(--bg-card);
@@ -104,6 +119,10 @@ table.dataTable.dtr-inline.collapsed > tbody > tr > th.dtr-control:before {
 
 /* 5. Mobile Responsive (Max Width: 767px) */
 body.is-mobile {
+  .audit-container {
+    padding-bottom: 90px !important;
+  }
+
   #auditTable {
     table-layout: fixed !important;
     width: 100% !important;
@@ -184,6 +203,55 @@ body.is-mobile {
   #auditTable_wrapper .dataTables_filter input {
     flex: 1 1 auto !important;
     width: 100% !important;
+  }
+
+  #auditTable_wrapper .row:last-child {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: var(--space-sm) !important;
+    margin: var(--space-sm) 0 0 0 !important;
+  }
+
+  #auditTable_wrapper .row:last-child > [class*="col-"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+    text-align: center !important;
+  }
+
+  #auditTable_wrapper .dataTables_info {
+    white-space: normal !important;
+    line-height: 1.4 !important;
+    text-align: center !important;
+    word-break: keep-all !important;
+  }
+
+  #auditTable_wrapper .dataTables_paginate {
+    width: 100% !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding-bottom: var(--space-xs) !important;
+    text-align: center !important;
+  }
+
+  #auditTable_wrapper .dataTables_paginate .pagination {
+    display: inline-flex !important;
+    flex-wrap: nowrap !important;
+    min-width: max-content !important;
+    margin: 0 auto !important;
+  }
+
+  #auditTable td .badge-custom {
+    display: inline-block !important;
+    max-width: 100% !important;
+    white-space: normal !important;
+    word-break: break-word !important;
+    line-height: 1.2 !important;
+    text-align: center !important;
+    font-size: 11px !important;
+    padding: 4px 8px !important;
   }
 }
 

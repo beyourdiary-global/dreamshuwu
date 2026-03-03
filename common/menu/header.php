@@ -188,4 +188,6 @@ $navLinks = [
     <?php endforeach; ?>
 </nav>
 
+<?php require_once BASE_PATH . 'common/menu/sidebar.php'; ?>
+
 <script src="<?php echo URL_ASSETS; ?>/js/header-script.js"></script>

@@ -328,7 +328,7 @@ $pageContent = ob_get_clean();
 </head>
 <body>
 <?php require_once BASE_PATH . 'common/menu/header.php'; ?>
-<div class="container mt-4">
+<div class="author-verification-container app-page-shell">
     <?php echo $pageContent; ?>
 </div>
 <script src="<?php echo URL_ASSETS; ?>/js/jquery-3.6.0.min.js"></script>

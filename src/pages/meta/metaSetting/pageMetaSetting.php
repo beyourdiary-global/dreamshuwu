@@ -6,7 +6,6 @@
     <div class="col-12">
         <div class="card meta-card">
             <div class="card-header meta-card-header">
-                <?php echo generateBreadcrumb($conn, $currentUrl); ?>
                 <h4 class="header-title">Page Specific Settings</h4>
                 <p class="header-subtitle">Select a specific page below to override the global defaults.</p>
             </div>
@@ -21,9 +20,6 @@
                 <div class="bg-light p-4 rounded mb-4 border">
                     <label class="form-label mb-2 d-block text-start">Select Page to Edit / 选择页面</label>
                     <form method="GET" id="pageSelectForm" class="d-flex">
-                        <?php if (isset($isEmbeddedMeta) && $isEmbeddedMeta): ?>
-                            <input type="hidden" name="view" value="meta_settings">
-                        <?php endif; ?>
                         <input type="hidden" name="section" value="page">
                         <input type="hidden" name="page" id="pageSelectValue" value="<?php echo htmlspecialchars($selectedPageKey); ?>">
 
@@ -111,7 +107,7 @@
 
                         <div class="row mt-4">
                             <div class="col-md-9 offset-md-3">
-                                <?php if ($perm->edit): ?>
+                                <?php if (!empty($perm->save)): ?>
                                 <button type="submit" class="btn btn-success px-5 fw-bold"><i class="fa-solid fa-save"></i> Save Page Settings</button>
                                 <?php endif; ?>
                             </div>

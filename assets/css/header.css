@@ -9,9 +9,9 @@
 .dropdown-menu-custom {
   --hdr-hover-color: var(--primary-hover);
   --hdr-active-color: var(--primary-color);
-  --hdr-text-dark: var(--text-main);
-  --hdr-text-light: var(--text-muted);
-  --hdr-bg-white: var(--bg-card);
+  --hdr-text-dark: var(--theme-text-color);
+  --hdr-text-light: var(--theme-text-color);
+  --hdr-bg-white: var(--theme-bg-color);
   --hdr-border: var(--border-light);
 }
 
@@ -76,7 +76,7 @@
 .logo-text {
   font-size: 22px;
   font-weight: 800;
-  color: #000;
+  color: var(--hdr-text-dark);
   letter-spacing: 0.5px;
 }
 
@@ -95,7 +95,7 @@
   flex-shrink: 0;
 }
 
-.nav-link {
+.site-header .nav-link {
   color: var(--hdr-text-dark);
   font-size: 15px;
   font-weight: 500;
@@ -108,20 +108,20 @@
   white-space: nowrap;
 }
 
-.nav-link:not(.active):hover {
+.site-header .nav-link:not(.active):hover {
   color: var(--hdr-hover-color) !important;
 }
 
-.nav-link.active {
+.site-header .nav-link.active {
   color: var(--hdr-active-color) !important;
   font-weight: bold;
 }
 
-.nav-link.active:hover {
+.site-header .nav-link.active:hover {
   color: var(--hdr-active-color) !important;
 }
 
-.nav-link.active::after {
+.site-header .nav-link.active::after {
   content: "";
   position: absolute;
   bottom: 0;
@@ -154,7 +154,7 @@
 }
 
 .search-form:focus-within {
-  border-color: rgba(128, 170, 255, 0.9);
+  border-color: var(--primary-hover);
   box-shadow: none;
 }
 
@@ -178,13 +178,14 @@
 }
 
 .site-header .search-form input[type="text"]::placeholder {
-  color: var(--text-light);
+  color: var(--hdr-text-light);
+  opacity: 0.7;
 }
 
 .site-header .search-form button {
   border: none;
   background: transparent;
-  color: var(--text-muted);
+  color: var(--hdr-text-light);
   cursor: pointer;
   padding: 0;
   font-size: 16px;
@@ -357,7 +358,7 @@
 
 .dropdown-menu-custom a:hover {
   color: var(--hdr-hover-color) !important;
-  background-color: var(--bg-body) !important;
+  background-color: var(--interactive-hover-bg, var(--bg-body)) !important;
 }
 
 .dropdown-menu-custom.show {
