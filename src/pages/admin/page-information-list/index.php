@@ -141,9 +141,6 @@ $customCSS[] = 'src/pages/admin/css/admin.css';
 <!DOCTYPE html>
 <head>
     <?php require_once BASE_PATH . 'include/header.php'; ?>
-    <?php if ($viewMode !== 'form'): ?>
-    <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/dataTables.bootstrap.min.css">
-    <?php endif; ?>
 </head>
 <body>
 <?php require_once BASE_PATH . 'common/menu/header.php'; ?>
@@ -151,7 +148,7 @@ $customCSS[] = 'src/pages/admin/css/admin.css';
 <?php
     // Flash Messages
     if (hasSession('flash_msg')) {
-        echo '<div class="alert alert-' . htmlspecialchars(session('flash_type') ?: 'info') . ' alert-dismissible fade show"><button type="button" class="btn-close" data-bs-dismiss="alert"></button>' . htmlspecialchars(session('flash_msg')) . '</div>';
+        echo '<div class="alert alert-' . htmlspecialchars(session('flash_type') ?: 'info') . ' alert-dismissible fade show">' . htmlspecialchars(session('flash_msg')) . '</div>';
         unsetSession('flash_msg');
         unsetSession('flash_type');
     }
@@ -321,13 +318,8 @@ $customCSS[] = 'src/pages/admin/css/admin.css';
     }
 ?>
 
-<script src="<?php echo URL_ASSETS; ?>/js/jquery-3.6.0.min.js"></script>
 <?php if ($viewMode !== 'form'): ?>
-<script src="<?php echo URL_ASSETS; ?>/js/jquery.dataTables.min.js"></script>
-<script src="<?php echo URL_ASSETS; ?>/js/dataTables.bootstrap.min.js"></script>
 <?php endif; ?>
-<script src="<?php echo URL_ASSETS; ?>/js/bootstrap.bundle.min.js"></script>
-<script src="<?php echo URL_ASSETS; ?>/js/sweetalert2@11.js"></script>
 <script src="<?php echo SITEURL; ?>/src/pages/admin/js/admin.js"></script>
 </body>
 </html>

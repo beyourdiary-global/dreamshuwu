@@ -5,7 +5,7 @@ require_once dirname(__DIR__, 3) . '/common.php';
 // Auth Check
 requireLogin();
 
-$currentUrl = '/author/author-register.php';
+$currentUrl = parse_url(URL_AUTHOR_REGISTER, PHP_URL_PATH) ?: '/author/author-register.php';
 $perm = hasPagePermission($conn, $currentUrl);
 checkPermissionError('view', $perm);
 
@@ -253,7 +253,7 @@ $pageMetaKey = $currentUrl;
     <div class="author-reg-container shadow-sm bg-white rounded-4 p-4 p-md-5">
         
         <?php if ($authorStatus === 'pending'): ?>
-            <div class="alert alert-warning d-flex align-items-center mb-4">
+            <div class="alert alert-notice d-flex align-items-center mb-4">
                 <i class="fa-solid fa-hourglass-half fa-lg me-3"></i> 
                 <div><strong>审核中</strong><br>您的作者申请正在审核中，审核期间您仍可修改以下资料。</div>
             </div>
@@ -385,9 +385,6 @@ $pageMetaKey = $currentUrl;
     </div>
 </main>
 
-<script src="<?php echo URL_ASSETS; ?>/js/jquery-3.6.0.min.js"></script>
-<script src="<?php echo URL_ASSETS; ?>/js/bootstrap.bundle.min.js"></script>
-<script src="<?php echo URL_ASSETS; ?>/js/sweetalert2@11.js"></script>
 <script src="<?php echo SITEURL; ?>/src/pages/author/js/author.js?v=<?php echo time(); ?>"></script>
 </body>
 </html>

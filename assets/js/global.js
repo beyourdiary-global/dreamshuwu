@@ -270,6 +270,75 @@
     });
   }
 
+  // 3. Automatically convert HTML Flash Messages into SweetAlert Popups
+  function initFlashPopups() {
+    function convertAlertToPopup(alertBox) {
+      // ESCAPE HATCH: If the alert has 'native-alert', DO NOT convert it to a popup
+      if (alertBox.classList.contains("native-alert")) return;
+
+      if (
+        typeof Swal !== "undefined" &&
+        !alertBox.classList.contains("popup-processed")
+      ) {
+        alertBox.classList.add("popup-processed"); // Prevent infinite loops
+
+        var type = "info";
+        var title = "提示";
+
+        // Determine style
+        if (alertBox.classList.contains("alert-success")) {
+          type = "success";
+          title = "操作成功";
+        } else if (alertBox.classList.contains("alert-danger")) {
+          type = "error";
+          title = "操作失败";
+        } else if (alertBox.classList.contains("alert-warning")) {
+          type = "warning";
+          title = "警告";
+        }
+
+        // Clean up the message text
+        var closeBtn = alertBox.querySelector(".btn-close");
+        if (closeBtn) closeBtn.remove();
+        var msg = alertBox.innerHTML.trim();
+
+        // Destroy the HTML box
+        alertBox.remove();
+
+        // Launch the SweetAlert
+        Swal.fire({
+          icon: type,
+          title: title,
+          html: msg,
+          confirmButtonColor: "#233dd2",
+          confirmButtonText: "我知道了",
+        });
+      }
+    }
+
+    // A. Convert any alerts that loaded naturally via PHP
+    document.querySelectorAll(".alert").forEach(convertAlertToPopup);
+
+    // B. Watch the DOM for any NEW alerts injected dynamically by AJAX (like admin.js)
+    var observer = new MutationObserver(function (mutations) {
+      mutations.forEach(function (mutation) {
+        mutation.addedNodes.forEach(function (node) {
+          if (node.nodeType === 1) {
+            // If it's an HTML element
+            if (node.classList.contains("alert")) {
+              convertAlertToPopup(node);
+            } else {
+              // Check if an alert was injected inside the new element
+              node.querySelectorAll(".alert").forEach(convertAlertToPopup);
+            }
+          }
+        });
+      });
+    });
+
+    // Start watching the entire body for changes
+    observer.observe(document.body, { childList: true, subtree: true });
+  }
   window.showNoChangeWarning = showNoChangeWarning;
 
   buildConfig();
@@ -279,6 +348,7 @@
     initCheckChangesForms();
     initBreadcrumbConsolidation();
     initLogoutHandler();
+    initFlashPopups();
 
     if (typeof jQuery !== "undefined") {
       // Automatically add the .form-select class whenever a table loads or redraws
@@ -288,6 +358,46 @@
     }
   });
 })();
+
+// 4. Smart Notice with "Don't show again" (不再提示) Checkbox
+window.showSmartNotice = function (noticeId, title, message, icon, callback) {
+  // 1. Check if the user already checked "Don't show again"
+  if (localStorage.getItem("hide_notice_" + noticeId) === "true") {
+    if (typeof callback === "function") callback();
+    return;
+  }
+
+  // 2. Show the SweetAlert with a custom injected checkbox HTML
+  if (typeof Swal !== "undefined") {
+    Swal.fire({
+      title: title || "提示",
+      html:
+        message +
+        '<div style="margin-top: 25px; font-size: 14px; text-align: center;"><label style="cursor:pointer; display:inline-flex; align-items:center; gap:6px; color:#555;"><input type="checkbox" id="swal-dont-show-again" style="width:16px; height:16px; cursor:pointer;"> 不再提示 (Don\'t show again)</label></div>',
+      icon: icon || "info",
+      confirmButtonColor: "#233dd2",
+      confirmButtonText: "我知道了",
+      allowOutsideClick: false,
+      preConfirm: function () {
+        // BUG FIX: Return an object. Returning 'false' directly prevents SWAL from closing!
+        var checkbox = document.getElementById("swal-dont-show-again");
+        return { isChecked: checkbox ? checkbox.checked : false };
+      },
+    }).then(function (result) {
+      if (result.isConfirmed) {
+        // If the object says the box was checked, save it to local storage
+        if (result.value && result.value.isChecked) {
+          localStorage.setItem("hide_notice_" + noticeId, "true");
+        }
+        // Proceed with opening the modal
+        if (typeof callback === "function") callback();
+      }
+    });
+  } else {
+    alert(message);
+    if (typeof callback === "function") callback();
+  }
+};
 
 function updateDeviceClass() {
   const width = window.innerWidth;

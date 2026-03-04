@@ -151,7 +151,7 @@ if (isPostRequest()) {
             <h3>欢迎回来</h3>
             <p class="subtext">请登录您的管理后台</p>
             
-            <div id="loginError" class="alert alert-danger" style="<?php echo $message ? '' : 'display:none;'; ?>">
+            <div id="loginError" class="alert alert-danger native-alert" style="<?php echo $message ? '' : 'display:none;'; ?>">
                 <span class="error-text"><?php echo htmlspecialchars($message); ?></span>
             </div>
 

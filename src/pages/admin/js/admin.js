@@ -505,29 +505,33 @@ function initUserRoleFilter() {
 }
 
 function renderInlineFormAlert(form, message, type) {
-  var cardBody = form.closest(".card-body") || form.parentElement;
-  if (!cardBody) return;
+  if (typeof Swal !== "undefined") {
+    // Map Bootstrap alert classes to SweetAlert icons
+    var swalType = "error";
+    var title = "操作失败";
 
-  var alertEl = cardBody.querySelector(".ajax-inline-alert");
-  if (!alertEl) {
-    alertEl = document.createElement("div");
-    alertEl.className = "ajax-inline-alert alert alert-dismissible fade show";
-    alertEl.innerHTML =
-      '<span class="ajax-inline-alert-text"></span><button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
-    cardBody.insertBefore(alertEl, cardBody.firstChild);
+    if (type === "success") {
+      swalType = "success";
+      title = "操作成功";
+    } else if (type === "warning") {
+      swalType = "warning";
+      title = "警告";
+    } else if (type === "info") {
+      swalType = "info";
+      title = "提示";
+    }
+
+    Swal.fire({
+      icon: swalType,
+      title: title,
+      text: message || "操作失败",
+      confirmButtonColor: "#233dd2",
+      confirmButtonText: "我知道了",
+    });
+  } else {
+    // Fallback just in case SweetAlert hasn't loaded
+    alert(message || "操作失败");
   }
-
-  alertEl.classList.remove(
-    "alert-danger",
-    "alert-success",
-    "alert-warning",
-    "alert-info",
-  );
-  alertEl.classList.add("alert-" + (type || "danger"));
-
-  var textEl = alertEl.querySelector(".ajax-inline-alert-text");
-  if (textEl) textEl.textContent = message || "操作失败";
-  alertEl.scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
 function extractAlertFromHtmlResponse(htmlText) {

@@ -347,8 +347,8 @@ if ($atRes) {
         </div>
         <div class="card-body">
             <?php if ($message): ?>
-                <div class="alert alert-<?php echo $msgType; ?> alert-dismissible fade show">
-                    <?php echo $message; ?> <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                <div class="alert alert-<?php echo $msgType; ?> d-none">
+                    <?php echo $message; ?>
                 </div>
             <?php endif; ?>
             
@@ -395,6 +395,5 @@ if ($atRes) {
         </div>
     </div>
 </div>
-<script src="<?php echo URL_ASSETS; ?>/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

@@ -82,7 +82,7 @@ if (isPostRequest() && $validToken) {
             <p class="subtext">请为您的账号设置新密码</p>
 
             <?php if ($message !== ''): ?>
-                <div class="alert alert-<?php echo htmlspecialchars($msgType); ?> alert-dismissible fade show">
+                <div class="alert alert-<?php echo htmlspecialchars($msgType); ?> native-alert">
                     <?php echo htmlspecialchars($message); ?>
                 </div>
             <?php endif; ?>

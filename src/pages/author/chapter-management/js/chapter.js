@@ -20,11 +20,38 @@ $(document).ready(function () {
     },
   );
 
+  // --- FOOLPROOF PERMISSION CHECK ---
+  const getBoolPermission = function (value, fallback) {
+    if (value === 1 || value === "1" || value === true || value === "true") {
+      return true;
+    }
+    if (value === 0 || value === "0" || value === false || value === "false") {
+      return false;
+    }
+    return !!fallback;
+  };
+
+  const FALLBACK_CAN_EDIT =
+    typeof window.PERM_CAN_EDIT !== "undefined" ? window.PERM_CAN_EDIT : false;
+  const FALLBACK_CAN_DELETE =
+    typeof window.PERM_CAN_DELETE !== "undefined"
+      ? window.PERM_CAN_DELETE
+      : false;
+
+  const CAN_EDIT = getBoolPermission(
+    appContainer.data("can-edit"),
+    FALLBACK_CAN_EDIT,
+  );
+  const CAN_DELETE = getBoolPermission(
+    appContainer.data("can-delete"),
+    FALLBACK_CAN_DELETE,
+  );
+
   // 2. Initialize DataTables
   chapterTable = $("#chapterTable").DataTable({
     processing: true,
     serverSide: true,
-    responsive: true,
+    responsive: false, // CRITICAL: MUST BE FALSE OR IT BREAKS MOBILE CLICKS
     ajax: {
       url: API_URL,
       type: "POST",
@@ -58,17 +85,11 @@ $(document).ready(function () {
         data: "id",
         orderable: false,
         render: function (data) {
-          // --- UPDATED: Permission-based button rendering ---
           let buttons = `<div class="d-flex justify-content-center gap-2">`;
-
-          if (typeof PERM_CAN_EDIT !== "undefined" && PERM_CAN_EDIT) {
+          if (CAN_EDIT)
             buttons += `<button class="btn btn-sm btn-outline-primary btn-edit" data-id="${data}" title="编辑"><i class="fa-solid fa-pen"></i></button>`;
-          }
-
-          if (typeof PERM_CAN_DELETE !== "undefined" && PERM_CAN_DELETE) {
+          if (CAN_DELETE)
             buttons += `<button class="btn btn-sm btn-outline-danger btn-delete" data-id="${data}" title="删除"><i class="fa-solid fa-trash"></i></button>`;
-          }
-
           buttons += `</div>`;
           return buttons;
         },
@@ -81,23 +102,122 @@ $(document).ready(function () {
       sInfo: "显示第 _START_ 至 _END_ 项结果，共 _TOTAL_ 项",
       sInfoEmpty: "显示第 0 至 0 项结果，共 0 项",
       sInfoFiltered: "(由 _MAX_ 项结果过滤)",
-      sInfoPostFix: "",
-      sSearch: "搜索 (Search):",
-      sUrl: "",
+      sSearch: "搜索:",
       sEmptyTable: "表中数据为空",
-      sLoadingRecords: "载入中...",
-      sInfoThousands: ",",
       oPaginate: {
         sFirst: "首页",
         sPrevious: "上一页",
         sNext: "下一页",
         sLast: "末页",
       },
-      oAria: {
-        sSortAscending: ": 以升序排列此列",
-        sSortDescending: ": 以降序排列此列",
-      },
     },
+  });
+
+  // --- FOOLPROOF MOBILE RESPONSIVE LOGIC ---
+  let isChapterMobile = null; // State tracker to prevent random redraws
+
+  function applyChapterMobileMode() {
+    if (!chapterTable) return;
+    const isMobileOrTablet =
+      document.body.classList.contains("is-mobile") ||
+      document.body.classList.contains("is-tablet");
+
+    // CRITICAL FIX: Only redraw if the screen actually changed between desktop and mobile!
+    // This stops mobile scrolling/address bars from destroying the open cards.
+    if (isChapterMobile === isMobileOrTablet) return;
+    isChapterMobile = isMobileOrTablet;
+
+    chapterTable.column(2).visible(!isMobileOrTablet, false); // Word count
+    chapterTable.column(4).visible(!isMobileOrTablet, false); // Scheduled Time
+    chapterTable.column(5).visible(!isMobileOrTablet, false); // Version Count
+    chapterTable.column(6).visible(!isMobileOrTablet, false); // Updated Time
+    chapterTable.column(7).visible(!isMobileOrTablet, false); // Actions
+    chapterTable.columns.adjust().draw(false);
+  }
+
+  applyChapterMobileMode();
+  let chapterResizeTimer;
+  $(window).on("resize", function () {
+    clearTimeout(chapterResizeTimer);
+    chapterResizeTimer = setTimeout(applyChapterMobileMode, 120);
+  });
+
+  // Handle Mobile/Tablet Row Clicks
+  // CRITICAL FIX: Bind to 'td' and find closest 'tr' (Same method as audit-log.js)
+  $("#chapterTable tbody").on("click", "td", function (e) {
+    if ($(e.target).closest("a, button, .btn, input, select").length) return;
+
+    const tr = $(this).closest("tr");
+    if (tr.hasClass("child")) return; // Prevent clicking the expanded card itself
+
+    const isMobileOrTablet =
+      document.body.classList.contains("is-mobile") ||
+      document.body.classList.contains("is-tablet");
+    if (!isMobileOrTablet) return;
+
+    const row = chapterTable.row(tr);
+    if (!row.data()) return;
+
+    if (row.child.isShown()) {
+      row.child.hide();
+      tr.removeClass("shown");
+    } else {
+      const d = row.data();
+
+      // ADDED GAP: 'my-3' creates top and bottom margin gap
+      let childHtml =
+        '<div class="mobile-row-details p-3 bg-light border rounded my-3 shadow-sm">';
+
+      childHtml +=
+        '<div class="mb-2"><strong>字数：</strong> ' +
+        (d.word_count || "0") +
+        " 字</div>";
+      childHtml +=
+        '<div class="mb-2"><strong>定时发布：</strong> ' +
+        (d.scheduled_publish_at || "-") +
+        "</div>";
+
+      let versionHtml = `<button class="btn btn-sm btn-link btn-versions p-0" data-id="${d.id}">${d.version_count || 0} 版本</button>`;
+      childHtml +=
+        '<div class="mb-2"><strong>历史版本：</strong> ' +
+        versionHtml +
+        "</div>";
+      childHtml +=
+        '<div class="mb-3 text-muted small"><strong>最后更新：</strong> ' +
+        (d.updated_at || "-") +
+        "</div>";
+
+      // FOOLPROOF PERMISSION READ
+      const canEdit = getBoolPermission(
+        appContainer.data("can-edit"),
+        FALLBACK_CAN_EDIT,
+      );
+      const canDelete = getBoolPermission(
+        appContainer.data("can-delete"),
+        FALLBACK_CAN_DELETE,
+      );
+
+      // ADDED BUTTON GAP: 'mt-3 pt-3 border-top' pushes buttons down cleanly
+      let actionsHtml =
+        '<div class="d-flex gap-2 flex-wrap justify-content-start w-100 mt-3 pt-3 border-top">';
+
+      if (canEdit) {
+        actionsHtml += `<button class="btn btn-sm btn-outline-primary flex-fill btn-edit" data-id="${d.id}"><i class="fa-solid fa-pen"></i> 编辑</button>`;
+      }
+      if (canDelete) {
+        actionsHtml += `<button class="btn btn-sm btn-outline-danger flex-fill btn-delete" data-id="${d.id}"><i class="fa-solid fa-trash"></i> 删除</button>`;
+      }
+      if (!canEdit && !canDelete) {
+        actionsHtml +=
+          '<span class="text-muted small w-100 text-center py-2 bg-white rounded border">无操作权限</span>';
+      }
+      actionsHtml += "</div>";
+
+      childHtml += actionsHtml + "</div>";
+
+      row.child(childHtml).show();
+      tr.addClass("shown");
+    }
   });
 
   // 3. UI Toggles

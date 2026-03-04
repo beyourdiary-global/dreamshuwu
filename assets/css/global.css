@@ -64,6 +64,33 @@ body {
   margin: 0;
 }
 
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+img,
+video,
+canvas,
+svg,
+iframe {
+  max-width: 100%;
+}
+
+.mobile-row-details,
+.mobile-row-details * {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 /* ======================================================== */
 /* 3. Form Elements (Generic) */
 /* ======================================================== */
@@ -682,4 +709,9 @@ body.is-mobile {
     margin: 0 !important;
     min-height: 32px;
   }
+}
+
+/* Globally hide alerts for SweetAlert conversion, UNLESS they are marked as native */
+.alert:not(.native-alert) {
+  display: none !important;
 }

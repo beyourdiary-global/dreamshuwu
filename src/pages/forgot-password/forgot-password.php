@@ -101,12 +101,12 @@ if (isPostRequest()) {
             <p class="subtext">输入您的注册邮箱，我们将向您发送重置链接</p>
 
             <?php if ($message !== ''): ?>
-                <div class="alert alert-<?php echo htmlspecialchars($msgType); ?> alert-dismissible fade show">
+                <div class="alert alert-<?php echo htmlspecialchars($msgType); ?> native-alert">
                     <?php echo $message; ?>
                 </div>
             <?php endif; ?>
 
-            <div id="forgotAlert" class="alert alert-success" style="display: none; justify-content: space-between;">
+            <div id="forgotAlert" class="alert alert-success native-alert" style="display: none; justify-content: space-between;">
                 <span id="forgotAlertText"></span>
                 <button type="button" style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 0; color: inherit; line-height: 1;" onclick="this.parentElement.style.display='none';">&times;</button>
             </div>

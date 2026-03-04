@@ -45,7 +45,7 @@ $pageMetaKey = '/Home.php';
         unsetSession('flash_msg');
         unsetSession('flash_type');
     ?>
-        <div class="alert alert-<?php echo htmlspecialchars($flashType); ?> alert-dismissible fade show shadow-sm" role="alert">
+        <div class="alert alert-<?php echo htmlspecialchars($flashType); ?> alert-dismissible fade show shadow-sm native-alert" role="alert">
             <i class="fa-solid fa-circle-exclamation me-2"></i>
             <?php echo htmlspecialchars($flashMsg); ?>
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
@@ -53,7 +53,7 @@ $pageMetaKey = '/Home.php';
     <?php } ?>
 
     <?php if (hasSession('logged_in') && session('logged_in') === true): ?>
-        <div class="alert alert-success mt-3 shadow-sm">
+        <div class="alert alert-success mt-3 shadow-sm native-alert">
             欢迎回来, <strong><?php echo htmlspecialchars(session('user_name') ?: 'User'); ?></strong>!
         </div>
     <?php endif; ?>
@@ -61,9 +61,5 @@ $pageMetaKey = '/Home.php';
     <h3 class="mt-4">首页内容区域</h3>
     <p>这里是公开内容，任何人都可以看到 (Banner, Rank, Categories)。</p>
 </div>
-
-<script src="<?php echo URL_ASSETS; ?>/js/jquery-3.6.0.min.js"></script>
-<script src="<?php echo URL_ASSETS; ?>/js/bootstrap.bundle.min.js"></script>
-
 </body>
 </html>

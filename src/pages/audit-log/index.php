@@ -252,8 +252,6 @@ $pageMetaKey = $currentUrl;
 ?>
 <head>
     <?php require_once BASE_PATH . 'include/header.php'; ?>
-    <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/dataTables.bootstrap.min.css">
-    <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/responsive.bootstrap.min.css">
     <link rel="stylesheet" href="<?php echo SITEURL; ?>/src/pages/audit-log/css/audit-log.css?v=<?php echo time(); ?>">
 </head>
 <body>
@@ -284,9 +282,6 @@ $pageMetaKey = $currentUrl;
     </div>
 
 </main>
-<script src="<?php echo URL_ASSETS; ?>/js/jquery-3.6.0.min.js"></script>
-<script src="<?php echo URL_ASSETS; ?>/js/jquery.dataTables.min.js"></script>
-<script src="<?php echo URL_ASSETS; ?>/js/dataTables.bootstrap.min.js"></script>
 <script src="<?php echo SITEURL; ?>/src/pages/audit-log/js/audit-log.js?v=<?php echo time(); ?>"></script>
 </body>
 </html>

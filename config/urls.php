@@ -36,17 +36,17 @@ defined('URL_USER_HISTORY')   || define('URL_USER_HISTORY', SITEURL . '/src/page
 defined('URL_USER_MESSAGES')  || define('URL_USER_MESSAGES', SITEURL . '/src/pages/user/messages.php');
 
 // --- 5. Author Dashboard & Registration ---
-defined('URL_AUTHOR_DASHBOARD') || define('URL_AUTHOR_DASHBOARD', SITEURL . '/author/dashboard.php');
+defined('URL_AUTHOR_DASHBOARD') || define('URL_AUTHOR_DASHBOARD', $routeUrl('author/dashboard.php', 'author/dashboard/'));
 defined('PATH_AUTHOR_DASHBOARD') || define('PATH_AUTHOR_DASHBOARD', 'src/pages/author/dashboard.php');
-defined('URL_AUTHOR_REGISTER')  || define('URL_AUTHOR_REGISTER', SITEURL . '/author/author-register.php');
+defined('URL_AUTHOR_REGISTER')  || define('URL_AUTHOR_REGISTER', $routeUrl('author/author-register.php', 'author/author-register/'));
 defined('PATH_AUTHOR_REGISTER') || define('PATH_AUTHOR_REGISTER', 'src/pages/author/author-register.php');
 defined('PATH_AUTHOR_VERIFICATION_INDEX') || define('PATH_AUTHOR_VERIFICATION_INDEX', 'src/pages/author/author-verification/index.php');
 defined('PATH_EMAIL_TEMPLATE_INDEX') || define('PATH_EMAIL_TEMPLATE_INDEX', 'src/pages/author/email-template/index.php');
 defined('PATH_AUTHOR_VERIFICATION_API') || define('PATH_AUTHOR_VERIFICATION_API', 'src/pages/author/author-verification/api.php');
 defined('PATH_EMAIL_TEMPLATE_API') || define('PATH_EMAIL_TEMPLATE_API', 'src/pages/author/email-template/api.php');
-defined('URL_AUTHOR_VERIFICATION') || define('URL_AUTHOR_VERIFICATION', SITEURL . '/author/author-verification.php');
+defined('URL_AUTHOR_VERIFICATION') || define('URL_AUTHOR_VERIFICATION', $routeUrl('author/author-verification.php', 'author/author-verification/'));
 defined('URL_AUTHOR_VERIFICATION_API') || define('URL_AUTHOR_VERIFICATION_API', SITEURL . '/' . PATH_AUTHOR_VERIFICATION_API);
-defined('URL_EMAIL_TEMPLATE') || define('URL_EMAIL_TEMPLATE', SITEURL . '/author/email-template.php');
+defined('URL_EMAIL_TEMPLATE') || define('URL_EMAIL_TEMPLATE', $routeUrl('author/email-template.php', 'author/email-template/'));
 defined('URL_EMAIL_TEMPLATE_API') || define('URL_EMAIL_TEMPLATE_API', SITEURL . '/' . PATH_EMAIL_TEMPLATE_API);
 
 // --- 6. Novel Management (Tags) ---
@@ -98,7 +98,7 @@ defined('URL_USER_ROLE_API')   || define('URL_USER_ROLE_API', SITEURL . '/src/pa
 defined('PATH_USER_ROLE_INDEX') || define('PATH_USER_ROLE_INDEX', 'src/pages/admin/user-role/index.php');
 
 // [NEW] Author Novel Management 
-defined('URL_AUTHOR_NOVEL_MANAGEMENT') || define('URL_AUTHOR_NOVEL_MANAGEMENT', SITEURL . '/author/novel-management.php');
+defined('URL_AUTHOR_NOVEL_MANAGEMENT') || define('URL_AUTHOR_NOVEL_MANAGEMENT', $routeUrl('author/novel-management.php', 'author/novel-management/'));
 defined('PATH_AUTHOR_NOVEL_MANAGEMENT') || define('PATH_AUTHOR_NOVEL_MANAGEMENT', 'src/pages/author/novel-management/index.php');
 defined('URL_AUTHOR_NOVEL_API') || define('URL_AUTHOR_NOVEL_API', SITEURL . '/src/pages/author/novel-management/api.php');
 

@@ -160,9 +160,6 @@ $pageMetaKey = $currentUrl;
     </main>
 </div>
 
-<script src="<?php echo URL_ASSETS; ?>/js/jquery-3.6.0.min.js"></script>
-<script src="<?php echo URL_ASSETS; ?>/js/bootstrap.bundle.min.js"></script>
-<script src="<?php echo URL_ASSETS; ?>/js/sweetalert2@11.js"></script>
 <script src="<?php echo URL_ASSETS; ?>/js/auth.js"></script>
 </body>
 </html>

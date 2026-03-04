@@ -100,6 +100,9 @@ $finalOgUrl     = !empty($specificSeo['og_url']) ? $specificSeo['og_url'] : ($gl
 
     <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/bootstrap.min.css">
     <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/all.min.css">
+    <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/dataTables.bootstrap.min.css">
+    <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/responsive.bootstrap.min.css">
+    <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/buttons.bootstrap.min.css">
     <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/header.css">
     <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/sidebar.css">
     <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/global.css">
@@ -161,5 +164,13 @@ $finalOgUrl     = !empty($specificSeo['og_url']) ? $specificSeo['og_url'] : ($gl
 
     <meta name="email-regex" content="<?php echo htmlspecialchars(defined('EMAIL_REGEX_PATTERN') ? EMAIL_REGEX_PATTERN : '^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$', ENT_QUOTES, 'UTF-8'); ?>">
     <meta name="pwd-regex" content="<?php echo htmlspecialchars(defined('PWD_REGEX_PATTERN') ? PWD_REGEX_PATTERN : '^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[\\W_]).{8,}$', ENT_QUOTES, 'UTF-8'); ?>">
+    
+    <script src="<?php echo URL_ASSETS; ?>/js/jquery-3.6.0.min.js"></script>
+    <script src="<?php echo URL_ASSETS; ?>/js/bootstrap.bundle.min.js"></script>
+    <script src="<?php echo URL_ASSETS; ?>/js/sweetalert2@11.js"></script>
+    
+    <script src="<?php echo URL_ASSETS; ?>/js/jquery.dataTables.min.js"></script>
+    <script src="<?php echo URL_ASSETS; ?>/js/dataTables.bootstrap.min.js"></script>
+
     <script src="<?php echo URL_ASSETS; ?>/js/global.js"></script>
 </head>

@@ -2,7 +2,7 @@
 require_once dirname(__DIR__, 4) . '/common.php';
 
 $currentUserId = sessionInt('user_id');
-$currentUrl = '/author/author-verification.php';
+$currentUrl = parse_url(URL_AUTHOR_VERIFICATION, PHP_URL_PATH) ?: '/author/author-verification.php';
 $auditPage = 'Author Verification Management';
 
 // [NEW] Generate CSRF token if it doesn't exist
@@ -100,9 +100,8 @@ if (function_exists('logAudit')) {
 if (!isset($customCSS) || !is_array($customCSS)) {
     $customCSS = [];
 }
-$customCSS[] = 'dataTables.bootstrap.min.css';
 $customCSS[] = 'src/pages/author/css/author.css';
-$customCSS[] = 'src/pages/admin/css/admin.css';
+$customCSS[] = 'src/pages/admin/css/admin.css?v=' . time() . '&fix=inline-row';
 $pageMetaKey = $currentUrl;
 
 // --- Arrays for Rendering UI ---
@@ -117,15 +116,15 @@ $statusFilterOptions = [
 ];
 
 $tableHeaders = [
-    ['label' => 'ID', 'width' => '70px', 'class' => ''],
+    ['label' => 'ID', 'width' => '50px', 'class' => ''],
     ['label' => '用户', 'width' => '', 'class' => ''],
     ['label' => '真实姓名', 'width' => '', 'class' => ''],
     ['label' => '笔名', 'width' => '', 'class' => ''],
-    ['label' => '状态', 'width' => '110px', 'class' => ''],
+    ['label' => '状态', 'width' => '90px', 'class' => ''],
     ['label' => '驳回原因', 'width' => '', 'class' => ''],
     ['label' => '通知次数', 'width' => '90px', 'class' => ''],
-    ['label' => '更新时间', 'width' => '170px', 'class' => ''],
-    ['label' => '操作', 'width' => '250px', 'class' => 'text-center']
+    ['label' => '更新时间', 'width' => '160px', 'class' => ''],
+    ['label' => '操作', 'width' => '180px', 'class' => 'text-center'] // Reduced size to prevent overflow
 ];
 
 $actionTypeOptions = [
@@ -309,7 +308,6 @@ ob_start();
                         <label class="form-label">驳回原因 <span class="text-danger">*</span></label>
                         <textarea name="reject_reason" class="form-control" rows="4" placeholder="请填写驳回原因"></textarea>
                     </div>
-                    <div class="alert alert-light border" id="authorVerifyActionHint">请确认审核操作后提交。</div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
@@ -331,11 +329,6 @@ $pageContent = ob_get_clean();
 <div class="author-verification-container app-page-shell">
     <?php echo $pageContent; ?>
 </div>
-<script src="<?php echo URL_ASSETS; ?>/js/jquery-3.6.0.min.js"></script>
-<script src="<?php echo URL_ASSETS; ?>/js/bootstrap.bundle.min.js"></script>
-<script src="<?php echo URL_ASSETS; ?>/js/sweetalert2@11.js"></script>
-<script src="<?php echo URL_ASSETS; ?>/js/jquery.dataTables.min.js"></script>
-<script src="<?php echo URL_ASSETS; ?>/js/dataTables.bootstrap.min.js"></script>
-<script src="<?php echo SITEURL; ?>/src/pages/author/js/author.js"></script>
+<script src="<?php echo SITEURL; ?>/src/pages/author/js/author.js?v=<?php echo time(); ?>&m=verify&fix=rowfallback"></script>
 </body>
 </html>

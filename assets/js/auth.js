@@ -166,13 +166,26 @@ document.addEventListener("DOMContentLoaded", () => {
             window.location.href = resp.redirect || "index.php";
             return;
           }
+
           const message =
             resp && resp.message ? resp.message : "登录失败，请稍后再试";
-          if (errorDiv) {
-            errorDiv.querySelector(".error-text").textContent = message;
-            errorDiv.style.display = "block";
-          } else if (emailInput) {
+
+          // 1. Hide the top banner and clear previous inline errors
+          if (errorDiv) errorDiv.style.display = "none";
+          window.AuthUtils.clearError(emailInput);
+          window.AuthUtils.clearError(passwordInput);
+
+          // 2. Route the error to the correct input field
+          if (message.includes("密码")) {
+            window.AuthUtils.showError(passwordInput, message);
+          } else if (message.includes("邮箱") || message.includes("账号")) {
             window.AuthUtils.showError(emailInput, message);
+          } else {
+            // 3. Fallback to top banner for generic server errors
+            if (errorDiv) {
+              errorDiv.querySelector(".error-text").textContent = message;
+              errorDiv.style.display = "block";
+            }
           }
         })
         .fail(() => {
@@ -180,8 +193,6 @@ document.addEventListener("DOMContentLoaded", () => {
           if (errorDiv) {
             errorDiv.querySelector(".error-text").textContent = message;
             errorDiv.style.display = "block";
-          } else if (emailInput) {
-            window.AuthUtils.showError(emailInput, message);
           }
         })
         .always(() => {

@@ -10,9 +10,63 @@
   word-break: normal !important;
 }
 
+/* Keep DataTables child-detail rows visible */
+#authorVerificationTable tbody > tr.child > td,
+#emailTemplateTable tbody > tr.child > td,
+#pageActionTable tbody > tr.child > td,
+#pageInfoTable tbody > tr.child > td,
+#userRoleTable tbody > tr.child > td {
+  display: table-cell !important;
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  padding: 0 !important;
+}
+
+#authorVerificationTable tbody > tr.child .mobile-row-details,
+#emailTemplateTable tbody > tr.child .mobile-row-details,
+#pageActionTable tbody > tr.child .mobile-row-details,
+#pageInfoTable tbody > tr.child .mobile-row-details,
+#userRoleTable tbody > tr.child .mobile-row-details {
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 /* Desktop/Tablet default: hide mobile cards */
 .page-action-mobile-list {
   display: none;
+}
+
+/* Consistent shell gap for admin-related pages */
+body.is-mobile.has-sidebar .app-page-shell,
+body.is-mobile.has-sidebar #pageActionApp,
+body.is-mobile.has-sidebar .author-verification-container,
+body.is-mobile.has-sidebar .email-template-container {
+  padding-left: 12px !important;
+  padding-right: 12px !important;
+  box-sizing: border-box;
+}
+
+body.is-tablet.has-sidebar .app-page-shell,
+body.is-tablet.has-sidebar #pageActionApp,
+body.is-tablet.has-sidebar .author-verification-container,
+body.is-tablet.has-sidebar .email-template-container {
+  padding-left: 12px !important;
+  padding-right: 12px !important;
+  box-sizing: border-box;
+}
+
+@media (max-width: 380px) {
+  body.is-mobile.has-sidebar .app-page-shell,
+  body.is-mobile.has-sidebar #pageActionApp,
+  body.is-mobile.has-sidebar .author-verification-container,
+  body.is-mobile.has-sidebar .email-template-container {
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
 }
 
 .page-action-mobile-body {
@@ -153,94 +207,158 @@ body.is-mobile {
 
   /* Author Verification: keep user + action only */
   #authorVerificationTable thead th:nth-child(1),
-  #authorVerificationTable tbody td:nth-child(1),
+  #authorVerificationTable tbody > tr:not(.child) > td:nth-child(1),
   #authorVerificationTable thead th:nth-child(3),
-  #authorVerificationTable tbody td:nth-child(3),
+  #authorVerificationTable tbody > tr:not(.child) > td:nth-child(3),
   #authorVerificationTable thead th:nth-child(4),
-  #authorVerificationTable tbody td:nth-child(4),
+  #authorVerificationTable tbody > tr:not(.child) > td:nth-child(4),
   #authorVerificationTable thead th:nth-child(6),
-  #authorVerificationTable tbody td:nth-child(6),
+  #authorVerificationTable tbody > tr:not(.child) > td:nth-child(6),
   #authorVerificationTable thead th:nth-child(7),
-  #authorVerificationTable tbody td:nth-child(7),
+  #authorVerificationTable tbody > tr:not(.child) > td:nth-child(7),
   #authorVerificationTable thead th:nth-child(8),
-  #authorVerificationTable tbody td:nth-child(8),
+  #authorVerificationTable tbody > tr:not(.child) > td:nth-child(8),
   #authorVerificationTable thead th:nth-child(5),
-  #authorVerificationTable tbody td:nth-child(5) {
+  #authorVerificationTable tbody > tr:not(.child) > td:nth-child(5) {
     display: none !important;
   }
 
   #authorVerificationTable thead th:nth-child(2),
-  #authorVerificationTable tbody td:nth-child(2) {
+  #authorVerificationTable tbody > tr:not(.child) > td:nth-child(2) {
     width: auto !important;
   }
 
-  #authorVerificationTable tbody td:nth-child(2) small {
+  #authorVerificationTable tbody > tr:not(.child) > td:nth-child(2) small {
     display: none !important;
+  }
+
+  /* Do not hide fallback inline detail rows (single-cell detail row) */
+  #authorVerificationTable
+    tbody
+    > tr.author-inline-detail-row
+    > td:nth-child(1),
+  #emailTemplateTable tbody > tr.author-inline-detail-row > td:nth-child(1),
+  #pageActionTable tbody > tr.author-inline-detail-row > td:nth-child(1),
+  #pageInfoTable tbody > tr.author-inline-detail-row > td:nth-child(1),
+  #userRoleTable tbody > tr.author-inline-detail-row > td:nth-child(1) {
+    display: table-cell !important;
   }
 
   /* Email Template: keep name + action only */
   #emailTemplateTable thead th:nth-child(1),
-  #emailTemplateTable tbody td:nth-child(1),
+  #emailTemplateTable tbody > tr:not(.child) > td:nth-child(1),
   #emailTemplateTable thead th:nth-child(2),
-  #emailTemplateTable tbody td:nth-child(2),
+  #emailTemplateTable tbody > tr:not(.child) > td:nth-child(2),
   #emailTemplateTable thead th:nth-child(4),
-  #emailTemplateTable tbody td:nth-child(4),
+  #emailTemplateTable tbody > tr:not(.child) > td:nth-child(4),
   #emailTemplateTable thead th:nth-child(6),
-  #emailTemplateTable tbody td:nth-child(6),
+  #emailTemplateTable tbody > tr:not(.child) > td:nth-child(6),
   #emailTemplateTable thead th:nth-child(5),
-  #emailTemplateTable tbody td:nth-child(5) {
+  #emailTemplateTable tbody > tr:not(.child) > td:nth-child(5) {
     display: none !important;
   }
 
   #emailTemplateTable thead th:nth-child(3),
-  #emailTemplateTable tbody td:nth-child(3) {
+  #emailTemplateTable tbody > tr:not(.child) > td:nth-child(3) {
     width: auto !important;
   }
 
   /* Page Action: hide id/status, keep name/action */
   #pageActionTable thead th:nth-child(1),
-  #pageActionTable tbody td:nth-child(1),
+  #pageActionTable tbody > tr:not(.child) > td:nth-child(1),
   #pageActionTable thead th:nth-child(3),
-  #pageActionTable tbody td:nth-child(3) {
+  #pageActionTable tbody > tr:not(.child) > td:nth-child(3) {
     display: none !important;
   }
 
   #pageActionTable thead th:nth-child(2),
-  #pageActionTable tbody td:nth-child(2) {
+  #pageActionTable tbody > tr:not(.child) > td:nth-child(2) {
     width: auto !important;
     min-width: 120px !important;
   }
 
   /* Page Info: hide id/url/status, keep name/action */
   #pageInfoTable thead th:nth-child(1),
-  #pageInfoTable tbody td:nth-child(1),
+  #pageInfoTable tbody > tr:not(.child) > td:nth-child(1),
   #pageInfoTable thead th:nth-child(3),
-  #pageInfoTable tbody td:nth-child(3),
+  #pageInfoTable tbody > tr:not(.child) > td:nth-child(3),
   #pageInfoTable thead th:nth-child(4),
-  #pageInfoTable tbody td:nth-child(4) {
+  #pageInfoTable tbody > tr:not(.child) > td:nth-child(4) {
     display: none !important;
   }
 
   #pageInfoTable thead th:nth-child(2),
-  #pageInfoTable tbody td:nth-child(2) {
+  #pageInfoTable tbody > tr:not(.child) > td:nth-child(2) {
     width: auto !important;
   }
 
   /* User Role: hide id/en/description/status, keep cn/action */
   #userRoleTable thead th:nth-child(1),
-  #userRoleTable tbody td:nth-child(1),
+  #userRoleTable tbody > tr:not(.child) > td:nth-child(1),
   #userRoleTable thead th:nth-child(3),
-  #userRoleTable tbody td:nth-child(3),
+  #userRoleTable tbody > tr:not(.child) > td:nth-child(3),
   #userRoleTable thead th:nth-child(4),
-  #userRoleTable tbody td:nth-child(4),
+  #userRoleTable tbody > tr:not(.child) > td:nth-child(4),
   #userRoleTable thead th:nth-child(5),
-  #userRoleTable tbody td:nth-child(5) {
+  #userRoleTable tbody > tr:not(.child) > td:nth-child(5) {
     display: none !important;
   }
 
   #userRoleTable thead th:nth-child(2),
-  #userRoleTable tbody td:nth-child(2) {
+  #userRoleTable tbody > tr:not(.child) > td:nth-child(2) {
     width: auto !important;
+  }
+
+  /* Critical: keep expanded child/detail rows fully visible */
+  #authorVerificationTable tbody > tr.child > td,
+  #authorVerificationTable tbody > tr.author-inline-detail-row > td,
+  #emailTemplateTable tbody > tr.child > td,
+  #emailTemplateTable tbody > tr.author-inline-detail-row > td,
+  #pageActionTable tbody > tr.child > td,
+  #pageActionTable tbody > tr.author-inline-detail-row > td,
+  #pageInfoTable tbody > tr.child > td,
+  #pageInfoTable tbody > tr.author-inline-detail-row > td,
+  #userRoleTable tbody > tr.child > td,
+  #userRoleTable tbody > tr.author-inline-detail-row > td {
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    display: table-cell !important;
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    padding: 0 !important;
+  }
+
+  #authorVerificationTable tbody > tr.child > td > .mobile-row-details,
+  #authorVerificationTable
+    tbody
+    > tr.author-inline-detail-row
+    > td
+    > .mobile-row-details,
+  #emailTemplateTable tbody > tr.child > td > .mobile-row-details,
+  #emailTemplateTable
+    tbody
+    > tr.author-inline-detail-row
+    > td
+    > .mobile-row-details,
+  #pageActionTable tbody > tr.child > td > .mobile-row-details,
+  #pageActionTable
+    tbody
+    > tr.author-inline-detail-row
+    > td
+    > .mobile-row-details,
+  #pageInfoTable tbody > tr.child > td > .mobile-row-details,
+  #pageInfoTable tbody > tr.author-inline-detail-row > td > .mobile-row-details,
+  #userRoleTable tbody > tr.child > td > .mobile-row-details,
+  #userRoleTable
+    tbody
+    > tr.author-inline-detail-row
+    > td
+    > .mobile-row-details {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
   }
 }
 
@@ -279,54 +397,98 @@ body.is-tablet {
 
   /* Author Verification tablet: keep user + status + action */
   #authorVerificationTable thead th:nth-child(1),
-  #authorVerificationTable tbody td:nth-child(1),
+  #authorVerificationTable tbody > tr:not(.child) > td:nth-child(1),
   #authorVerificationTable thead th:nth-child(3),
-  #authorVerificationTable tbody td:nth-child(3),
+  #authorVerificationTable tbody > tr:not(.child) > td:nth-child(3),
   #authorVerificationTable thead th:nth-child(4),
-  #authorVerificationTable tbody td:nth-child(4),
+  #authorVerificationTable tbody > tr:not(.child) > td:nth-child(4),
   #authorVerificationTable thead th:nth-child(6),
-  #authorVerificationTable tbody td:nth-child(6),
+  #authorVerificationTable tbody > tr:not(.child) > td:nth-child(6),
   #authorVerificationTable thead th:nth-child(7),
-  #authorVerificationTable tbody td:nth-child(7),
+  #authorVerificationTable tbody > tr:not(.child) > td:nth-child(7),
   #authorVerificationTable thead th:nth-child(8),
-  #authorVerificationTable tbody td:nth-child(8) {
+  #authorVerificationTable tbody > tr:not(.child) > td:nth-child(8) {
     display: none !important;
   }
 
   #authorVerificationTable thead th:nth-child(5),
-  #authorVerificationTable tbody td:nth-child(5) {
+  #authorVerificationTable tbody > tr:not(.child) > td:nth-child(5) {
     display: none !important;
   }
 
   #authorVerificationTable thead th:nth-child(2),
-  #authorVerificationTable tbody td:nth-child(2) {
+  #authorVerificationTable tbody > tr:not(.child) > td:nth-child(2) {
     width: calc(100% - 160px) !important;
   }
 
-  #authorVerificationTable tbody td:nth-child(2) small {
+  #authorVerificationTable tbody > tr:not(.child) > td:nth-child(2) small {
     display: none !important;
+  }
+
+  /* Do not hide fallback inline detail rows on tablet */
+  #authorVerificationTable
+    tbody
+    > tr.author-inline-detail-row
+    > td:nth-child(1),
+  #emailTemplateTable tbody > tr.author-inline-detail-row > td:nth-child(1),
+  #pageActionTable tbody > tr.author-inline-detail-row > td:nth-child(1),
+  #pageInfoTable tbody > tr.author-inline-detail-row > td:nth-child(1),
+  #userRoleTable tbody > tr.author-inline-detail-row > td:nth-child(1) {
+    display: table-cell !important;
   }
 
   /* Email Template tablet: keep name + action */
   #emailTemplateTable thead th:nth-child(1),
-  #emailTemplateTable tbody td:nth-child(1),
+  #emailTemplateTable tbody > tr:not(.child) > td:nth-child(1),
   #emailTemplateTable thead th:nth-child(2),
-  #emailTemplateTable tbody td:nth-child(2),
+  #emailTemplateTable tbody > tr:not(.child) > td:nth-child(2),
   #emailTemplateTable thead th:nth-child(4),
-  #emailTemplateTable tbody td:nth-child(4),
+  #emailTemplateTable tbody > tr:not(.child) > td:nth-child(4),
   #emailTemplateTable thead th:nth-child(6),
-  #emailTemplateTable tbody td:nth-child(6) {
+  #emailTemplateTable tbody > tr:not(.child) > td:nth-child(6) {
     display: none !important;
   }
 
   #emailTemplateTable thead th:nth-child(5),
-  #emailTemplateTable tbody td:nth-child(5) {
+  #emailTemplateTable tbody > tr:not(.child) > td:nth-child(5) {
     display: none !important;
   }
 
   #emailTemplateTable thead th:nth-child(3),
-  #emailTemplateTable tbody td:nth-child(3) {
+  #emailTemplateTable tbody > tr:not(.child) > td:nth-child(3) {
     width: calc(100% - 160px) !important;
+  }
+
+  /* Critical: keep expanded child/detail rows fully visible on tablet */
+  #authorVerificationTable tbody > tr.child > td,
+  #authorVerificationTable tbody > tr.author-inline-detail-row > td,
+  #emailTemplateTable tbody > tr.child > td,
+  #emailTemplateTable tbody > tr.author-inline-detail-row > td {
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    display: table-cell !important;
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    padding: 0 !important;
+  }
+
+  #authorVerificationTable tbody > tr.child > td > .mobile-row-details,
+  #authorVerificationTable
+    tbody
+    > tr.author-inline-detail-row
+    > td
+    > .mobile-row-details,
+  #emailTemplateTable tbody > tr.child > td > .mobile-row-details,
+  #emailTemplateTable
+    tbody
+    > tr.author-inline-detail-row
+    > td
+    > .mobile-row-details {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
   }
 
   #authorVerificationTable thead th:last-child,

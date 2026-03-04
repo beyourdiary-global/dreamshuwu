@@ -1,4 +1,11 @@
 $(document).ready(function () {
+  function isCompactView() {
+    return (
+      document.body.classList.contains("is-mobile") ||
+      document.body.classList.contains("is-tablet")
+    );
+  }
+
   // Keep pagination compact on small screens
   if (
     $.fn &&
@@ -17,7 +24,7 @@ $(document).ready(function () {
       newV = det.new;
     var html = '<div class="detail-box">';
 
-    var isSmall = window.matchMedia("(max-width: 767px)").matches;
+    var isSmall = isCompactView();
 
     // Inside audit-log.js -> function format(d)
     if (isSmall) {
@@ -147,10 +154,7 @@ $(document).ready(function () {
   });
 
   function applyResponsiveColumnVisibility() {
-    var body = document.body;
-    var isCompact =
-      body.classList.contains("is-mobile") ||
-      body.classList.contains("is-tablet");
+    var isCompact = isCompactView();
 
     // Keep compact view stable during live resize:
     // Keep [0]=details, [1]=序号, [3]=操作
@@ -186,9 +190,9 @@ $(document).ready(function () {
   });
 
   // 4. Handle Expand Click
-  $("#auditTable tbody").on("click", "td.dt-control", function () {
-    var tr = $(this).closest("tr");
+  function toggleAuditRowDetail(tr) {
     var row = table.row(tr);
+    if (!row.data()) return;
 
     if (row.child.isShown()) {
       row.child.hide();
@@ -197,5 +201,21 @@ $(document).ready(function () {
       row.child(format(row.data())).show();
       tr.addClass("shown");
     }
+  }
+
+  $("#auditTable tbody").on("click", "td.dt-control", function () {
+    var tr = $(this).closest("tr");
+    toggleAuditRowDetail(tr);
+  });
+
+  // Tablet + Mobile: allow tapping any table cell in the row to open details
+  $("#auditTable tbody").on("click", "td", function (e) {
+    if (!isCompactView()) return;
+    if ($(this).hasClass("dt-control")) return;
+    if ($(e.target).closest("a, button, .btn, input, select").length) return;
+
+    var tr = $(this).closest("tr");
+    if (tr.hasClass("child")) return;
+    toggleAuditRowDetail(tr);
   });
 });

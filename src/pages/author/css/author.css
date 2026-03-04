@@ -190,364 +190,67 @@
   z-index: 2;
 }
 
-/* Mobile Table Responsiveness (Precision Fix) */
-body.is-mobile {
-  .main-content {
-    padding-left: 5px !important;
-    padding-right: 5px !important;
-    padding-bottom: 120px !important;
-  }
-
-  .main-content .card {
-    margin-bottom: 30px !important;
-  }
-
-  .card-body {
-    padding: var(--space-sm) !important;
-  }
-  .dataTables_wrapper .row {
-    margin: 0 !important;
-  }
-  .dataTables_wrapper .col-sm-12 {
-    padding: 0 !important;
-  }
-
-  .chapter-editor-actions {
-    justify-content: flex-start;
-    margin-top: var(--space-sm);
-    gap: var(--space-sm);
-  }
-
-  #novelTable_wrapper .table-responsive,
-  #novelTable_wrapper.dataTables_wrapper,
-  #chapterTable_wrapper .table-responsive,
-  #chapterTable_wrapper.dataTables_wrapper,
-  #novelTable_wrapper,
-  #chapterTable_wrapper {
-    overflow-x: hidden !important;
-    width: 100% !important;
-    padding-bottom: 20px !important;
-  }
-  table.dataTable#novelTable,
-  table.dataTable#chapterTable {
-    width: 100% !important;
-    margin-top: 10px !important;
-  }
-
-  /* Reset forced display properties to let DataTables Responsive handle it */
-  table.dataTable#novelTable thead th,
-  table.dataTable#novelTable tbody td,
-  table.dataTable#chapterTable thead th,
-  table.dataTable#chapterTable tbody td {
-    display: table-cell; /* Remove !important */
-    padding: 8px 4px !important;
-    vertical-align: middle !important;
-    box-sizing: border-box !important;
-  }
-
-  /* Ensure Action Column is ALWAYS visible on mobile */
-  table.dataTable#novelTable thead th:last-child,
-  table.dataTable#novelTable tbody td:last-child,
-  table.dataTable#chapterTable thead th:last-child,
-  table.dataTable#chapterTable tbody td:last-child {
-    display: table-cell !important;
-    width: 90px !important;
-    min-width: 90px !important;
-    text-align: center !important;
-  }
-
-  /* When expanded, show content in child row */
-  table.dataTable
-    > tbody
-    > tr.child
-    ul.dtr-details
-    > li[data-dtr-index]:last-child {
-    display: block !important;
-    width: 100% !important;
-  }
-
-  /* Make sure Action buttons wrap nicely in child row */
-  table.dataTable > tbody > tr.child ul.dtr-details .chapter-editor-actions,
-  table.dataTable > tbody > tr.child ul.dtr-details .actions {
-    justify-content: flex-start !important;
-    flex-wrap: wrap !important;
-    gap: 8px !important;
-  }
-
-  /* Ensure child row details show full width content for actions */
-  table.dataTable > tbody > tr.child ul.dtr-details {
-    display: block !important;
-    width: 100% !important;
-    padding: 0 !important;
-  }
-
-  table.dataTable > tbody > tr.child ul.dtr-details > li {
-    border-bottom: 1px solid var(--border-light) !important;
-    padding: 8px 0 !important;
-    display: flex !important;
-    justify-content: space-between !important;
-    align-items: center !important;
-    width: 100% !important;
-  }
-
-  /* Specifically target the action column in child row (usually last) */
-  table.dataTable > tbody > tr.child ul.dtr-details > li:last-child {
-    display: block !important;
-    text-align: left !important;
-  }
-
-  table.dataTable > tbody > tr.child ul.dtr-details > li:last-child .dtr-data {
-    display: flex !important;
-    flex-wrap: wrap !important;
-    gap: 8px !important;
-    margin-top: 5px !important;
-  }
-
-  /* Force first column (Control/Image) to be visible */
-  table.dataTable#novelTable thead th:first-child,
-  table.dataTable#novelTable tbody td:first-child,
-  table.dataTable#chapterTable thead th:first-child,
-  table.dataTable#chapterTable tbody td:first-child {
-    width: 40px !important;
-    padding: 0 !important;
-    text-align: center !important;
-  }
-
-  /* Align Title column */
-  table.dataTable#novelTable thead th:nth-child(2),
-  table.dataTable#novelTable tbody td:nth-child(2),
-  table.dataTable#chapterTable thead th:nth-child(2),
-  table.dataTable#chapterTable tbody td:nth-child(2) {
-    width: auto !important;
-    white-space: normal !important; /* Allow title wrap */
-    word-break: break-word !important;
-  }
-
-  /* NOVEL TABLE SPECIFIC SIZING */
-  table.dataTable#novelTable thead th:nth-child(1),
-  table.dataTable#novelTable tbody td:nth-child(1) {
-    width: 48px !important;
-    min-width: 48px !important;
-    text-align: center !important;
-    padding: 2px !important;
-  }
-
-  table.dataTable#novelTable tbody td:nth-child(1) img {
-    width: 100% !important;
-    max-width: 40px !important;
-    height: auto !important;
-    object-fit: cover !important;
-    border-radius: var(--radius-sm);
-    display: block;
-    margin: 0 auto;
-  }
-
-  table.dataTable#novelTable thead th:last-child,
-  table.dataTable#novelTable tbody td:last-child {
-    width: 85px !important;
-    min-width: 85px !important;
-  }
-
-  /* CHAPTER TABLE SPECIFIC SIZING */
-  table.dataTable#chapterTable thead th:nth-child(1),
-  table.dataTable#chapterTable tbody td:nth-child(1) {
-    width: 35px !important;
-    min-width: 35px !important;
-    text-align: center !important;
-  }
-
-  table.dataTable#chapterTable thead th:last-child,
-  table.dataTable#chapterTable tbody td:last-child {
-    width: 65px !important;
-    min-width: 65px !important;
-  }
-
-  /* ACTION BUTTONS GRID */
-  table.dataTable#novelTable tbody td:last-child .d-flex,
-  table.dataTable#chapterTable tbody td:last-child .d-flex {
-    display: flex !important;
-    flex-direction: row !important;
-    flex-wrap: wrap !important;
-    gap: 3px !important;
-    justify-content: center !important;
-    width: 100% !important;
-  }
-
-  table.dataTable#novelTable tbody td:last-child .btn,
-  table.dataTable#chapterTable tbody td:last-child .btn {
-    width: 25px !important;
-    height: 25px !important;
-    min-width: 25px !important;
-    padding: 0 !important;
-    font-size: 11px !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-  }
+/* ========================================================
+   GLOBAL TABLE RESPONSIVENESS (Desktops & Tablets)
+======================================================== */
+.table-responsive {
+  overflow-x: auto !important; /* Prevents columns from being chopped off! */
+  -webkit-overflow-scrolling: touch;
+  width: 100% !important;
+  padding-bottom: 10px; /* Buffer for scrollbar */
 }
 
-/* Micro Mobile */
-body.is-mobile.is-mobile-320 {
-  table.dataTable#novelTable thead th:nth-child(1),
-  table.dataTable#novelTable tbody td:nth-child(1) {
-    width: 38px !important;
-    min-width: 38px !important;
-  }
-
-  table.dataTable#novelTable thead th:last-child,
-  table.dataTable#novelTable tbody td:last-child {
-    width: 75px !important;
-    min-width: 75px !important;
-  }
-
-  table.dataTable#chapterTable thead th:last-child,
-  table.dataTable#chapterTable tbody td:last-child {
-    width: 55px !important;
-    min-width: 55px !important;
-  }
-
-  table.dataTable#novelTable tbody td:last-child .btn,
-  table.dataTable#chapterTable tbody td:last-child .btn {
-    width: 22px !important;
-    height: 22px !important;
-    min-width: 22px !important;
-    font-size: 10px !important;
-  }
+table.dataTable {
+  table-layout: auto !important;
+  width: 100% !important;
 }
 
-/* Author module action visibility parity with admin mobile/tablet rules */
-body.is-mobile,
-body.is-tablet {
-  #authorVerificationTable thead th:last-child,
-  #authorVerificationTable tbody td:last-child,
-  #emailTemplateTable thead th:last-child,
-  #emailTemplateTable tbody td:last-child {
-    min-width: 120px !important;
-    width: 120px !important;
-    white-space: nowrap !important;
-    overflow: visible !important;
-  }
-
-  #authorVerificationTable td:last-child .author-verify-actions,
-  #emailTemplateTable td:last-child > div {
-    display: flex !important;
-    flex-wrap: wrap !important;
-    justify-content: center !important;
-    gap: 6px !important;
-  }
-
-  #authorVerificationTable td:last-child .btn,
-  #emailTemplateTable td:last-child .btn {
-    white-space: nowrap !important;
-  }
+/* ========================================================
+   MOBILE & TABLET CLICK-TO-EXPAND ROW STYLING
+======================================================== */
+/* Apply cursor pointer to BOTH mobile and tablet */
+body.is-mobile table.dataTable tbody tr,
+body.is-tablet table.dataTable tbody tr {
+  cursor: pointer;
+  transition: background-color 0.2s ease;
 }
 
-body.is-tablet {
-  /* 1. Force strict table layout */
-  table.dataTable#novelTable,
-  table.dataTable#chapterTable {
-    table-layout: fixed !important;
-    width: 100% !important;
-  }
+body.is-mobile table.dataTable tbody tr:hover,
+body.is-mobile table.dataTable tbody tr.shown,
+body.is-tablet table.dataTable tbody tr:hover,
+body.is-tablet table.dataTable tbody tr.shown {
+  background-color: var(--primary-soft-05);
+}
 
-  /* 2. HEADERS: Force all column names to stay on ONE line */
-  table.dataTable#novelTable thead th,
-  table.dataTable#chapterTable thead th {
-    white-space: nowrap !important;
-    word-break: keep-all !important;
-    padding: 6px 2px !important;
-    font-size: 12px !important;
-    vertical-align: middle !important;
-  }
+.mobile-row-details {
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.03);
+  animation: fadeIn 0.3s ease;
+  margin-top: 8px; /* ADDED GAP between the row and the detail card */
+}
 
-  /* 3. BODY CELLS: Allow content to wrap normally */
-  table.dataTable#novelTable tbody td,
-  table.dataTable#chapterTable tbody td {
-    padding: 6px 2px !important;
-    vertical-align: middle !important;
-    white-space: normal !important;
-    word-break: break-word !important;
-    font-size: 12px !important;
-  }
+.mobile-row-details strong {
+  color: var(--text-dark);
+  font-weight: 600;
+}
 
-  /* 4. Cover Image Column */
-  table.dataTable#novelTable thead th:nth-child(1),
-  table.dataTable#novelTable tbody td:nth-child(1) {
-    width: 40px !important;
-    text-align: center !important;
-  }
+.mobile-row-details .btn {
+  padding: 10px 15px !important;
+  font-size: 13px !important;
+  height: auto !important;
+  width: auto !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px;
+}
 
-  /* 5. Title Column Header (Align left for neatness) */
-  table.dataTable#novelTable thead th:nth-child(2) {
-    text-align: left !important;
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
   }
-
-  /* 6. Category & Tags Columns (Strictly Truncated) */
-  table.dataTable#novelTable thead th:nth-child(3),
-  table.dataTable#novelTable tbody td:nth-child(3),
-  table.dataTable#novelTable thead th:nth-child(4),
-  table.dataTable#novelTable tbody td:nth-child(4) {
-    width: 45px !important;
-    white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-  }
-
-  /* 7. Status Column */
-  table.dataTable#novelTable thead th:nth-child(5),
-  table.dataTable#novelTable tbody td:nth-child(5) {
-    width: 50px !important;
-    text-align: center !important;
-  }
-
-  table.dataTable#novelTable tbody td:nth-child(5) .badge {
-    padding: 3px 4px !important;
-    font-size: 11px !important;
-  }
-
-  /* 8. Date Column */
-  table.dataTable#novelTable thead th:nth-child(6),
-  table.dataTable#novelTable tbody td:nth-child(6) {
-    width: 65px !important;
-    text-align: center !important;
-  }
-
-  /* 9. THE FIX: Action Column (135px fits four 28px buttons exactly) */
-  table.dataTable#novelTable thead th:last-child,
-  table.dataTable#novelTable tbody td:last-child,
-  table.dataTable#chapterTable thead th:last-child,
-  table.dataTable#chapterTable tbody td:last-child {
-    width: 135px !important;
-    min-width: 135px !important;
-    text-align: right !important; /* Pushes the '操作' header to the right over the buttons */
-  }
-
-  /* 10. Lock Action Buttons into one horizontal row */
-  table.dataTable#novelTable tbody td:last-child .d-flex,
-  table.dataTable#chapterTable tbody td:last-child .d-flex {
-    flex-wrap: nowrap !important;
-    justify-content: flex-end !important;
-    gap: 4px !important;
-    margin: 0 !important;
-  }
-
-  /* Compact 28px buttons */
-  table.dataTable#novelTable tbody td:last-child .btn,
-  table.dataTable#chapterTable tbody td:last-child .btn {
-    width: 28px !important;
-    height: 28px !important;
-    min-width: 28px !important;
-    padding: 0 !important;
-    font-size: 11px !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-  }
-
-  /* 11. Disable horizontal scrollbar */
-  #novelTable_wrapper .table-responsive,
-  #chapterTable_wrapper .table-responsive {
-    overflow-x: hidden !important;
-    width: 100% !important;
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
