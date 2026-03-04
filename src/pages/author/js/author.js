@@ -892,49 +892,6 @@ function initAuthorVerificationModule() {
     modal = bootstrap.Modal.getOrCreateInstance(modalEl);
   }
 
-  var verifyDebugEnabled = /(?:\?|&)verifyDebug=1(?:&|$)/.test(
-    window.location.search,
-  );
-  var verifyDebugPanel = null;
-
-  function ensureVerifyDebugPanel() {
-    if (!verifyDebugEnabled || verifyDebugPanel) return;
-    verifyDebugPanel = document.createElement("div");
-    verifyDebugPanel.id = "verifyDebugPanel";
-    verifyDebugPanel.style.cssText =
-      "position:fixed;right:10px;bottom:70px;z-index:99999;max-width:320px;max-height:40vh;overflow:auto;background:#111;color:#0f0;padding:10px;border-radius:8px;font:12px/1.4 monospace;box-shadow:0 6px 16px rgba(0,0,0,.35);";
-    verifyDebugPanel.innerHTML =
-      '<div style="color:#fff;margin-bottom:6px;font-weight:bold;">Verify Debug</div>';
-    document.body.appendChild(verifyDebugPanel);
-  }
-
-  function verifyDebugLog(message, payload) {
-    if (!verifyDebugEnabled) return;
-    ensureVerifyDebugPanel();
-    if (!verifyDebugPanel) return;
-    var line = document.createElement("div");
-    var stamp = new Date().toLocaleTimeString();
-    var text = "[" + stamp + "] " + String(message || "");
-    if (payload !== undefined) {
-      try {
-        text += " | " + JSON.stringify(payload);
-      } catch (err) {
-        text += " | [payload unserializable]";
-      }
-    }
-    line.textContent = text;
-    verifyDebugPanel.appendChild(line);
-    verifyDebugPanel.scrollTop = verifyDebugPanel.scrollHeight;
-  }
-
-  if (verifyDebugEnabled) {
-    ensureVerifyDebugPanel();
-    verifyDebugLog("debug enabled", {
-      width: window.innerWidth,
-      bodyClass: document.body.className,
-    });
-  }
-
   function updateRejectReasonUI() {
     if (!actionTypeSelect || !rejectWrap || !rejectInput) return;
     var actionType = actionTypeSelect.value;
@@ -1086,10 +1043,6 @@ function initAuthorVerificationModule() {
   function applyVerifyMobileMode() {
     if (!table) return;
     const isMobileOrTablet = isVerifyCompactMode();
-    verifyDebugLog("applyVerifyMobileMode", {
-      compact: isMobileOrTablet,
-      width: window.innerWidth,
-    });
 
     if (isVerifyMobile === isMobileOrTablet) return; // Prevent destroy bug
     isVerifyMobile = isMobileOrTablet;
@@ -1180,21 +1133,13 @@ function initAuthorVerificationModule() {
     const tr = $(this).closest("tr");
     if (tr.hasClass("child") || tr.hasClass("author-inline-detail-row")) return;
 
-    verifyDebugLog("row clicked", {
-      className: tr.attr("class") || "",
-      index: tr.index(),
-      text: (tr.text() || "").trim().slice(0, 40),
-    });
-
     const isMobileOrTablet = isVerifyCompactMode();
     if (!isMobileOrTablet) {
-      verifyDebugLog("blocked: not compact mode", { width: window.innerWidth });
       return;
     }
 
     const row = table.row(tr);
     if (!row.data()) {
-      verifyDebugLog("blocked: row.data() empty");
       return;
     }
 
@@ -1202,19 +1147,11 @@ function initAuthorVerificationModule() {
       row.child.hide();
       tr.next("tr.author-inline-detail-row").remove();
       tr.removeClass("shown");
-      verifyDebugLog("collapsed row");
     } else {
       const d = row.data();
-      verifyDebugLog("expanding row", {
-        id: d && d.id ? d.id : null,
-        user: d && d.user_name ? d.user_name : null,
-      });
       const childHtml = buildAuthorVerifyDetailHtml(d);
 
       row.child(childHtml).show();
-      verifyDebugLog("called row.child().show()", {
-        childAfter: tr.next("tr.child").length,
-      });
 
       // Hard fallback: if DataTables child row is still not visible, inject inline detail row
       setTimeout(function () {
@@ -1229,11 +1166,6 @@ function initAuthorVerificationModule() {
             childHtml +
             "</td></tr>";
           tr.after(fallbackRow);
-          verifyDebugLog("fallback row injected", { colCount: colCount });
-        } else {
-          verifyDebugLog("datatable child visible", {
-            childCount: tr.next("tr.child").length,
-          });
         }
       }, 0);
 

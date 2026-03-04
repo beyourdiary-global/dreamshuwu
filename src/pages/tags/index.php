@@ -57,21 +57,19 @@ if (!function_exists('sendTagTableError')) {
 }
 
 if (!function_exists('sendDeleteSuccess')) {
-    function sendDeleteSuccess($auditLogged = true, $debug = false, $traceId = '') {
+    function sendDeleteSuccess($auditLogged = true) {
         while (ob_get_level()) { ob_end_clean(); }
         $response = ['success' => true];
         if (!$auditLogged) $response['warning'] = 'Audit logging failed';
-        if ($debug && $traceId) $response['trace_id'] = $traceId;
         echo jsonEncodeWrapper($response);
         exit();
     }
 }
 
 if (!function_exists('sendDeleteError')) {
-    function sendDeleteError($message, $debug = false, $traceId = '') {
+    function sendDeleteError($message) {
         while (ob_get_level()) { ob_end_clean(); }
         $payload = ['success' => false, 'message' => $message];
-        if ($debug && $traceId) $payload['trace_id'] = $traceId;
         echo jsonEncodeWrapper($payload);
         exit();
     }
@@ -189,18 +187,15 @@ if ($isDeleteRequest) {
     ini_set('display_errors', '0');
     error_reporting(E_ALL);
 
-    $debug = post('debug') === '1';
-    $traceId = uniqid('tag-del-', true);
-    
     if (!isset($conn) || !($conn instanceof mysqli)) {
-        sendDeleteError('Database connection is not available.', $debug, $traceId);
+        sendDeleteError('Database connection is not available.');
     }
     
     $id = intval(post('id') ?? 0);
     $tagName = postSpaceFilter('name') ?? 'Unknown';
     $currentUserId = sessionInt('user_id');
     
-    if ($id <= 0) sendDeleteError('Invalid tag ID.', $debug, $traceId);
+    if ($id <= 0) sendDeleteError('Invalid tag ID.');
     
     // [MODIFIED] Logic Validation: Prevent deletion ONLY if the tag is explicitly saved inside a novel
     $isTagUsedByNovel = false;
@@ -223,7 +218,7 @@ if ($isDeleteRequest) {
     
     // Execute the block if the tag is actively used
     if ($isTagUsedByNovel) {
-        sendDeleteError('无法删除：该标签正被一部或多部小说直接使用。请先在小说管理中移除此标签。', $debug, $traceId);
+        sendDeleteError('无法删除：该标签正被一部或多部小说直接使用。请先在小说管理中移除此标签。');
     }
 
     // Audit Data Load
@@ -254,7 +249,7 @@ if ($isDeleteRequest) {
     
     // Execute Soft Delete
     $stmt = $conn->prepare($deleteQuery);
-    if ($stmt === false) sendDeleteError('Error preparing delete statement.', $debug, $traceId);
+    if ($stmt === false) sendDeleteError('Error preparing delete statement.');
     $stmt->bind_param("ii", $currentUserId, $id);
     
     // Execute deletion
@@ -283,10 +278,10 @@ if ($isDeleteRequest) {
             }
         }
         $stmt->close();
-        sendDeleteSuccess($auditLogged, $debug, $traceId);
+        sendDeleteSuccess($auditLogged);
     } else {
         $stmt->close();
-        sendDeleteError('Error deleting tag from database.', $debug, $traceId);
+        sendDeleteError('Error deleting tag from database.');
     }
     
     exit();
