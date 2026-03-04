@@ -265,9 +265,9 @@ $customCSS[] = 'src/pages/user/css/profile.css';
     </div>
 
     <?php if ($message): ?>
-        <div class="alert alert-<?php echo $msgType; ?> alert-dismissible fade show">
+        <div class="alert alert-<?php echo $msgType; ?> d-none">
             <?php echo htmlspecialchars($message); ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            
         </div>
     <?php endif; ?>
 
@@ -371,9 +371,6 @@ $customCSS[] = 'src/pages/user/css/profile.css';
     </div>
     <?php endif; ?>
 </div>
-<script src="<?php echo URL_ASSETS; ?>/js/jquery-3.6.0.min.js"></script>
-<script src="<?php echo URL_ASSETS; ?>/js/bootstrap.bundle.min.js"></script>
-<script src="<?php echo URL_ASSETS; ?>/js/sweetalert2@11.js"></script>
 <script src="<?php echo SITEURL; ?>/src/pages/user/js/user-profile.js?v=<?php echo filemtime(BASE_PATH . 'src/pages/user/js/user-profile.js'); ?>"></script>
 </body>
 </html>

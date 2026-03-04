@@ -11,9 +11,9 @@
             </div>
             <div class="card-body meta-card-body">
                 <?php if ($pageMessage): ?>
-                    <div class="alert alert-<?php echo $pageMsgType; ?> alert-dismissible fade show">
+                    <div class="alert alert-<?php echo $pageMsgType; ?> d-none">
                         <?php echo $pageMessage; ?>
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        
                     </div>
                 <?php endif; ?>
 

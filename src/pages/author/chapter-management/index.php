@@ -115,7 +115,6 @@ $currentUrl = '/author/novel/' . $novelId . '/chapters/';
 <!DOCTYPE html>
 <head>
     <?php require_once BASE_PATH . 'include/header.php'; ?>
-    <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/dataTables.bootstrap.min.css">
     <link rel="stylesheet" href="<?php echo SITEURL; ?>/src/pages/author/css/author.css">
     <style>
         .strict-textarea { resize: vertical; font-family: monospace; font-size: 15px; line-height: 1.6; }
@@ -133,7 +132,9 @@ $currentUrl = '/author/novel/' . $novelId . '/chapters/';
 
 <div class="container main-content" id="chapterApp" style="max-width: 1200px; margin: 30px auto; padding: 0 20px; min-height: 80vh;"
      data-api-url="<?php echo htmlspecialchars($apiEndpoint); ?>"
-     data-novel-id="<?php echo $novelId; ?>">
+    data-novel-id="<?php echo $novelId; ?>"
+    data-can-edit="<?php echo $canEdit ? 1 : 0; ?>"
+    data-can-delete="<?php echo $canDelete ? 1 : 0; ?>">
 
     <?php echo generateBreadcrumb($conn, $currentUrl, $pageName); ?>
     
@@ -294,11 +295,6 @@ $currentUrl = '/author/novel/' . $novelId . '/chapters/';
     </div>
 </div>
 
-<script src="<?php echo URL_ASSETS; ?>/js/jquery-3.6.0.min.js"></script>
-<script src="<?php echo URL_ASSETS; ?>/js/bootstrap.bundle.min.js"></script>
-<script src="<?php echo URL_ASSETS; ?>/js/sweetalert2@11.js"></script>
-<script src="<?php echo URL_ASSETS; ?>/js/jquery.dataTables.min.js"></script>
-<script src="<?php echo URL_ASSETS; ?>/js/dataTables.bootstrap.min.js"></script>
 <script src="<?php echo SITEURL; ?>/src/pages/author/chapter-management/js/chapter.js"></script>
 </body>
 </html>

@@ -279,7 +279,6 @@ if ($flashMsg !== '') {
 <!DOCTYPE html>
 <head>
     <?php require_once BASE_PATH . 'include/header.php'; ?>
-    <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/dataTables.bootstrap.min.css">
 </head>
 <body>
 <?php require_once BASE_PATH . 'common/menu/header.php'; ?>
@@ -296,8 +295,8 @@ if ($flashMsg !== '') {
         </div>
         <div class="card-body">
             <?php if ($flashMsg): ?>
-                <div class="alert alert-<?php echo htmlspecialchars($flashType); ?> alert-dismissible fade show">
-                    <?php echo htmlspecialchars($flashMsg); ?> <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                <div class="alert alert-<?php echo htmlspecialchars($flashType); ?> d-none">
+                    <?php echo htmlspecialchars($flashMsg); ?>
                 </div>
             <?php endif; ?>
             <table id="categoryTable" class="table table-hover w-100" 
@@ -315,11 +314,6 @@ if ($flashMsg !== '') {
         </div>
     </div>
 </div>
-<script src="<?php echo URL_ASSETS; ?>/js/jquery-3.6.0.min.js"></script>
-<script src="<?php echo URL_ASSETS; ?>/js/jquery.dataTables.min.js"></script>
-<script src="<?php echo URL_ASSETS; ?>/js/dataTables.bootstrap.min.js"></script>
-<script src="<?php echo URL_ASSETS; ?>/js/sweetalert2@11.js"></script>
-<script src="<?php echo URL_ASSETS; ?>/js/bootstrap.bundle.min.js"></script>
 <script src="<?php echo SITEURL; ?>/src/pages/category/js/category.js"></script>
 </body>
 </html>

@@ -11,7 +11,7 @@ try {
     requireLogin();
 
     $currentUserId = sessionInt('user_id');
-    $currentUrl = '/author/email-template.php';
+    $currentUrl = parse_url(URL_EMAIL_TEMPLATE, PHP_URL_PATH) ?: '/author/email-template.php';
     $perm = hasPagePermission($conn, $currentUrl);
     
     if (empty($perm) || (isset($perm->view) && empty($perm->view))) {

@@ -1361,43 +1361,6 @@ function fetchRolePermissions($conn, $roleId) {
 }
 
 /**
- * [NEW] Check if user_role name (EN or CN) already exists (excluding a specific ID).
- * @param string $nameCn Chinese name
- * @param string $nameEn English name
- * @param int $excludeId Optional. If > 0, exclude this role from the check.
- * @return bool True if duplicate found, false otherwise.
- */
-function checkRoleNameDuplicate($conn, $nameCn, $nameEn, $excludeId = 0) {
-        $sql = "SELECT id FROM " . USER_ROLE . " WHERE (name_en = ? OR name_cn = ?) AND status = 'A'";
-        $params = [$nameEn, $nameCn];
-        $types = 'ss';
-
-        if ($excludeId > 0) {
-            $sql .= " AND id != ?";
-            $params[] = $excludeId;
-            $types .= 'i';
-        }
-
-    $sql .= " LIMIT 1";
-
-    $stmt = $conn->prepare($sql);
-    if (!$stmt) return false;
-
-    if ($excludeId > 0) {
-        $stmt->bind_param($types, $nameEn, $nameCn, $excludeId);
-    } else {
-        $stmt->bind_param($types, $nameEn, $nameCn);
-    }
-
-    $stmt->execute();
-    $stmt->store_result();
-    $exists = $stmt->num_rows > 0;
-    $stmt->close();
-
-    return $exists;
-}
-
-/**
  * Get the default user role ID for new registrations.
  * Looks for a role named 'Member' or 'User'.
  */

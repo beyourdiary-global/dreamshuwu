@@ -6,7 +6,7 @@ require_once dirname(__DIR__, 3) . '/common.php';
 requireLogin();
 
 $currentUserId = sessionInt('user_id');
-$currentUrl = '/author/dashboard.php';
+$currentUrl = parse_url(URL_AUTHOR_DASHBOARD, PHP_URL_PATH) ?: '/author/dashboard.php';
 $auditPage = 'Author Dashboard';
 
 // 2. Strict Author Profile Check (Must be 'approved')
@@ -103,8 +103,6 @@ $novelPageName = getDynamicPageName($conn, $permNovel, $novelUrlPath);
     </div>
 </div>
 
-<script src="<?php echo URL_ASSETS; ?>/js/jquery-3.6.0.min.js"></script>
-<script src="<?php echo URL_ASSETS; ?>/js/bootstrap.bundle.min.js"></script>
 
 </body>
 </html>

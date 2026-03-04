@@ -11,7 +11,7 @@ requireLogin();
 $isEmbeddedEmailTemplate = isset($EMBED_EMAIL_TEMPLATE) && $EMBED_EMAIL_TEMPLATE === true;
 $currentUserId = sessionInt('user_id');
 
-$currentUrl = '/author/email-template.php';
+$currentUrl = parse_url(URL_EMAIL_TEMPLATE, PHP_URL_PATH) ?: '/author/email-template.php';
 $auditPage = 'Email Template Management';
 
 $perm = hasPagePermission($conn, $currentUrl);
@@ -38,7 +38,6 @@ if (!$isEmbeddedEmailTemplate) {
     if (!isset($customCSS) || !is_array($customCSS)) {
         $customCSS = [];
     }
-    $customCSS[] = 'dataTables.bootstrap.min.css';
     $customCSS[] = 'src/pages/admin/css/admin.css';
     $pageMetaKey = $currentUrl;
 }
@@ -177,11 +176,6 @@ if ($isEmbeddedEmailTemplate) {
 <div class="email-template-container app-page-shell">
     <?php echo $pageContent; ?>
 </div>
-<script src="<?php echo URL_ASSETS; ?>/js/jquery-3.6.0.min.js"></script>
-<script src="<?php echo URL_ASSETS; ?>/js/bootstrap.bundle.min.js"></script>
-<script src="<?php echo URL_ASSETS; ?>/js/sweetalert2@11.js"></script>
-<script src="<?php echo URL_ASSETS; ?>/js/jquery.dataTables.min.js"></script>
-<script src="<?php echo URL_ASSETS; ?>/js/dataTables.bootstrap.min.js"></script>
 <script src="<?php echo SITEURL; ?>/src/pages/author/js/author.js"></script>
 </body>
 </html>

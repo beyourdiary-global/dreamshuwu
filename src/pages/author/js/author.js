@@ -317,7 +317,7 @@ $(document).ready(function () {
     novelTable = $("#novelTable").DataTable({
       processing: true,
       serverSide: true,
-      responsive: true,
+      responsive: false, // Disabled native responsive for custom mobile row details
       ajax: {
         url: API_URL,
         type: "POST",
@@ -417,6 +417,118 @@ $(document).ready(function () {
       },
     });
   }
+
+  loadNovelStats();
+  initNovelTable();
+
+  // --- MOBILE RESPONSIVE LOGIC FOR NOVEL TABLE ---
+  let isNovelMobile = null; // State tracker
+
+  function applyNovelMobileMode() {
+    if (!novelTable) return;
+    const isMobileOrTablet =
+      document.body.classList.contains("is-mobile") ||
+      document.body.classList.contains("is-tablet");
+
+    if (isNovelMobile === isMobileOrTablet) return; // Prevent destroy bug
+    isNovelMobile = isMobileOrTablet;
+
+    novelTable.column(2).visible(!isMobileOrTablet, false); // Hide Category
+    novelTable.column(3).visible(!isMobileOrTablet, false); // Hide Tags
+    novelTable.column(5).visible(!isMobileOrTablet, false); // Hide Date
+    novelTable.column(6).visible(!isMobileOrTablet, false); // Hide Actions
+    novelTable.columns.adjust().draw(false);
+  }
+
+  applyNovelMobileMode();
+  let novelResizeTimer;
+  $(window).on("resize", function () {
+    clearTimeout(novelResizeTimer);
+    novelResizeTimer = setTimeout(applyNovelMobileMode, 120);
+  });
+
+  // Handle Mobile/Tablet Row Clicks
+  $("#novelTable tbody").on("click", "td", function (e) {
+    if ($(e.target).closest("a, button, .btn, input, select").length) return;
+
+    const tr = $(this).closest("tr");
+    if (tr.hasClass("child")) return;
+
+    const isMobileOrTablet =
+      document.body.classList.contains("is-mobile") ||
+      document.body.classList.contains("is-tablet");
+    if (!isMobileOrTablet) return;
+
+    const row = novelTable.row(tr);
+    if (!row.data()) return;
+
+    if (row.child.isShown()) {
+      row.child.hide();
+      tr.removeClass("shown");
+    } else {
+      const d = row.data();
+      let childHtml =
+        '<div class="mobile-row-details p-3 bg-light border rounded my-3 shadow-sm">';
+      childHtml +=
+        '<div class="mb-2"><strong>分类：</strong> ' +
+        authorEscapeHtml(d.category_name || "-") +
+        "</div>";
+
+      let tagsHtml = "";
+      if (d.tags) {
+        let tags = d.tags.split(",");
+        tags.forEach((tag) => {
+          if (tag.trim() !== "")
+            tagsHtml +=
+              '<span class="badge bg-light text-secondary border border-secondary border-opacity-25 me-1 mb-1">' +
+              tag.trim() +
+              "</span>";
+        });
+      }
+      childHtml +=
+        '<div class="mb-2"><strong>标签：</strong> ' +
+        (tagsHtml || "-") +
+        "</div>";
+      childHtml +=
+        '<div class="mb-3 text-muted small"><strong>创建时间：</strong> ' +
+        authorEscapeHtml(d.created_at || "-") +
+        "</div>";
+
+      const canEdit =
+        appContainer.data("can-edit") == 1 ||
+        appContainer.data("can-edit") === true ||
+        appContainer.data("can-edit") === "1";
+      const canDelete =
+        appContainer.data("can-delete") == 1 ||
+        appContainer.data("can-delete") === true ||
+        appContainer.data("can-delete") === "1";
+
+      let actions =
+        '<div class="d-flex gap-2 flex-wrap justify-content-start w-100 mt-3 pt-3 border-top">';
+      actions +=
+        '<a href="/author/novel/' +
+        d.id +
+        '/chapters/" class="btn btn-sm btn-outline-success flex-fill"><i class="fa-solid fa-list-ol"></i> 章节</a>';
+      actions +=
+        '<button class="btn btn-sm btn-outline-info flex-fill btn-view-novel" data-id="' +
+        d.id +
+        '"><i class="fa-solid fa-eye"></i> 查看</button>';
+      if (canEdit)
+        actions +=
+          '<button class="btn btn-sm btn-outline-primary flex-fill btn-edit-novel" data-id="' +
+          d.id +
+          '"><i class="fa-solid fa-pen"></i> 编辑</button>';
+      if (canDelete)
+        actions +=
+          '<button class="btn btn-sm btn-outline-danger flex-fill btn-delete-novel" data-id="' +
+          d.id +
+          '"><i class="fa-solid fa-trash"></i> 删除</button>';
+      actions += "</div></div>";
+
+      row.child(childHtml).show();
+      tr.addClass("shown");
+    }
+  });
 
   // 6. Image Preview & Validation (Both Forms)
   $("#cover_image_input, #modal_cover_image_input").on("change", function (e) {
@@ -722,9 +834,6 @@ $(document).ready(function () {
       }
     });
   });
-
-  loadNovelStats();
-  initNovelTable();
 });
 
 function authorEscapeHtml(text) {
@@ -775,7 +884,6 @@ function initAuthorVerificationModule() {
   var idInput = actionForm
     ? actionForm.querySelector('input[name="id"]')
     : null;
-  var hintEl = document.getElementById("authorVerifyActionHint");
   var dashboardPanel = document.getElementById("authorVerifyDashboardPanel");
   var toggleBtn = document.getElementById("toggleAuthorVerifyDashboard");
 
@@ -785,20 +893,14 @@ function initAuthorVerificationModule() {
   }
 
   function updateRejectReasonUI() {
-    if (!actionTypeSelect || !rejectWrap || !rejectInput || !hintEl) return;
+    if (!actionTypeSelect || !rejectWrap || !rejectInput) return;
     var actionType = actionTypeSelect.value;
     if (actionType === "reject") {
       rejectWrap.style.display = "block";
       rejectInput.setAttribute("required", "required");
-      hintEl.innerText = "驳回时必须填写驳回原因，系统会自动发送驳回邮件。";
-    } else if (actionType === "resend") {
-      rejectWrap.style.display = "none";
-      rejectInput.removeAttribute("required");
-      hintEl.innerText = "重发将按照当前审核状态调用对应邮件模板。";
     } else {
       rejectWrap.style.display = "none";
       rejectInput.removeAttribute("required");
-      hintEl.innerText = "通过后将清空驳回原因并发送通过邮件。";
     }
   }
 
@@ -808,6 +910,7 @@ function initAuthorVerificationModule() {
     searching: true,
     ordering: false,
     lengthChange: false,
+    responsive: false, // Disabled native responsive for custom mobile row details
     pageLength: parseInt(perPageSelect ? perPageSelect.value : "10", 10) || 10,
     ajax: {
       url: apiUrl,
@@ -926,6 +1029,150 @@ function initAuthorVerificationModule() {
     },
   });
 
+  // --- MOBILE RESPONSIVE LOGIC FOR VERIFICATION TABLE ---
+  let isVerifyMobile = null; // State tracker
+
+  function isVerifyCompactMode() {
+    return (
+      document.body.classList.contains("is-mobile") ||
+      document.body.classList.contains("is-tablet") ||
+      window.matchMedia("(max-width: 1024px)").matches
+    );
+  }
+
+  function applyVerifyMobileMode() {
+    if (!table) return;
+    const isMobileOrTablet = isVerifyCompactMode();
+
+    if (isVerifyMobile === isMobileOrTablet) return; // Prevent destroy bug
+    isVerifyMobile = isMobileOrTablet;
+
+    table.column(2).visible(!isMobileOrTablet, false); // Real Name
+    table.column(3).visible(!isMobileOrTablet, false); // Pen Name
+    table.column(5).visible(!isMobileOrTablet, false); // Reject Reason
+    table.column(6).visible(!isMobileOrTablet, false); // Notify Count
+    table.column(7).visible(!isMobileOrTablet, false); // Updated Time
+    table.column(8).visible(!isMobileOrTablet, false); // Actions
+    table.columns.adjust().draw(false);
+  }
+
+  applyVerifyMobileMode();
+  let verifyResizeTimer;
+  $(window).on("resize", function () {
+    clearTimeout(verifyResizeTimer);
+    verifyResizeTimer = setTimeout(applyVerifyMobileMode, 120);
+  });
+
+  function buildAuthorVerifyDetailHtml(d) {
+    let childHtml =
+      '<div class="mobile-row-details p-3 bg-light border rounded my-3 shadow-sm">';
+    childHtml +=
+      '<div class="mb-2"><strong>真实姓名：</strong> ' +
+      authorEscapeHtml(d.real_name || "-") +
+      "</div>";
+    childHtml +=
+      '<div class="mb-2"><strong>笔名：</strong> ' +
+      authorEscapeHtml(d.pen_name || "-") +
+      "</div>";
+
+    if (d.reject_reason) {
+      childHtml +=
+        '<div class="mb-2 text-danger"><strong>驳回原因：</strong> ' +
+        authorEscapeHtml(d.reject_reason || "-") +
+        "</div>";
+    }
+
+    childHtml +=
+      '<div class="mb-2"><strong>通知次数：</strong> ' +
+      parseInt(d.email_notify_count || 0) +
+      "</div>";
+    childHtml +=
+      '<div class="mb-3 text-muted small"><strong>更新时间：</strong> ' +
+      authorEscapeHtml(d.updated_at || "-") +
+      "</div>";
+
+    let actions =
+      '<div class="d-flex gap-2 flex-wrap justify-content-start w-100 mt-3 pt-3 border-top">';
+    const id = parseInt(d.id || 0, 10);
+    const reason = authorEscapeHtml(d.reject_reason || "");
+    if (canApprove)
+      actions +=
+        '<button type="button" class="btn btn-sm btn-outline-success flex-fill btn-author-action" data-id="' +
+        id +
+        '" data-action="approve"><i class="fa-solid fa-check"></i> 通过</button>';
+    if (canReject)
+      actions +=
+        '<button type="button" class="btn btn-sm btn-outline-danger flex-fill btn-author-action" data-id="' +
+        id +
+        '" data-action="reject" data-reason="' +
+        reason +
+        '"><i class="fa-solid fa-xmark"></i> 驳回</button>';
+    if (canResend)
+      actions +=
+        '<button type="button" class="btn btn-sm btn-outline-primary flex-fill btn-author-action" data-id="' +
+        id +
+        '" data-action="resend"><i class="fa-solid fa-envelope"></i> 重发</button>';
+    if (canDelete)
+      actions +=
+        '<button type="button" class="btn btn-sm btn-outline-secondary flex-fill btn-author-delete" data-id="' +
+        id +
+        '"><i class="fa-solid fa-trash"></i> 删除</button>';
+    if (!canApprove && !canReject && !canResend && !canDelete)
+      actions +=
+        '<span class="text-muted small w-100 text-center py-2 bg-light rounded">无操作权限</span>';
+    actions += "</div></div>";
+
+    childHtml += actions;
+    return childHtml;
+  }
+
+  // Handle Mobile/Tablet Row Clicks
+  $("#authorVerificationTable tbody").on("click", "tr", function (e) {
+    if ($(e.target).closest("a, button, .btn, select, input").length) return;
+
+    const tr = $(this).closest("tr");
+    if (tr.hasClass("child") || tr.hasClass("author-inline-detail-row")) return;
+
+    const isMobileOrTablet = isVerifyCompactMode();
+    if (!isMobileOrTablet) {
+      return;
+    }
+
+    const row = table.row(tr);
+    if (!row.data()) {
+      return;
+    }
+
+    if (row.child.isShown() || tr.hasClass("shown")) {
+      row.child.hide();
+      tr.next("tr.author-inline-detail-row").remove();
+      tr.removeClass("shown");
+    } else {
+      const d = row.data();
+      const childHtml = buildAuthorVerifyDetailHtml(d);
+
+      row.child(childHtml).show();
+
+      // Hard fallback: if DataTables child row is still not visible, inject inline detail row
+      setTimeout(function () {
+        const hasVisibleChild = tr.next("tr.child:visible").length > 0;
+        if (!hasVisibleChild) {
+          tr.next("tr.author-inline-detail-row").remove();
+          const colCount = $(tableEl).find("thead th").length || 9;
+          const fallbackRow =
+            '<tr class="author-inline-detail-row"><td colspan="' +
+            colCount +
+            '">' +
+            childHtml +
+            "</td></tr>";
+          tr.after(fallbackRow);
+        }
+      }, 0);
+
+      tr.addClass("shown");
+    }
+  });
+
   var debounceTimer = null;
   if (searchInput)
     searchInput.addEventListener("input", function () {
@@ -947,13 +1194,41 @@ function initAuthorVerificationModule() {
     var actionBtn = event.target.closest(".btn-author-action");
     if (actionBtn) {
       if (!modal || !actionForm || !idInput || !actionTypeSelect) return;
+
+      var action = actionBtn.getAttribute("data-action") || "approve";
       idInput.value = actionBtn.getAttribute("data-id") || "0";
-      actionTypeSelect.value =
-        actionBtn.getAttribute("data-action") || "approve";
-      if (rejectInput)
+      actionTypeSelect.value = action;
+
+      if (rejectInput) {
         rejectInput.value = actionBtn.getAttribute("data-reason") || "";
+      }
+
       updateRejectReasonUI();
-      modal.show();
+
+      // 1. Define the specific message based on the action
+      var noticeMsg = "";
+      if (action === "reject") {
+        noticeMsg = "驳回时必须填写驳回原因，系统会自动发送驳回邮件。";
+      } else if (action === "resend") {
+        noticeMsg = "重发将按照当前审核状态调用对应邮件模板。";
+      } else {
+        noticeMsg = "通过后将清空驳回原因并发送通过邮件。";
+      }
+
+      // 2. Trigger the Smart Notice BEFORE showing the modal
+      if (typeof window.showSmartNotice === "function") {
+        window.showSmartNotice(
+          "author_verify_" + action, // Unique LocalStorage ID for this specific action
+          "提示",
+          noticeMsg,
+          "info",
+          function () {
+            modal.show(); // Only open the modal AFTER they acknowledge (or instantly if bypassed)
+          },
+        );
+      } else {
+        modal.show();
+      }
       return;
     }
 

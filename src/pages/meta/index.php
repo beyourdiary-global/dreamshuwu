@@ -360,7 +360,5 @@ $pageMetaKey = $currentUrl;
     </div>
 
     <script src="<?php echo SITEURL; ?>/src/pages/meta/js/meta.js"></script>
-    <script src="<?php echo URL_ASSETS; ?>/js/sweetalert2@11.js"></script>
-    <script src="<?php echo URL_ASSETS; ?>/js/bootstrap.bundle.min.js"></script>
     </body>
     </html>

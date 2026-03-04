@@ -321,9 +321,9 @@ if ($res) {
 
         <div class="card-body">
             <?php if (hasSession('flash_msg')): ?>
-                <div class="alert alert-<?php echo htmlspecialchars(session('flash_type') ?: 'info'); ?> alert-dismissible fade show">
+                <div class="alert alert-<?php echo htmlspecialchars(session('flash_type') ?: 'info'); ?> d-none">
                     <?php echo htmlspecialchars(session('flash_msg')); ?>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    
                 </div>
                 <?php unsetSession('flash_msg'); unsetSession('flash_type'); ?>
             <?php endif; ?>

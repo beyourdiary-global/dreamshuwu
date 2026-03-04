@@ -329,8 +329,6 @@ try {
     // CREATE NOVEL
     // ==========================================
     if ($mode === 'create') {
-        $insertSql = "INSERT INTO {$novelTable} (author_id, title, category_id, tags, introduction, cover_image, completion_status, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'A', NOW(), NOW())";
-
         $title = postSpaceFilter('title');
         $categoryId = (int)post('category_id');
         
@@ -353,52 +351,129 @@ try {
 
         $tagsString = implode(',', array_map('trim', $tagsArray));
 
-        $checkSql = "SELECT id FROM {$novelTable} WHERE author_id = ? AND title = ? AND status = 'A' LIMIT 1";
+        // 1. Check for Duplicates OR Soft-Deleted Recovery
+        // [MODIFIED] Fetch ALL fields so we can log the exact `old_value`
+        $checkSql = "SELECT id, status, category_id, tags, introduction, cover_image, completion_status, created_at, updated_at FROM {$novelTable} WHERE author_id = ? AND title = ? LIMIT 1";
         $stmt = $conn->prepare($checkSql);
+        
+        $isRecoveryMode = false;
+        $recoveryId = null;
+        $oldData = null;
+
         if ($stmt) {
             $stmt->bind_param("is", $currentUserId, $title);
             $stmt->execute();
             $stmt->store_result();
-            if ($stmt->num_rows > 0) throw new Exception('您已创建过同名小说，书名不可重复。');
+            if ($stmt->num_rows > 0) {
+                $stmt->bind_result($dupId, $dupStatus, $oldCat, $oldTags, $oldIntro, $oldCover, $oldStatus, $oldCreated, $oldUpdated);
+                $stmt->fetch();
+                
+                // If the novel exists but is soft-deleted, we recover it
+                if ($dupStatus === 'D') {
+                    $isRecoveryMode = true;
+                    $recoveryId = $dupId;
+                    
+                    // Store the exact old database row for the Audit Log
+                    $oldData = [
+                        'id' => $dupId,
+                        'title' => $title,
+                        'category_id' => $oldCat,
+                        'tags' => $oldTags,
+                        'introduction' => $oldIntro,
+                        'cover_image' => $oldCover,
+                        'completion_status' => $oldStatus,
+                        'status' => 'D',
+                        'created_at' => $oldCreated,
+                        'updated_at' => $oldUpdated
+                    ];
+                } else {
+                    throw new Exception('您已创建过同名小说，书名不可重复。');
+                }
+            }
             $stmt->close();
         }
 
+        // 2. Upload Cover Image
         $uploadResult = uploadImage(getFile('cover_image'), BASE_PATH . 'assets/uploads/novel_covers/');
         if (!$uploadResult['success']) throw new Exception('封面上传失败: ' . $uploadResult['message']);
         $coverFileName = $uploadResult['filename'];
 
-        $stmt = $conn->prepare($insertSql);
-        if (!$stmt) throw new Exception('数据库准备失败: ' . $conn->error);
+        // 3. Execute Recovery or Insert
+        if ($isRecoveryMode) {
+            // Update the existing soft-deleted row, reactivating it and refreshing created_at
+            $recoverySql = "UPDATE {$novelTable} SET category_id = ?, tags = ?, introduction = ?, cover_image = ?, completion_status = ?, status = 'A', created_at = NOW(), updated_at = NOW() WHERE id = ?";
+            $stmt = $conn->prepare($recoverySql);
+            if (!$stmt) throw new Exception('数据库准备失败: ' . $conn->error);
 
-        $stmt->bind_param("isissss", $currentUserId, $title, $categoryId, $tagsString, $intro, $coverFileName, $completionStatus);
-        
-        if (!$stmt->execute()) {
-            @unlink(BASE_PATH . 'assets/uploads/novel_covers/' . $coverFileName);
-            throw new Exception('保存小说失败: ' . $stmt->error);
+            $stmt->bind_param("issssi", $categoryId, $tagsString, $intro, $coverFileName, $completionStatus, $recoveryId);
+            
+            if (!$stmt->execute()) {
+                @unlink(BASE_PATH . 'assets/uploads/novel_covers/' . $coverFileName);
+                throw new Exception('恢复小说失败: ' . $stmt->error);
+            }
+            $newNovelId = $recoveryId;
+            $stmt->close();
+            
+            $actionType = 'A'; // 
+            $actionMessage = 'Author recovered a soft-deleted novel';
+            $logQuery = $recoverySql;
+            
+        } else {
+            // Insert a brand new row
+            $insertSql = "INSERT INTO {$novelTable} (author_id, title, category_id, tags, introduction, cover_image, completion_status, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'A', NOW(), NOW())";
+            $stmt = $conn->prepare($insertSql);
+            if (!$stmt) throw new Exception('数据库准备失败: ' . $conn->error);
+
+            $stmt->bind_param("isissss", $currentUserId, $title, $categoryId, $tagsString, $intro, $coverFileName, $completionStatus);
+            
+            if (!$stmt->execute()) {
+                @unlink(BASE_PATH . 'assets/uploads/novel_covers/' . $coverFileName);
+                throw new Exception('保存小说失败: ' . $stmt->error);
+            }
+            $newNovelId = $conn->insert_id;
+            $stmt->close();
+            
+            $actionType = 'A'; // A = Add/Create
+            $actionMessage = 'Author created a new novel';
+            $logQuery = $insertSql;
         }
-        $newNovelId = $conn->insert_id;
-        $stmt->close();
 
+        // 4. Audit Log (Now includes BOTH old_value and new_value on recovery)
         if (function_exists('logAudit')) {
-            logAudit([
+            // Capture the current time to match the database NOW()
+            $currentTime = date('Y-m-d H:i:s'); 
+
+            $auditPayload = [
                 'page'           => $auditPage,
-                'action'         => 'A',
-                'action_message' => 'Author created a new novel',
-                'query'          => $insertSql,
+                'action'         => $actionType,
+                'action_message' => $actionMessage,
+                'query'          => $logQuery,
                 'query_table'    => $novelTable,
                 'user_id'        => $currentUserId,
                 'record_id'      => $newNovelId,
                 'record_name'    => $title,
                 'new_value'      => [
+                    'id' => $newNovelId,
                     'title' => $title,
                     'category_id' => $categoryId,
                     'tags' => $tagsString,
                     'introduction' => $intro,
                     'cover_image' => $coverFileName,
-                    'completion_status' => $completionStatus
+                    'completion_status' => $completionStatus,
+                    'status' => 'A',
+                    'created_at' => $currentTime, // Added New Time
+                    'updated_at' => $currentTime  // Added New Time
                 ]
-            ]);
+            ];
+
+            // If it was a recovery, append the exact old data we fetched earlier
+            if ($isRecoveryMode && $oldData !== null) {
+                $auditPayload['old_value'] = $oldData;
+            }
+
+            logAudit($auditPayload);
         }
+        
         echo safeJsonEncode(['success' => true, 'message' => '小说创建成功！']);
         exit();
     }
@@ -488,14 +563,22 @@ try {
             exit();
         }
 
-        // 3. Uniqueness Check
-        $uniqSql = "SELECT id FROM {$novelTable} WHERE author_id = ? AND title = ? AND id != ? AND status = 'A' LIMIT 1";
+        // 3. Uniqueness Check (Including soft-deleted blocks during renaming)
+        $uniqSql = "SELECT id, status FROM {$novelTable} WHERE author_id = ? AND title = ? AND id != ? LIMIT 1";
         $stmt = $conn->prepare($uniqSql);
         if ($stmt) {
             $stmt->bind_param("isi", $currentUserId, $title, $novelId);
             $stmt->execute();
             $stmt->store_result();
-            if ($stmt->num_rows > 0) throw new Exception('您已创建过同名小说，书名不可重复。');
+            if ($stmt->num_rows > 0) {
+                $stmt->bind_result($dupId, $dupStatus);
+                $stmt->fetch();
+                if ($dupStatus === 'D') {
+                     throw new Exception('该书名已被您删除的小说占用，不可重复使用。');
+                } else {
+                     throw new Exception('您已创建过同名小说，书名不可重复。');
+                }
+            }
             $stmt->close();
         }
 

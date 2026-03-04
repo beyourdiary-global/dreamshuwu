@@ -312,10 +312,10 @@ $customCSS[] = 'src/pages/webSetting/css/webSetting.css';
                 <div class="card-body p-4">
                     
                     <?php if ($message): ?>
-                        <div class="alert alert-<?php echo htmlspecialchars($msgType); ?> alert-dismissible fade show">
+                        <div class="alert alert-<?php echo htmlspecialchars($msgType); ?> d-none">
                             <i class="fa-solid fa-circle-exclamation me-2"></i>
                             <?php echo $message; ?>
-                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            
                         </div>
                     <?php endif; ?>
                     
@@ -327,9 +327,6 @@ $customCSS[] = 'src/pages/webSetting/css/webSetting.css';
     </div>
 </div>
 
-<script src="<?php echo URL_ASSETS; ?>/js/jquery-3.6.0.min.js"></script>
-<script src="<?php echo URL_ASSETS; ?>/js/bootstrap.bundle.min.js"></script>
-<script src="<?php echo URL_ASSETS; ?>/js/sweetalert2@11.js"></script>
 <script src="<?php echo SITEURL; ?>/src/pages/webSetting/js/webSetting.js"></script>
 </body>
 </html>

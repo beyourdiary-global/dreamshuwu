@@ -113,9 +113,9 @@ if (isPostRequest() && empty(post('mode'))) {
                     } else {
                         // Conflict with an active record OR conflict during Edit mode
                         if ($wantsJson) {
-                            respondJsonAndExit(false, 'Role name (EN or CN) already exists.');
+                            respondJsonAndExit(false, '角色名(英文或中文)已存在，请使用其他名称');
                         }
-                        setSession('flash_msg', 'Role name (EN or CN) already exists.');
+                        setSession('flash_msg', '角色名称(英文或中文)已存在，请使用其他名称');
                         setSession('flash_type', 'danger');
                         $canContinue = false;
                     }
@@ -366,9 +366,9 @@ if ($masterRes) {
 
         <div class="card-body">
             <?php if (hasSession('flash_msg')): ?>
-                <div class="alert alert-<?php echo htmlspecialchars(session('flash_type') ?: 'info'); ?> alert-dismissible fade show">
+                <div class="alert alert-<?php echo htmlspecialchars(session('flash_type') ?: 'info'); ?> d-none">
                     <?php echo htmlspecialchars(session('flash_msg')); ?>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    
                 </div>
                 <?php unsetSession('flash_msg'); unsetSession('flash_type'); ?>
             <?php endif; ?>

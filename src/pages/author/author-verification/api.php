@@ -16,7 +16,7 @@ try {
     $usersTable = defined('USR_LOGIN') ? USR_LOGIN : 'users';
 
     $currentUserId = sessionInt('user_id');
-    $currentUrl = '/author/author-verification.php';
+    $currentUrl = parse_url(URL_AUTHOR_VERIFICATION, PHP_URL_PATH) ?: '/author/author-verification.php';
     
     $perm = hasPagePermission($conn, $currentUrl);
     if (empty($perm) || (isset($perm->view) && empty($perm->view))) {

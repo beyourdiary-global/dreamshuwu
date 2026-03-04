@@ -246,9 +246,9 @@ if ($isEditMode && !$isSaveSubmit) {
 
         <div class="card-body">
             <?php if ($flashMsg !== ''): ?>
-                <div class="alert alert-<?php echo htmlspecialchars($flashType); ?> alert-dismissible fade show">
+                <div class="alert alert-<?php echo htmlspecialchars($flashType); ?> d-none">
                     <?php echo htmlspecialchars($flashMsg); ?>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    
                 </div>
             <?php endif; ?>
 

@@ -267,9 +267,6 @@ $customCSS[] = 'src/pages/admin/css/admin.css';
 <!DOCTYPE html>
 <head>
     <?php require_once BASE_PATH . 'include/header.php'; ?>
-    <?php if ($pageActionMode === 'list'): ?>
-    <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/dataTables.bootstrap.min.css">
-    <?php endif; ?>
 </head>
 <body>
 <?php require_once BASE_PATH . 'common/menu/header.php'; ?>
@@ -294,9 +291,9 @@ $customCSS[] = 'src/pages/admin/css/admin.css';
 
         <div class="card-body">
             <?php if ($flashMsg !== ''): ?>
-                <div class="alert alert-<?php echo htmlspecialchars($flashType); ?> alert-dismissible fade show">
+                <div class="alert alert-<?php echo htmlspecialchars($flashType); ?> d-none">
                     <?php echo htmlspecialchars($flashMsg); ?>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    
                 </div>
             <?php endif; ?>
 
@@ -403,13 +400,8 @@ $customCSS[] = 'src/pages/admin/css/admin.css';
 
 <?php endif; ?>
 
-<script src="<?php echo URL_ASSETS; ?>/js/jquery-3.6.0.min.js"></script>
 <?php if ($pageActionMode === 'list'): ?>
-<script src="<?php echo URL_ASSETS; ?>/js/jquery.dataTables.min.js"></script>
-<script src="<?php echo URL_ASSETS; ?>/js/dataTables.bootstrap.min.js"></script>
 <?php endif; ?>
-<script src="<?php echo URL_ASSETS; ?>/js/bootstrap.bundle.min.js"></script>
-<script src="<?php echo URL_ASSETS; ?>/js/sweetalert2@11.js"></script>
 <script src="<?php echo SITEURL; ?>/src/pages/admin/js/admin.js"></script>
 </body>
 </html>

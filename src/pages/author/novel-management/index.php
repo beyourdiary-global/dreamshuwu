@@ -66,7 +66,6 @@ $tableColumns = [
 <!DOCTYPE html>
 <head>
     <?php require_once BASE_PATH . 'include/header.php'; ?>
-    <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/dataTables.bootstrap.min.css">
     <link rel="stylesheet" href="<?php echo SITEURL; ?>/src/pages/author/css/author.css">
 </head>
 <body style="background-color: #f4f7f6;">
@@ -294,11 +293,6 @@ $tableColumns = [
     </div>
 </div>
 
-<script src="<?php echo URL_ASSETS; ?>/js/jquery-3.6.0.min.js"></script>
-<script src="<?php echo URL_ASSETS; ?>/js/bootstrap.bundle.min.js"></script>
-<script src="<?php echo URL_ASSETS; ?>/js/sweetalert2@11.js"></script>
-<script src="<?php echo URL_ASSETS; ?>/js/jquery.dataTables.min.js"></script>
-<script src="<?php echo URL_ASSETS; ?>/js/dataTables.bootstrap.min.js"></script>
 <script src="<?php echo SITEURL; ?>/src/pages/author/js/author.js"></script>
 
 </body>

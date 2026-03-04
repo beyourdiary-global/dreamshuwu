@@ -147,7 +147,6 @@ $emailTemplateName = getDynamicPageName($conn, $permEmailTemplate, '/author/emai
         <?php endif; ?>
     </div>
 </div>
-<script src="<?php echo URL_ASSETS; ?>/js/bootstrap.bundle.min.js"></script>
 <script src="<?php echo SITEURL; ?>/src/pages/admin/js/admin.js"></script>
 </body>
 </html>
