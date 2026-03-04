@@ -429,145 +429,149 @@ foreach ($tables as $name => $sql) {
     }
 }
 
-// 5. Safe Schema Updates (ALTER TABLES)
+// 5. Check Schema Status Before Updating
 echo "<h3>Checking Schema Updates...</h3>";
 
-// Tag Table (From previous update)
+// Condition 1: Check if Tag Table needs an update
 $checkTagCol = $conn->query("SHOW COLUMNS FROM novel_tag LIKE 'status'");
-if ($checkTagCol && $checkTagCol->num_rows === 0) {
+$tagNeedsUpdate = ($checkTagCol && $checkTagCol->num_rows === 0);
+
+// Condition 2: Check if Category Table needs an update
+$checkCatCol = $conn->query("SHOW COLUMNS FROM novel_category LIKE 'status'");
+$catNeedsUpdate = ($checkCatCol && $checkCatCol->num_rows === 0);
+
+// 6. Initialize Base Data (Run BEFORE Altering)
+echo "<h3>Initializing Base Data...</h3>";
+
+// TRIGGER CONDITION: Only run if your 2 conditions are met
+if (!$tagNeedsUpdate && !$catNeedsUpdate) {
+    echo "<strong style='color:green;'>No schema updates are needed. Skipping data initialization.</strong><br>";
+} else {
+    $initDataSql = "
+    -- 1. Disable foreign key checks temporarily
+    SET FOREIGN_KEY_CHECKS = 0;
+
+    -- 2. Safely empty child tables first, then parent tables, and reset Auto-Increments
+    DELETE FROM `user_role_permission`;
+    DELETE FROM `action_master`;
+
+    DELETE FROM `page_action`;
+    ALTER TABLE `page_action` AUTO_INCREMENT = 1;
+
+    DELETE FROM `page_information_list`;
+    ALTER TABLE `page_information_list` AUTO_INCREMENT = 1;
+
+    -- 3. Insert fresh Page Actions
+    INSERT INTO `page_action` (`id`, `name`, `status`, `created_at`, `updated_at`) VALUES
+    (1, 'View', 'A', NOW(), NOW()),
+    (2, 'Add', 'A', NOW(), NOW()),
+    (3, 'Edit', 'A', NOW(), NOW()),
+    (4, 'Delete', 'A', NOW(), NOW()),
+    (5, 'Save', 'A', NOW(), NOW()),
+    (6, 'Approve', 'A', NOW(), NOW()),
+    (7, 'Reject', 'A', NOW(), NOW()),
+    (8, 'Resend Email', 'A', NOW(), NOW()),
+    (9, 'Reset_defaults', 'A', NOW(), NOW()),
+    (10, 'Remove_favicon', 'A', NOW(), NOW()),
+    (11, 'Remove_logo', 'A', NOW(), NOW());
+
+    -- 4. Insert clean Page Information (IDs strictly 1 to 24, no skips)
+    INSERT INTO `page_information_list` (`id`, `name_en`, `name_cn`, `description`, `public_url`, `file_path`, `status`, `created_at`, `updated_at`) VALUES
+    (1, 'Dashboard', '仪表盘', 'Main Dashboard', '/dashboard/', '/dashboard.php', 'A', NOW(), NOW()),
+    (2, 'Profile', '个人主页', 'User Profile', '/profile/', '/src/pages/user/profile.php', 'A', NOW(), NOW()),
+    (3, 'Novel Tags', '小说标签', 'Manage Novel Tags', '/tags/', '/src/pages/tags/index.php', 'A', NOW(), NOW()),
+    (4, 'Tag Form', '标签表单', 'Tag Create/Edit Form', '/tags/?tag_mode=form', '/src/pages/tags/form.php', 'D', NOW(), NOW()),
+    (5, 'Novel Categories', '小说分类', 'Manage Categories', '/category/', '/src/pages/category/index.php', 'A', NOW(), NOW()),
+    (6, 'Category Form', '分类表单', 'Category Create/Edit Form', '/category/?cat_mode=form', '/src/pages/category/form.php', 'D', NOW(), NOW()),
+    (7, 'Meta Settings', 'SEO设置', 'SEO Meta Settings', '/meta-setting/', '/src/pages/meta/index.php', 'A', NOW(), NOW()),
+    (8, 'Web Settings', '网站设置', 'Global Web Settings', '/web-settings/', '/src/pages/webSetting/index.php', 'A', NOW(), NOW()),
+    (9, 'Admin Management', '管理员管理', 'Manage Admin Users', '/admin/', '/src/pages/admin/index.php', 'A', NOW(), NOW()),
+    (10, 'Page Actions', '页面动作', 'Manage Page Actions', '/admin/page-action/', '/src/pages/admin/page-action/index.php', 'A', NOW(), NOW()),
+    (11, 'Page Information', '页面信息', 'Manage Page URLs', '/admin/page-information-list/', '/src/pages/admin/page-information-list/index.php', 'A', NOW(), NOW()),
+    (12, 'User Roles', '用户角色', 'Manage Roles', '/admin/user-role/', '/src/pages/admin/user-role/index.php', 'A', NOW(), NOW()),
+    (13, 'Login', '登录', 'User Login Page', '/login/', '/login.php', 'A', NOW(), NOW()),
+    (14, 'Register', '注册', 'User Registration', '/register/', '/register.php', 'A', NOW(), NOW()),
+    (15, 'Forgot Password', '忘记密码', 'Forgot Password', '/forgot-password/', '/forgot-password.php', 'A', NOW(), NOW()),
+    (16, 'Reset Password', '重置密码', 'Reset Password', '/reset-password/', '/reset-password.php', 'A', NOW(), NOW()),
+    (17, 'Home', '首页', 'Public Homepage', '/', '/index.php', 'A', NOW(), NOW()),
+    (18, 'Audit Log', '审计日志', 'System Audit Log', '/audit-log', '/audit-log.php', 'A', NOW(), NOW()),
+    (19, 'Author Register Page', 'Author Register', '', '/author/author-register', '/src/pages/author/author-register.php', 'A', NOW(), NOW()),
+    (20, 'Author Verification', 'Author Verification', '', '/author/author-verification', '/src/pages/author/author-verification/index.php', 'A', NOW(), NOW()),
+    (21, 'Email Template', 'Email Template', '', '/author/email-template', '/src/pages/author/email-template/index.php', 'A', NOW(), NOW()),
+    (22, 'Author Dashboard', '作者首页', '', '/author/dashboard', '/src/pages/author/dashboard.php', 'A', NOW(), NOW()),
+    (23, 'Novel Management', 'Novel Management', '', '/author/novel-management', '/src/pages/author/novel-management/index.php', 'A', NOW(), NOW()),
+    (24, 'Chapters', 'Chapter', '', '/author/novel/chapters/', '/src/pages/author/chapter-management/index.php', 'A', NOW(), NOW());
+
+    -- 5. Bind ALL Active Actions to ALL Active Pages
+    INSERT INTO `action_master` (`page_id`, `action_id`)
+    SELECT p.id, a.id 
+    FROM `page_information_list` p
+    CROSS JOIN `page_action` a
+    WHERE p.status = 'A' AND a.status = 'A';
+
+    -- 6. Grant Admin (ID 1) ALL Actions on ALL Pages
+    INSERT INTO `user_role_permission` (`user_role_id`, `page_id`, `action_id`)
+    SELECT 1, p.id, a.id
+    FROM `page_information_list` p
+    CROSS JOIN `page_action` a
+    WHERE p.status = 'A' AND a.status = 'A';
+
+    -- 7. Grant Member (ID 2) Limited Access 
+    -- (Dashboard, Profile, Public Pages, Author Register)
+    INSERT INTO `user_role_permission` (`user_role_id`, `page_id`, `action_id`)
+    SELECT 2, p.id, a.id
+    FROM `page_information_list` p
+    CROSS JOIN `page_action` a
+    WHERE p.status = 'A' AND a.status = 'A'
+    AND p.id IN (1, 2, 13, 14, 15, 16, 17, 19);
+
+    -- 8. Grant Author (ID 3) Same as Member + Author Features
+    -- (Author Dashboard, Novel Management [23], Chapters [24])
+    INSERT INTO `user_role_permission` (`user_role_id`, `page_id`, `action_id`)
+    SELECT 3, p.id, a.id
+    FROM `page_information_list` p
+    CROSS JOIN `page_action` a
+    WHERE p.status = 'A' AND a.status = 'A'
+    AND p.id IN (1, 2, 13, 14, 15, 16, 17, 19, 22, 23, 24);
+
+    -- 9. Re-enable foreign key checks
+    SET FOREIGN_KEY_CHECKS = 1;
+    ";
+
+    // Execute the massive multi-query block
+    if ($conn->multi_query($initDataSql)) {
+        do {
+            if ($result = $conn->store_result()) {
+                $result->free();
+            }
+        } while ($conn->more_results() && $conn->next_result());
+        
+        echo "<strong style='color:blue;'>Successfully wiped old data and initialized new base data (Pages, Roles, Actions).</strong><br>";
+    } else {
+        echo "<strong style='color:red;'>Error initializing base data: " . $conn->error . "</strong><br>";
+    }
+}
+
+
+// 7. Apply the Schema Updates (ALTER TABLES)
+echo "<h3>Applying Schema Updates...</h3>";
+
+if ($tagNeedsUpdate) {
     if ($conn->query("ALTER TABLE novel_tag ADD COLUMN status CHAR(1) NOT NULL DEFAULT 'A' COMMENT 'A = Active, D = Deleted' AFTER name")) {
         $conn->query("CREATE INDEX idx_tag_status ON novel_tag (status)");
         echo "Successfully added 'status' column to novel_tag.<br>";
     }
+} else {
+    echo "novel_tag table is already up to date.<br>";
 }
 
-// Category Table (New update)
-$checkCatCol = $conn->query("SHOW COLUMNS FROM novel_category LIKE 'status'");
-if ($checkCatCol && $checkCatCol->num_rows === 0) {
+if ($catNeedsUpdate) {
     if ($conn->query("ALTER TABLE novel_category ADD COLUMN status CHAR(1) NOT NULL DEFAULT 'A' COMMENT 'A = Active, D = Deleted' AFTER name")) {
         $conn->query("CREATE INDEX idx_category_status ON novel_category (status)");
         echo "Successfully added 'status' column to novel_category.<br>";
     }
-}
-
-// 6. Initialize Base Data (Roles, Actions, Pages, Permissions)
-echo "<h3>Initializing Base Data...</h3>";
-
-$initDataSql = "
--- 1. Disable foreign key checks temporarily
-SET FOREIGN_KEY_CHECKS = 0;
-
--- 2. Safely empty child tables first, then parent tables, and reset Auto-Increments
-DELETE FROM `user_role_permission`;
-DELETE FROM `action_master`;
-
-DELETE FROM `page_action`;
-ALTER TABLE `page_action` AUTO_INCREMENT = 1;
-
-DELETE FROM `page_information_list`;
-ALTER TABLE `page_information_list` AUTO_INCREMENT = 1;
-
-DELETE FROM `user_role`;
-ALTER TABLE `user_role` AUTO_INCREMENT = 1;
-
--- 3. Insert fresh Page Actions
-INSERT INTO `page_action` (`id`, `name`, `status`, `created_at`, `updated_at`) VALUES
-(1, 'View', 'A', NOW(), NOW()),
-(2, 'Add', 'A', NOW(), NOW()),
-(3, 'Edit', 'A', NOW(), NOW()),
-(4, 'Delete', 'A', NOW(), NOW()),
-(5, 'Approve', 'A', NOW(), NOW()),
-(6, 'Reject', 'A', NOW(), NOW()),
-(7, 'Resend Email', 'A', NOW(), NOW()),
-(8, 'Reset_defaults', 'A', NOW(), NOW()),
-(9, 'Remove_favicon', 'A', NOW(), NOW()),
-(10, 'Remove_logo', 'A', NOW(), NOW());
-
--- 4. Insert clean Page Information (IDs strictly 1 to 24, no skips)
-INSERT INTO `page_information_list` (`id`, `name_en`, `name_cn`, `description`, `public_url`, `file_path`, `status`, `created_at`, `updated_at`) VALUES
-(1, 'Dashboard', '仪表盘', 'Main Dashboard', '/dashboard/', '/dashboard.php', 'A', NOW(), NOW()),
-(2, 'Profile', '个人主页', 'User Profile', '/profile/', '/src/pages/user/profile.php', 'A', NOW(), NOW()),
-(3, 'Novel Tags', '小说标签', 'Manage Novel Tags', '/tags/', '/src/pages/tags/index.php', 'A', NOW(), NOW()),
-(4, 'Tag Form', '标签表单', 'Tag Create/Edit Form', '/tags/?tag_mode=form', '/src/pages/tags/form.php', 'D', NOW(), NOW()),
-(5, 'Novel Categories', '小说分类', 'Manage Categories', '/category/', '/src/pages/category/index.php', 'A', NOW(), NOW()),
-(6, 'Category Form', '分类表单', 'Category Create/Edit Form', '/category/?cat_mode=form', '/src/pages/category/form.php', 'D', NOW(), NOW()),
-(7, 'Meta Settings', 'SEO设置', 'SEO Meta Settings', '/meta-setting/', '/src/pages/meta/index.php', 'A', NOW(), NOW()),
-(8, 'Web Settings', '网站设置', 'Global Web Settings', '/web-settings/', '/src/pages/webSetting/index.php', 'A', NOW(), NOW()),
-(9, 'Admin Management', '管理员管理', 'Manage Admin Users', '/admin/', '/src/pages/admin/index.php', 'A', NOW(), NOW()),
-(10, 'Page Actions', '页面动作', 'Manage Page Actions', '/admin/page-action/', '/src/pages/admin/page-action/index.php', 'A', NOW(), NOW()),
-(11, 'Page Information', '页面信息', 'Manage Page URLs', '/admin/page-information-list/', '/src/pages/admin/page-information-list/index.php', 'A', NOW(), NOW()),
-(12, 'User Roles', '用户角色', 'Manage Roles', '/admin/user-role/', '/src/pages/admin/user-role/index.php', 'A', NOW(), NOW()),
-(13, 'Login', '登录', 'User Login Page', '/login/', '/login.php', 'A', NOW(), NOW()),
-(14, 'Register', '注册', 'User Registration', '/register/', '/register.php', 'A', NOW(), NOW()),
-(15, 'Forgot Password', '忘记密码', 'Forgot Password', '/forgot-password/', '/forgot-password.php', 'A', NOW(), NOW()),
-(16, 'Reset Password', '重置密码', 'Reset Password', '/reset-password/', '/reset-password.php', 'A', NOW(), NOW()),
-(17, 'Home', '首页', 'Public Homepage', '/', '/index.php', 'A', NOW(), NOW()),
-(18, 'Audit Log', '审计日志', 'System Audit Log', '/audit-log', '/audit-log.php', 'A', NOW(), NOW()),
-(19, 'Author Register Page', 'Author Register', '', '/author/author-register', '/src/pages/author/author-register.php', 'A', NOW(), NOW()),
-(20, 'Author Verification', 'Author Verification', '', '/author/author-verification', '/src/pages/author/author-verification/index.php', 'A', NOW(), NOW()),
-(21, 'Email Template', 'Email Template', '', '/author/email-template', '/src/pages/author/email-template/index.php', 'A', NOW(), NOW()),
-(22, 'Author Dashboard', '作者首页', '', '/author/dashboard', '/src/pages/author/dashboard.php', 'A', NOW(), NOW()),
-(23, 'Novel Management', 'Novel Management', '', '/author/novel-management', '/src/pages/author/novel-management/index.php', 'A', NOW(), NOW()),
-(24, 'Chapters', 'Chapter', '', '/author/novel/{id}/chapters/', '/src/pages/author/chapter-management/index.php', 'A', NOW(), NOW());
-
--- 5. Insert fresh User Roles
-INSERT INTO `user_role` (`id`, `name_en`, `name_cn`, `description`, `status`, `created_at`, `updated_at`) VALUES
-(1, 'Admin', '管理员', 'System Administrators (All Access)', 'A', NOW(), NOW()),
-(2, 'Member', '会员', 'Default Registered User (Limited Access)', 'A', NOW(), NOW()),
-(3, 'Author', '作者', 'Approved Author (Content Access)', 'A', NOW(), NOW());
-
--- 6. Bind ALL Active Actions to ALL Active Pages
-INSERT INTO `action_master` (`page_id`, `action_id`)
-SELECT p.id, a.id 
-FROM `page_information_list` p
-CROSS JOIN `page_action` a
-WHERE p.status = 'A' AND a.status = 'A';
-
--- 7. Grant Admin (ID 1) ALL Actions on ALL Pages
-INSERT INTO `user_role_permission` (`user_role_id`, `page_id`, `action_id`)
-SELECT 1, p.id, a.id
-FROM `page_information_list` p
-CROSS JOIN `page_action` a
-WHERE p.status = 'A' AND a.status = 'A';
-
--- 8. Grant Member (ID 2) Limited Access 
--- (Dashboard, Profile, Public Pages, Author Register)
-INSERT INTO `user_role_permission` (`user_role_id`, `page_id`, `action_id`)
-SELECT 2, p.id, a.id
-FROM `page_information_list` p
-CROSS JOIN `page_action` a
-WHERE p.status = 'A' AND a.status = 'A'
-AND p.id IN (1, 2, 13, 14, 15, 16, 17, 19);
-
--- 9. Grant Author (ID 3) Same as Member + Author Features
--- (Author Dashboard, Novel Management [23], Chapters [24])
-INSERT INTO `user_role_permission` (`user_role_id`, `page_id`, `action_id`)
-SELECT 3, p.id, a.id
-FROM `page_information_list` p
-CROSS JOIN `page_action` a
-WHERE p.status = 'A' AND a.status = 'A'
-AND p.id IN (1, 2, 13, 14, 15, 16, 17, 19, 22, 23, 24);
-
--- 10. Update all existing users to have the Admin role (ID 1)
-UPDATE `users` SET `user_role_id` = 1;
-
--- 11. Re-enable foreign key checks
-SET FOREIGN_KEY_CHECKS = 1;
-";
-
-// Execute the massive multi-query block
-if ($conn->multi_query($initDataSql)) {
-    do {
-        // We must consume all results inside a multi_query, otherwise 
-        // subsequent PHP queries will fail with "Commands out of sync"
-        if ($result = $conn->store_result()) {
-            $result->free();
-        }
-    } while ($conn->more_results() && $conn->next_result());
-    
-    echo "Successfully initialized base data (Pages, Roles, Actions, and Admin overrides).<br>";
 } else {
-    echo "Error initializing base data: " . $conn->error . "<br>";
+    echo "novel_category table is already up to date.<br>";
 }
 
 $conn->close();

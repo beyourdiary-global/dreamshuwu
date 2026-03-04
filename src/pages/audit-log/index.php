@@ -260,10 +260,10 @@ $pageMetaKey = $currentUrl;
 <?php require_once BASE_PATH . 'common/menu/header.php'; ?>
 
 <main class="audit-container">
+    <?php echo generateBreadcrumb($conn, $currentUrl); ?>
     <div class="card shadow-sm">
         <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
             <div>
-                <?php echo generateBreadcrumb($conn, $currentUrl); ?>
                 <h4 class="m-0 text-primary"><i class="fa-solid fa-file-shield"></i> <?php echo htmlspecialchars($pageName); ?></h4>
             </div>
             <div class="d-flex align-items-center gap-2">

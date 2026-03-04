@@ -200,17 +200,18 @@ $deleteError = checkPermissionError('delete', $perm);
 
     // 2. Logic Validation & Soft Delete
     try {
-        $checkSql = "SELECT COUNT(*) FROM " . NOVEL . " WHERE category_id = ?";
+        // [MODIFIED] Optimized from COUNT(*) to SELECT 1 ... LIMIT 1 for instant existence checking
+        $checkSql = "SELECT 1 FROM " . NOVEL . " WHERE category_id = ? LIMIT 1";
         $checkStmt = $conn->prepare($checkSql);
         
         if ($checkStmt) {
             $checkStmt->bind_param("i", $id);
             $checkStmt->execute();
-            $checkStmt->bind_result($novelCount);
-            $checkStmt->fetch();
+            $checkStmt->store_result();
+            $isUsed = $checkStmt->num_rows > 0;
             $checkStmt->close();
 
-            if ($novelCount > 0) {
+            if ($isUsed) {
                 echo safeJsonEncode(['success' => false, 'message' => '无法删除：该分类下还有关联的小说，请先移除小说。']);
                 exit();
             }
@@ -283,10 +284,10 @@ if ($flashMsg !== '') {
 <body>
 <?php require_once BASE_PATH . 'common/menu/header.php'; ?>
 <div class="category-container app-page-shell">
+    <?php echo generateBreadcrumb($conn, $currentUrl); ?>
     <div class="card category-card">
         <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
             <div>
-                <?php echo generateBreadcrumb($conn, $currentUrl); ?>
                 <h4 class="m-0 text-primary"><i class="fa-solid fa-layer-group"></i> <?php echo htmlspecialchars($pageName); ?></h4>
             </div>
             <?php if ($perm->add): ?>

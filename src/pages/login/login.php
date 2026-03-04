@@ -1,6 +1,15 @@
 <?php
 require_once dirname(__DIR__, 3) . '/common.php';
 
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
+header('Expires: 0');
+
+if (!isPostRequest() && hasSession('logged_in') && session('logged_in') === true) {
+    header('Location: ' . URL_HOME);
+    exit();
+}
+
 $dbTable = USR_LOGIN; 
 $loginQuery = "SELECT * FROM " . $dbTable . " WHERE email = ?";
 $auditPage = 'Login Page'; 
@@ -176,5 +185,14 @@ if (isPostRequest()) {
 </main>
 <script src="<?php echo URL_ASSETS; ?>/js/jquery-3.7.1.min.js"></script>
 <script src="<?php echo URL_ASSETS; ?>/js/auth.js"></script>
+<script>
+window.addEventListener('pageshow', function (event) {
+    var nav = performance.getEntriesByType('navigation');
+    var isBackForward = nav && nav.length > 0 && nav[0].type === 'back_forward';
+    if (event.persisted || isBackForward) {
+        window.location.reload();
+    }
+});
+</script>
 </body>
 </html>

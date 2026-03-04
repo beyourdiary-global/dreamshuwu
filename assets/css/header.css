@@ -442,4 +442,63 @@ body.is-mobile {
   body {
     padding-bottom: 60px;
   }
+
+  .header-container {
+    width: 100%;
+    max-width: 100%;
+    padding: 0 12px;
+    min-width: 0;
+  }
+
+  .logo {
+    margin-right: 0;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .logo-text {
+    display: block;
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+/* Explicit mobile fallbacks for pages using plain CSS delivery */
+body.is-mobile .global-breadcrumb-inline {
+  margin-bottom: 10px;
+}
+
+body.is-mobile .desktop-nav {
+  display: none;
+}
+
+body.is-mobile .mobile-top-bar {
+  display: block;
+}
+
+body.is-mobile .mobile-bottom-nav {
+  display: flex;
+}
+
+body.is-mobile .header-container {
+  width: 100%;
+  max-width: 100%;
+  padding: 0 12px;
+  min-width: 0;
+}
+
+body.is-mobile .logo {
+  margin-right: 0;
+  min-width: 0;
+  max-width: 100%;
+}
+
+body.is-mobile .logo-text {
+  display: block;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

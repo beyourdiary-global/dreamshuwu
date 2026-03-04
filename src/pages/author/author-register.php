@@ -249,9 +249,8 @@ $pageMetaKey = $currentUrl;
 <body>
 <?php require_once BASE_PATH . 'common/menu/header.php'; ?>
 
-<main class="dashboard-main bg-light py-5">
-    <div class="container author-reg-container shadow-sm bg-white rounded-4 p-4 p-md-5">
-        <?php echo generateBreadcrumb($conn, $currentUrl); ?>
+<main class="author-reg-page app-page-shell">
+    <div class="author-reg-container shadow-sm bg-white rounded-4 p-4 p-md-5">
         
         <?php if ($authorStatus === 'pending'): ?>
             <div class="alert alert-warning d-flex align-items-center mb-4">
@@ -270,7 +269,7 @@ $pageMetaKey = $currentUrl;
             </div>
         <?php endif; ?>
 
-        <?php
+            <?php
         $identityFields = [
             ['name' => 'real_name',     'label' => '真实姓名',   'type' => 'text',  'width' => 'col-md-6', 'required' => true, 'pattern' => ''],
             ['name' => 'id_number',     'label' => '身份证号码', 'type' => 'text',  'width' => 'col-md-6', 'required' => true, 'pattern' => '^\d+$'],
@@ -287,7 +286,7 @@ $pageMetaKey = $currentUrl;
         ];
         ?>
 
-        <form id="authorRegForm" method="POST" enctype="multipart/form-data" class="check-changes" novalidate>
+            <form id="authorRegForm" method="POST" enctype="multipart/form-data" class="check-changes" novalidate>
             
             <h4 class="author-section-title mt-2">真实身份信息 (必填)</h4>
             <div class="row mb-4">
@@ -382,7 +381,7 @@ $pageMetaKey = $currentUrl;
                     </button>
                 <?php endif; ?>
             </div>
-        </form>
+            </form>
     </div>
 </main>
 

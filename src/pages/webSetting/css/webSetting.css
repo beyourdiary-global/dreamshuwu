@@ -4,6 +4,56 @@
   color: var(--theme-text-color) !important;
 }
 
+/* Mobile spacing and stack alignment */
+body.is-mobile .web-settings-container {
+  padding-left: 12px !important;
+  padding-right: 12px !important;
+  padding-bottom: 20px;
+}
+
+body.is-mobile .web-settings-container .card {
+  margin-bottom: 60px !important;
+}
+
+body.is-mobile .web-settings-container .card-body,
+body.is-mobile .web-settings-container .card-header {
+  padding-left: 14px !important;
+  padding-right: 14px !important;
+}
+
+body.is-mobile #webSettingsForm .row {
+  margin-left: 0;
+  margin-right: 0;
+}
+
+body.is-mobile #webSettingsForm [class*="col-"] {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+body.is-mobile #webSettingsForm .form-label,
+body.is-mobile #webSettingsForm .col-form-label {
+  text-align: left !important;
+}
+
+body.is-mobile #webSettingsForm .text-md-end,
+body.is-mobile #webSettingsForm .text-md-start {
+  text-align: left !important;
+}
+
+@media (max-width: 380px) {
+  body.is-mobile .web-settings-container {
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
+
+  body.is-mobile .web-settings-container .card-body,
+  body.is-mobile .web-settings-container .card-header {
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+  }
+}
+
 /* Tablet Action Buttons (768px - 1023px) */
 body.is-tablet {
   #webSettingsForm .row.mt-5.pt-3.border-top {

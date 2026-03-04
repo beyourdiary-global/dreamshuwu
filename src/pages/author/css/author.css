@@ -195,7 +195,13 @@ body.is-mobile {
   .main-content {
     padding-left: 5px !important;
     padding-right: 5px !important;
+    padding-bottom: 120px !important;
   }
+
+  .main-content .card {
+    margin-bottom: 30px !important;
+  }
+
   .card-body {
     padding: var(--space-sm) !important;
   }
@@ -220,8 +226,8 @@ body.is-mobile {
   #chapterTable_wrapper {
     overflow-x: hidden !important;
     width: 100% !important;
+    padding-bottom: 20px !important;
   }
-
   table.dataTable#novelTable,
   table.dataTable#chapterTable {
     width: 100% !important;
@@ -239,12 +245,15 @@ body.is-mobile {
     box-sizing: border-box !important;
   }
 
-  /* Ensure Action Column is hidden on mobile so it moves to child row */
+  /* Ensure Action Column is ALWAYS visible on mobile */
   table.dataTable#novelTable thead th:last-child,
   table.dataTable#novelTable tbody td:last-child,
   table.dataTable#chapterTable thead th:last-child,
   table.dataTable#chapterTable tbody td:last-child {
-    display: none !important; /* Start hidden on mobile */
+    display: table-cell !important;
+    width: 90px !important;
+    min-width: 90px !important;
+    text-align: center !important;
   }
 
   /* When expanded, show content in child row */
@@ -430,5 +439,115 @@ body.is-tablet {
   #authorVerificationTable td:last-child .btn,
   #emailTemplateTable td:last-child .btn {
     white-space: nowrap !important;
+  }
+}
+
+body.is-tablet {
+  /* 1. Force strict table layout */
+  table.dataTable#novelTable,
+  table.dataTable#chapterTable {
+    table-layout: fixed !important;
+    width: 100% !important;
+  }
+
+  /* 2. HEADERS: Force all column names to stay on ONE line */
+  table.dataTable#novelTable thead th,
+  table.dataTable#chapterTable thead th {
+    white-space: nowrap !important;
+    word-break: keep-all !important;
+    padding: 6px 2px !important;
+    font-size: 12px !important;
+    vertical-align: middle !important;
+  }
+
+  /* 3. BODY CELLS: Allow content to wrap normally */
+  table.dataTable#novelTable tbody td,
+  table.dataTable#chapterTable tbody td {
+    padding: 6px 2px !important;
+    vertical-align: middle !important;
+    white-space: normal !important;
+    word-break: break-word !important;
+    font-size: 12px !important;
+  }
+
+  /* 4. Cover Image Column */
+  table.dataTable#novelTable thead th:nth-child(1),
+  table.dataTable#novelTable tbody td:nth-child(1) {
+    width: 40px !important;
+    text-align: center !important;
+  }
+
+  /* 5. Title Column Header (Align left for neatness) */
+  table.dataTable#novelTable thead th:nth-child(2) {
+    text-align: left !important;
+  }
+
+  /* 6. Category & Tags Columns (Strictly Truncated) */
+  table.dataTable#novelTable thead th:nth-child(3),
+  table.dataTable#novelTable tbody td:nth-child(3),
+  table.dataTable#novelTable thead th:nth-child(4),
+  table.dataTable#novelTable tbody td:nth-child(4) {
+    width: 45px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  /* 7. Status Column */
+  table.dataTable#novelTable thead th:nth-child(5),
+  table.dataTable#novelTable tbody td:nth-child(5) {
+    width: 50px !important;
+    text-align: center !important;
+  }
+
+  table.dataTable#novelTable tbody td:nth-child(5) .badge {
+    padding: 3px 4px !important;
+    font-size: 11px !important;
+  }
+
+  /* 8. Date Column */
+  table.dataTable#novelTable thead th:nth-child(6),
+  table.dataTable#novelTable tbody td:nth-child(6) {
+    width: 65px !important;
+    text-align: center !important;
+  }
+
+  /* 9. THE FIX: Action Column (135px fits four 28px buttons exactly) */
+  table.dataTable#novelTable thead th:last-child,
+  table.dataTable#novelTable tbody td:last-child,
+  table.dataTable#chapterTable thead th:last-child,
+  table.dataTable#chapterTable tbody td:last-child {
+    width: 135px !important;
+    min-width: 135px !important;
+    text-align: right !important; /* Pushes the '操作' header to the right over the buttons */
+  }
+
+  /* 10. Lock Action Buttons into one horizontal row */
+  table.dataTable#novelTable tbody td:last-child .d-flex,
+  table.dataTable#chapterTable tbody td:last-child .d-flex {
+    flex-wrap: nowrap !important;
+    justify-content: flex-end !important;
+    gap: 4px !important;
+    margin: 0 !important;
+  }
+
+  /* Compact 28px buttons */
+  table.dataTable#novelTable tbody td:last-child .btn,
+  table.dataTable#chapterTable tbody td:last-child .btn {
+    width: 28px !important;
+    height: 28px !important;
+    min-width: 28px !important;
+    padding: 0 !important;
+    font-size: 11px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  /* 11. Disable horizontal scrollbar */
+  #novelTable_wrapper .table-responsive,
+  #chapterTable_wrapper .table-responsive {
+    overflow-x: hidden !important;
+    width: 100% !important;
   }
 }

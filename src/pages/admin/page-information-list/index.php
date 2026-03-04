@@ -215,10 +215,10 @@ $customCSS[] = 'src/pages/admin/css/admin.css';
 ?>
 <div class="app-page-shell" id="pageActionApp" data-delete-api-url="<?php echo htmlspecialchars($apiEndpoint); ?>">
     <?php $displayIndexStart = (((int) max(1, (int) $page) - 1) * (int) max(1, (int) $perPage)) + 1; ?>
+    <?php echo generateBreadcrumb($conn, $currentUrl); ?>
     <div class="card page-action-card">
         <div class="card-header bg-white d-flex justify-content-between align-items-center py-3 flex-wrap gap-2">
             <div>
-                <?php echo generateBreadcrumb($conn, $currentUrl); ?>
                 <h4 class="m-0 text-primary"><i class="fa-solid fa-file-signature me-2"></i><?php echo htmlspecialchars($pageName); ?></h4>
             </div>
             <?php if (!empty($perm->add)): ?>

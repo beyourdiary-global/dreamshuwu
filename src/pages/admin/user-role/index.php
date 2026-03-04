@@ -228,7 +228,6 @@ $customCSS[] = 'src/pages/admin/css/admin.css';
     <div class="card page-action-card">
         <div class="card-header bg-white d-flex justify-content-between align-items-center py-3 flex-wrap gap-2">
             <div>
-                <?php echo generateBreadcrumb($conn, $currentUrl); ?>
                 <h4 class="m-0 text-primary"><i class="fa-solid fa-shield me-2"></i><?php echo htmlspecialchars($pageName); ?></h4>
             </div>
             <?php if (!empty($perm->add)): ?>

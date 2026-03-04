@@ -13,6 +13,8 @@ $(document).ready(function () {
   function format(d) {
     if (!d.details) return "";
     var det = d.details;
+    var oldV = det.old,
+      newV = det.new;
     var html = '<div class="detail-box">';
 
     var isSmall = window.matchMedia("(max-width: 767px)").matches;
@@ -37,31 +39,12 @@ $(document).ready(function () {
         '<div class="mb-3"><strong>时间:</strong> ' + (d.time || "") + "</div>";
     }
 
-    if (oldV || newV) {
-      html += '<div class="row">';
-      if (oldV) {
-        html +=
-          '<div class="col-xs-12 col-md-6"><strong><i class="fa-solid fa-minus-circle text-danger"></i> 旧值:</strong>'; // Changed from Old Value
-        html += "<pre>" + oldV + "</pre></div>";
-      }
-      if (newV) {
-        html +=
-          '<div class="col-xs-12 col-md-6"><strong><i class="fa-solid fa-plus-circle text-success"></i> 新值:</strong>'; // Changed from New Value
-        html += "<pre>" + newV + "</pre></div>";
-      }
-      html += "</div>";
-    }
-
     // Show Query if available
     if (det.query) {
       html +=
         '<div class="mb-3"><strong><i class="fa-solid fa-database"></i> SQL Query:</strong>';
       html += "<pre>" + det.query + "</pre></div>";
     }
-
-    // Try parsing JSON if strings, or stringify objects for display
-    var oldV = det.old,
-      newV = det.new;
 
     // Format old value for display
     if (oldV !== null && oldV !== undefined) {
@@ -94,12 +77,12 @@ $(document).ready(function () {
       html += '<div class="row">';
       if (oldV) {
         html +=
-          '<div class="col-xs-12 col-md-6"><strong><i class="fa-solid fa-minus-circle text-danger"></i> Old Value:</strong>';
+          '<div class="col-xs-12 col-md-6"><strong><i class="fa-solid fa-minus-circle text-danger"></i> 旧值:</strong>';
         html += "<pre>" + oldV + "</pre></div>";
       }
       if (newV) {
         html +=
-          '<div class="col-xs-12 col-md-6"><strong><i class="fa-solid fa-plus-circle text-success"></i> New Value:</strong>';
+          '<div class="col-xs-12 col-md-6"><strong><i class="fa-solid fa-plus-circle text-success"></i> 新值:</strong>';
         html += "<pre>" + newV + "</pre></div>";
       }
       html += "</div>";
@@ -163,24 +146,38 @@ $(document).ready(function () {
     },
   });
 
-  function applyMobileColumnVisibility() {
-    var isSmall = document.body.classList.contains("is-mobile");
-    // Keep: [0]=details button, [1]=序号(ID), [3]=Action
-    // Hide on small: [2]=Page, [4]=Message, [5]=User, [6]=Date, [7]=Time
-    table.column(2).visible(!isSmall, false);
-    table.column(4).visible(!isSmall, false);
-    table.column(5).visible(!isSmall, false);
-    table.column(6).visible(!isSmall, false);
-    table.column(7).visible(!isSmall, false);
-    table.columns.adjust().draw(false);
+  function applyResponsiveColumnVisibility() {
+    var body = document.body;
+    var isCompact =
+      body.classList.contains("is-mobile") ||
+      body.classList.contains("is-tablet");
+
+    // Keep compact view stable during live resize:
+    // Keep [0]=details, [1]=序号, [3]=操作
+    // Hide [2]=页面, [4]=信息, [5]=用户, [6]=日期, [7]=时间
+    table.column(2).visible(!isCompact, false);
+    table.column(4).visible(!isCompact, false);
+    table.column(5).visible(!isCompact, false);
+    table.column(6).visible(!isCompact, false);
+    table.column(7).visible(!isCompact, false);
+
+    table.columns.adjust();
+    if (table.responsive && typeof table.responsive.recalc === "function") {
+      table.responsive.recalc();
+    }
+    table.draw(false);
   }
 
   // Apply once on load and keep in sync on resize
-  applyMobileColumnVisibility();
+  applyResponsiveColumnVisibility();
   var resizeTimer;
   $(window).on("resize", function () {
     clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(applyMobileColumnVisibility, 150);
+    resizeTimer = setTimeout(applyResponsiveColumnVisibility, 80);
+  });
+
+  window.addEventListener("deviceclasschange", function () {
+    applyResponsiveColumnVisibility();
   });
 
   // 3. Handle Filter

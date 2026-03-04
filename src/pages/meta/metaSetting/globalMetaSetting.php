@@ -46,7 +46,7 @@
                     <div class="row mt-4">
                         <div class="col-md-9 offset-md-3">
                             <?php if (!empty($perm->save)): ?>
-                            <button type="submit" class="btn btn-primary px-5 fw-bold"><i class="fa-solid fa-save"></i> Save Global Settings</button>
+                            <button type="submit" class="btn btn-primary px-5 fw-bold meta-save-btn"><i class="fa-solid fa-save"></i> Save Global Settings</button>
                             <?php endif; ?>
                         </div>
                     </div>

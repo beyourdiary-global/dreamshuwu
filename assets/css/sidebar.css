@@ -144,10 +144,18 @@ body.is-mobile .dashboard-sidebar {
 
 body.is-mobile.has-sidebar {
   padding-left: 0;
+  padding-right: 0;
+  overflow-x: hidden;
 }
 
 body.is-mobile.has-sidebar > .site-header,
 body.is-mobile.has-sidebar > .mobile-bottom-nav {
   margin-left: 0;
+  margin-right: 0;
   width: 100%;
+}
+
+body.is-mobile.has-sidebar .dashboard-container {
+  margin: var(--space-md) auto;
+  padding: 0 var(--space-sm);
 }

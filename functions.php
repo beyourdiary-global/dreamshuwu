@@ -1672,28 +1672,48 @@ function getPageUrlCandidates($url, $conn = null) {
     }
 
     static $dbUrlVariantCache = null;
+    static $variantToCanonicalMap = null;
     if ($dbUrlVariantCache === null) {
         $dbUrlVariantCache = [];
+        $variantToCanonicalMap = [];
         $result = $conn->query("SELECT public_url FROM " . PAGE_INFO_LIST . " WHERE status = 'A' AND public_url IS NOT NULL AND public_url != ''");
         if ($result) {
             while ($row = $result->fetch_assoc()) {
                 $publicUrl = trim((string)($row['public_url'] ?? ''));
-                if ($publicUrl === '') continue;
-                $dbUrlVariantCache[$publicUrl] = buildPageUrlVariants($publicUrl);
+                if ($publicUrl === '') {
+                    continue;
+                }
+                $variants = buildPageUrlVariants($publicUrl);
+                $dbUrlVariantCache[$publicUrl] = $variants;
+                foreach ($variants as $variant) {
+                    if (!isset($variantToCanonicalMap[$variant])) {
+                        $variantToCanonicalMap[$variant] = [];
+                    }
+                    // Avoid duplicates in the canonical list for this variant
+                    if (!in_array($publicUrl, $variantToCanonicalMap[$variant], true)) {
+                        $variantToCanonicalMap[$variant][] = $publicUrl;
+                    }
+                }
             }
             $result->free();
         }
     }
-
     $matchedCanonicalUrls = [];
-    foreach ($dbUrlVariantCache as $canonicalUrl => $variants) {
-        if (!empty(array_intersect($candidates, $variants))) {
-            $matchedCanonicalUrls[] = $canonicalUrl;
+    if (is_array($variantToCanonicalMap)) {
+        foreach ($candidates as $candidate) {
+            if (isset($variantToCanonicalMap[$candidate])) {
+                foreach ($variantToCanonicalMap[$candidate] as $canonicalUrl) {
+                    if (!in_array($canonicalUrl, $matchedCanonicalUrls, true)) {
+                        $matchedCanonicalUrls[] = $canonicalUrl;
+                    }
+                }
+            }
         }
     }
-
     foreach ($matchedCanonicalUrls as $canonicalUrl) {
-        $candidates = array_values(array_unique(array_merge($candidates, $dbUrlVariantCache[$canonicalUrl])));
+        if (isset($dbUrlVariantCache[$canonicalUrl])) {
+            $candidates = array_values(array_unique(array_merge($candidates, $dbUrlVariantCache[$canonicalUrl])));
+        }
         if (!in_array($canonicalUrl, $candidates, true)) {
             $candidates[] = $canonicalUrl;
         }
@@ -1868,8 +1888,8 @@ function checkPermissionError($actionType, $perm) {
  */
 function generateBreadcrumb($conn, $currentUrl, $fallbackName = '') {
     $homeText = '首页';
-    // Fallback to /dashboard/ if constant is not defined
-    $homeUrl = defined('URL_USER_DASHBOARD') ? URL_USER_DASHBOARD : '/dashboard/'; 
+    // Fallback to /index.php if constant is not defined
+    $homeUrl = defined('URL_HOME') ? URL_HOME : '/index.php'; 
     $pageName = $fallbackName;
 
     // Admin Info

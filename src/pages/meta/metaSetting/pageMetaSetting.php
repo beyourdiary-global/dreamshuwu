@@ -55,13 +55,13 @@
 
                 <?php if (!empty($selectedPageKey) && array_key_exists($selectedPageKey, $PAGE_META_REGISTRY)): ?>
                     
-                    <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-3">
-                        <h5 class="m-0" style="font-size: 16px;">
+                    <div class="meta-editing-header d-flex justify-content-between align-items-center mb-4 border-bottom pb-3">
+                        <h5 class="meta-editing-title m-0" style="font-size: 16px;">
                             Editing: <span class="text-primary fw-bold"><?php echo htmlspecialchars($PAGE_META_REGISTRY[$selectedPageKey]); ?></span>
                             <?php if (in_array($selectedPageKey, $customizedPages)): ?>
-                                <span class="badge bg-success ms-2">Customized</span>
+                                <span class="badge bg-success ms-2 meta-status-badge">Customized</span>
                             <?php else: ?>
-                                <span class="badge bg-secondary ms-2">Using Global</span>
+                                <span class="badge bg-secondary ms-2 meta-status-badge">Using Global</span>
                             <?php endif; ?>
                         </h5>
 
@@ -70,7 +70,7 @@
                         <form method="POST" class="reset-form">
                             <input type="hidden" name="form_type" value="delete_page">
                             <input type="hidden" name="page_key" value="<?php echo htmlspecialchars($selectedPageKey, ENT_QUOTES, 'UTF-8'); ?>">
-                            <button type="submit" class="btn btn-outline-danger btn-sm">
+                            <button type="submit" class="btn btn-outline-danger btn-sm meta-reset-btn">
                             <i class="fa-solid fa-rotate-left"></i> Reset
                             </button>
                         </form>
@@ -108,7 +108,7 @@
                         <div class="row mt-4">
                             <div class="col-md-9 offset-md-3">
                                 <?php if (!empty($perm->save)): ?>
-                                <button type="submit" class="btn btn-success px-5 fw-bold"><i class="fa-solid fa-save"></i> Save Page Settings</button>
+                                <button type="submit" class="btn btn-success px-5 fw-bold meta-save-btn"><i class="fa-solid fa-save"></i> Save Page Settings</button>
                                 <?php endif; ?>
                             </div>
                         </div>

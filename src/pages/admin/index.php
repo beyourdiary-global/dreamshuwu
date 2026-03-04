@@ -51,7 +51,6 @@ $emailTemplateName = getDynamicPageName($conn, $permEmailTemplate, '/author/emai
 <div class="admin-dashboard-container app-page-shell">
     <div class="d-flex align-items-center justify-content-between mb-4">
         <div>
-            <?php echo generateBreadcrumb($conn, $currentUrl); ?>
             <h3 class="text-dark mb-0"><?php echo htmlspecialchars($pageName); ?></h3>
         </div>
     </div>

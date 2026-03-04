@@ -282,6 +282,10 @@ body.has-sidebar #pageActionApp .global-breadcrumb-inline {
   margin-bottom: var(--space-sm);
 }
 
+body.has-sidebar .global-breadcrumb-inline .page-action-breadcrumb {
+  margin-bottom: 0 !important;
+}
+
 body.has-sidebar .web-settings-container .row {
   margin-left: 0;
   margin-right: 0;
@@ -462,17 +466,31 @@ body.is-mobile {
   }
 
   /* Keep content above fixed bottom nav */
+  /* Keep content above fixed bottom nav */
   .dashboard-main,
   .dashboard-container,
   .container.mt-4,
-  .container-fluid.mt-4 {
-    padding-bottom: 90px !important;
+  .container-fluid.mt-4,
+  .app-page-shell,
+  .tag-container,
+  .category-container,
+  .profile-container,
+  .admin-dashboard-container,
+  .email-template-container {
+    padding-bottom: 90px !important; /* Increased global clearance */
   }
 
   .card-header {
     flex-direction: column !important;
     align-items: stretch !important;
     gap: 15px !important;
+  }
+  .card-header > * {
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+  .card-header .d-flex {
+    flex-wrap: wrap !important;
   }
   .desktop-add-btn {
     width: 100% !important;

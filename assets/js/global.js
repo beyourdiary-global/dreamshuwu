@@ -72,29 +72,30 @@
     );
     if (breadcrumbs.length === 0) return;
 
-    var preferredBreadcrumb =
-      breadcrumbs.find(function (el) {
-        return el.closest(".card-header");
-      }) || breadcrumbs[0];
+    var globalSourceBreadcrumb = document.querySelector(
+      "#globalBreadcrumbSource .page-action-breadcrumb",
+    );
 
-    var dashboardMain = document.querySelector(".dashboard-main");
-    var fallbackParent =
+    var preferredBreadcrumb =
+      globalSourceBreadcrumb ||
+      breadcrumbs.find(function (el) {
+        return el.closest(".global-breadcrumb-inline");
+      }) ||
+      breadcrumbs.find(function (el) {
+        return !el.closest(".card-header");
+      }) ||
+      breadcrumbs[0];
+
+    var mountParent =
+      document.querySelector(".app-page-shell") ||
+      document.querySelector(".container.main-content") ||
+      document.querySelector("main.audit-container") ||
+      document.querySelector(".dashboard-main > .container-fluid") ||
+      document.querySelector(".dashboard-main > .container") ||
+      document.querySelector(".dashboard-main") ||
+      document.querySelector(".dashboard-container") ||
       preferredBreadcrumb.closest(".container-fluid, .container") ||
       preferredBreadcrumb.parentElement;
-    var mountParent = fallbackParent;
-
-    if (dashboardMain) {
-      var innerContainer = Array.from(dashboardMain.children).find(
-        function (child) {
-          return (
-            child.classList &&
-            (child.classList.contains("container-fluid") ||
-              child.classList.contains("container"))
-          );
-        },
-      );
-      mountParent = innerContainer || dashboardMain;
-    }
 
     if (mountParent) {
       var inlineHost = mountParent.querySelector(
@@ -116,6 +117,11 @@
         el.remove();
       }
     });
+
+    var sourceContainer = document.getElementById("globalBreadcrumbSource");
+    if (sourceContainer && sourceContainer.children.length === 0) {
+      sourceContainer.remove();
+    }
   }
 
   function initLogoutHandler() {
@@ -286,6 +292,11 @@
 function updateDeviceClass() {
   const width = window.innerWidth;
   const body = document.body;
+  const previousMode = body.classList.contains("is-mobile")
+    ? "mobile"
+    : body.classList.contains("is-tablet")
+      ? "tablet"
+      : "desktop";
 
   // Clear existing classes
   body.classList.remove(
@@ -308,6 +319,22 @@ function updateDeviceClass() {
   } else {
     body.classList.add("is-desktop");
   }
+
+  const currentMode = body.classList.contains("is-mobile")
+    ? "mobile"
+    : body.classList.contains("is-tablet")
+      ? "tablet"
+      : "desktop";
+
+  window.dispatchEvent(
+    new CustomEvent("deviceclasschange", {
+      detail: {
+        previousMode: previousMode,
+        mode: currentMode,
+        width: width,
+      },
+    }),
+  );
 }
 
 // Run on load and whenever the screen is resized

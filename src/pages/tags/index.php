@@ -205,25 +205,20 @@ if ($isDeleteRequest) {
     // [MODIFIED] Logic Validation: Prevent deletion ONLY if the tag is explicitly saved inside a novel
     $isTagUsedByNovel = false;
     
-    // Query the NOVEL table directly to look at every saved novel's tags
-    $novelCheckSql = "SELECT tags FROM " . NOVEL . " WHERE tags IS NOT NULL AND tags != ''";
-    $novelCheckRes = $conn->query($novelCheckSql);
+    // [MODIFIED] Optimized targeted SQL check to prevent PHP memory exhaustion
+    // Replaces spaces after commas so FIND_IN_SET works perfectly
+    $novelCheckSql = "SELECT 1 FROM " . NOVEL . " WHERE FIND_IN_SET(?, REPLACE(tags, ', ', ',')) > 0 OR FIND_IN_SET(?, REPLACE(tags, ', ', ',')) > 0 LIMIT 1";
     
-    if ($novelCheckRes) {
-        while ($row = $novelCheckRes->fetch_assoc()) {
-            $novelTagsStr = $row['tags'];
-            
-            // The tags are stored as comma-separated values (e.g., "Modern, Romance, ha")
-            // We split them into a clean array
-            $novelTagsArray = array_map('trim', explode(',', $novelTagsStr));
-            
-            // Check if this specific Tag Name (or ID) is inside this novel's tag array
-            if (in_array((string)$id, $novelTagsArray, true) || in_array($tagName, $novelTagsArray, true)) {
-                $isTagUsedByNovel = true;
-                break; // We found at least one novel using it, so stop checking!
-            }
+    if ($checkStmt = $conn->prepare($novelCheckSql)) {
+        $idStr = (string)$id;
+        $checkStmt->bind_param("ss", $idStr, $tagName);
+        $checkStmt->execute();
+        $checkStmt->store_result();
+        
+        if ($checkStmt->num_rows > 0) {
+            $isTagUsedByNovel = true;
         }
-        $novelCheckRes->free();
+        $checkStmt->close();
     }
     
     // Execute the block if the tag is actively used
@@ -329,10 +324,10 @@ if (function_exists('logAudit')) {
 <body>
 <?php require_once BASE_PATH . 'common/menu/header.php'; ?>
 <div class="tag-container app-page-shell">
+    <?php echo generateBreadcrumb($conn, $currentUrl); ?>
     <div class="card tag-card">
         <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
             <div>
-                <?php echo generateBreadcrumb($conn, $currentUrl); ?>
                 <h4 class="m-0 text-primary"><i class="fa-solid fa-tags"></i> <?php echo htmlspecialchars($pageName); ?></h4>
             </div>
             <?php if ($perm->add): ?>

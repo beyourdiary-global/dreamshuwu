@@ -355,10 +355,10 @@ if ($masterRes) {
 ?>
 
 <div class="app-page-shell">
+    <?php echo generateBreadcrumb($conn, $currentUrl); ?>
     <div class="card page-action-card">
         <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
             <div>
-                <?php echo generateBreadcrumb($conn, $currentUrl); ?>
                 <h4 class="m-0 text-primary"><i class="fa-solid fa-shield me-2"></i><?php echo ($isEditMode ? '编辑' : '新增') . htmlspecialchars($pageName); ?></h4>
             </div>
             <a href="<?php echo $baseListUrl; ?>" class="btn btn-outline-secondary">返回列表</a>
