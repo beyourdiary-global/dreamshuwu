@@ -120,7 +120,7 @@ if (isPostRequest()) {
 }
 ?>
 
-<?php $pageMetaKey = '/register.php'; ?>
+<?php $pageMetaKey = parse_url(URL_REGISTER, PHP_URL_PATH) ?: '/register.php'; ?>
 <!DOCTYPE html>
 <head>
     <?php require_once BASE_PATH . 'include/header.php'; ?>

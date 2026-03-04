@@ -78,14 +78,50 @@ if (isPostRequest() && empty(post('mode'))) {
             $canContinue = false;
         }
 
-        // Validation: Duplicate Name Check
-        if ($canContinue && checkRoleNameDuplicate($conn, $name_cn, $name_en, $recordId)) {
-            if ($wantsJson) {
-                respondJsonAndExit(false, 'Role name (EN or CN) already exists.');
+        $isRecoveryMode = false;
+        $recoveryId = null;
+
+        // [MODIFIED] Validation: Duplicate Name Check & Recovery Logic
+        if ($canContinue) {
+            $dupSql = "SELECT id, status FROM {$tableRole} WHERE (name_en = ? OR name_cn = ?) "
+                . ($recordId > 0 ? "AND id != ? " : "")
+                . "LIMIT 1";
+            $dupStmt = $conn->prepare($dupSql);
+            
+            if (!$dupStmt) {
+                if ($wantsJson) respondJsonAndExit(false, '数据库错误：无法检查重复数据');
+                setSession('flash_msg', '数据库错误：无法检查重复数据');
+                setSession('flash_type', 'danger');
+                $canContinue = false;
+            } else {
+                if ($recordId > 0) {
+                    $dupStmt->bind_param('ssi', $name_en, $name_cn, $recordId);
+                } else {
+                    $dupStmt->bind_param('ss', $name_en, $name_cn);
+                }
+                $dupStmt->execute();
+                $dupStmt->store_result();
+                
+                if ($dupStmt->num_rows > 0) {
+                    $dupStmt->bind_result($dupId, $dupStatus);
+                    $dupStmt->fetch();
+
+                    if ($dupStatus === 'D' && !$isEditMode) {
+                        // Trigger recovery if it's a deleted role and we are adding a new one
+                        $isRecoveryMode = true;
+                        $recoveryId = $dupId;
+                    } else {
+                        // Conflict with an active record OR conflict during Edit mode
+                        if ($wantsJson) {
+                            respondJsonAndExit(false, 'Role name (EN or CN) already exists.');
+                        }
+                        setSession('flash_msg', 'Role name (EN or CN) already exists.');
+                        setSession('flash_type', 'danger');
+                        $canContinue = false;
+                    }
+                }
+                $dupStmt->close();
             }
-            setSession('flash_msg', 'Role name (EN or CN) already exists.');
-            setSession('flash_type', 'danger');
-            $canContinue = false;
         }
 
         // Fetch Old Data for Audit Logging (Edit Mode)
@@ -107,6 +143,12 @@ if (isPostRequest() && empty(post('mode'))) {
                 }
                 return $a['page_id'] - $b['page_id'];
             });
+        } elseif ($canContinue && $isRecoveryMode) {
+            // [NEW] Fetch old info so the audit log shows transition from D to A
+            $oldRoleData = fetchUserRoleById($conn, $recoveryId);
+            if ($oldRoleData) {
+                $oldRoleData['status'] = 'D'; 
+            }
         }
 
         // Begin Database Transaction
@@ -118,7 +160,25 @@ if (isPostRequest() && empty(post('mode'))) {
             $executedSql = '';
             $updatedBy = (string)$currentUserId;
 
-            if ($recordId > 0) {
+            if ($isRecoveryMode) {
+                // [NEW] Execute Soft Delete Recovery Update
+                $createdBy = (string)$currentUserId;
+                $executedSql = "UPDATE {$tableRole} SET name_en=?, name_cn=?, description=?, status='A', created_by=?, created_at=NOW(), updated_by=?, updated_at=NOW() WHERE id=?";
+                $stmt = $conn->prepare($executedSql);
+                $stmt->bind_param('sssssi', $name_en, $name_cn, $description, $createdBy, $updatedBy, $recoveryId);
+                $stmt->execute();
+                $stmt->close();
+
+                // Clear any lingering old permissions just in case
+                $deletePerms = "DELETE FROM {$tableRolePermission} WHERE user_role_id = ?";
+                $stmtDel = $conn->prepare($deletePerms);
+                $stmtDel->bind_param('i', $recoveryId);
+                $stmtDel->execute();
+                $stmtDel->close();
+
+                $targetId = $recoveryId;
+                $mainActionType = 'A'; // Treated as Add/Recovery
+            } elseif ($recordId > 0) {
                 // UPDATE Logic
                 $executedSql = "UPDATE {$tableRole} SET name_en=?, name_cn=?, description=?, updated_by=?, updated_at=NOW() WHERE id=? AND status='A'";
                 $stmt = $conn->prepare($executedSql);
@@ -167,6 +227,22 @@ if (isPostRequest() && empty(post('mode'))) {
             // Commit Transaction
             $conn->commit();
 
+            $permAuditParts = ["DELETE FROM {$tableRolePermission} WHERE user_role_id = {$targetId}"];
+            if (!empty($selectedPerms)) {
+                $permRows = [];
+                foreach ($selectedPerms as $permKey) {
+                    @list($pageId, $actionId) = explode('_', $permKey);
+                    if (!isNumber($pageId) || !isNumber($actionId)) {
+                        continue;
+                    }
+                    $permRows[] = '(' . (int)$targetId . ', ' . (int)$pageId . ', ' . (int)$actionId . ', ' . (int)$currentUserId . ')';
+                }
+                if (!empty($permRows)) {
+                    $permAuditParts[] = "INSERT INTO {$tableRolePermission} (user_role_id, page_id, action_id, created_by) VALUES " . implode(', ', $permRows);
+                }
+            }
+            $permAuditQuery = implode('; ', $permAuditParts);
+
             // Fetch New Data for Audit Logging
             $newRoleData = fetchUserRoleById($conn, $targetId);
             $newPerms = fetchRolePermissions($conn, $targetId);
@@ -184,7 +260,7 @@ if (isPostRequest() && empty(post('mode'))) {
                 logAudit([
                     'page' => $auditPage,
                     'action' => $mainActionType,
-                    'action_message' => ($mainActionType === 'A' ? 'Added' : 'Updated') . " User Role: {$name_en}",
+                    'action_message' => ($isRecoveryMode ? 'Recovered Soft-Deleted' : ($mainActionType === 'A' ? 'Added' : 'Updated')) . " User Role: {$name_en}",
                     'query' => $executedSql,
                     'query_table' => $tableRole,
                     'user_id' => $currentUserId,
@@ -199,6 +275,8 @@ if (isPostRequest() && empty(post('mode'))) {
                         'page' => $auditPage,
                         'action' => $mainActionType === 'A' ? 'ROLE_PERM_BIND' : 'ROLE_PERM_UPDATE',
                         'action_message' => "Permissions updated for role: {$name_en}",
+                        'query' => $permAuditQuery,
+                        'query_table' => $tableRolePermission,
                         'user_id' => $currentUserId,
                         'record_id' => $targetId,
                         'old_value' => ['permissions' => $oldPerms],
@@ -206,11 +284,13 @@ if (isPostRequest() && empty(post('mode'))) {
                     ]);
                 }
             }
-
-            setSession('flash_msg', '保存成功.');
+            // [FIX] Dynamically assign success message and set session for List Page
+            $successMsg = $isEditMode ? '保存成功。' : '新增成功。';
+            setSession('flash_msg', $successMsg);
             setSession('flash_type', 'success');
+
             if ($wantsJson) {
-                respondJsonAndExit(true, '保存成功.', $baseListUrl);
+                respondJsonAndExit(true, $successMsg, $baseListUrl);
             }
             userRoleRedirect($baseListUrl);
             } catch (Exception $e) {
@@ -274,11 +354,11 @@ if ($masterRes) {
 }
 ?>
 
-<div class="container-fluid px-0">
+<div class="app-page-shell">
+    <?php echo generateBreadcrumb($conn, $currentUrl); ?>
     <div class="card page-action-card">
         <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
             <div>
-                <?php echo generateBreadcrumb($conn, $currentUrl); ?>
                 <h4 class="m-0 text-primary"><i class="fa-solid fa-shield me-2"></i><?php echo ($isEditMode ? '编辑' : '新增') . htmlspecialchars($pageName); ?></h4>
             </div>
             <a href="<?php echo $baseListUrl; ?>" class="btn btn-outline-secondary">返回列表</a>

@@ -6,7 +6,6 @@
     <div class="col-12">
         <div class="card meta-card">
             <div class="card-header meta-card-header">
-                <?php echo generateBreadcrumb($conn, $currentUrl); ?>
                 <h4 class="header-title">Global Meta Settings</h4>
                 <p class="header-subtitle">These settings apply to every page on your site unless overridden.</p>
             </div>
@@ -46,8 +45,8 @@
 
                     <div class="row mt-4">
                         <div class="col-md-9 offset-md-3">
-                            <?php if ($perm->edit): ?>
-                            <button type="submit" class="btn btn-primary px-5 fw-bold"><i class="fa-solid fa-save"></i> Save Global Settings</button>
+                            <?php if (!empty($perm->save)): ?>
+                            <button type="submit" class="btn btn-primary px-5 fw-bold meta-save-btn"><i class="fa-solid fa-save"></i> Save Global Settings</button>
                             <?php endif; ?>
                         </div>
                     </div>

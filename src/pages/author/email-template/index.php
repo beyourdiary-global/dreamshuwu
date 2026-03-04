@@ -174,7 +174,7 @@ if ($isEmbeddedEmailTemplate) {
 </head>
 <body>
 <?php require_once BASE_PATH . 'common/menu/header.php'; ?>
-<div class="container mt-4">
+<div class="email-template-container app-page-shell">
     <?php echo $pageContent; ?>
 </div>
 <script src="<?php echo URL_ASSETS; ?>/js/jquery-3.6.0.min.js"></script>

@@ -1,17 +1,42 @@
 <?php
 // Session lifetime: 30 days
 $sessionLifetime = 60 * 60 * 24 * 30;
+defined('SESSION_LIFETIME') || define('SESSION_LIFETIME', $sessionLifetime);
+
+$isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+
 ini_set('session.gc_maxlifetime', (string)$sessionLifetime);
 ini_set('session.cookie_lifetime', (string)$sessionLifetime);
-session_set_cookie_params([
+ini_set('session.gc_probability', '1');
+ini_set('session.gc_divisor', '100');
+ini_set('session.use_strict_mode', '1');
+ini_set('session.use_only_cookies', '1');
+
+$sessionCookieParams = [
     'lifetime' => $sessionLifetime,
     'path' => '/',
     'domain' => '',
-    'secure' => (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'),
+    'secure' => $isHttps,
     'httponly' => true,
     'samesite' => 'Lax',
-]);
-session_start();
+];
+
+if (session_status() !== PHP_SESSION_ACTIVE) {
+    session_set_cookie_params($sessionCookieParams);
+    session_start();
+}
+
+// Sliding refresh: keep active users logged in for 30 days from last activity
+if (session_status() === PHP_SESSION_ACTIVE && !headers_sent() && session_name() !== '' && session_id() !== '') {
+    setcookie(session_name(), session_id(), [
+        'expires' => time() + $sessionLifetime,
+        'path' => $sessionCookieParams['path'],
+        'domain' => $sessionCookieParams['domain'],
+        'secure' => $sessionCookieParams['secure'],
+        'httponly' => $sessionCookieParams['httponly'],
+        'samesite' => $sessionCookieParams['samesite'],
+    ]);
+}
 // $livemode = false; // true = test link, false = live link
 // Auto-detect local environment
 $isLocalEnvironment = in_array($_SERVER['SERVER_NAME'] ?? '', ['localhost', '127.0.0.1'], true);

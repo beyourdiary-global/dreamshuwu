@@ -5,7 +5,7 @@ require_once dirname(__DIR__, 3) . '/common.php';
 // Auth Check
 requireLogin();
 
-$currentUrl = '/dashboard.php?view=web_settings';
+$currentUrl = parse_url(URL_WEB_SETTINGS, PHP_URL_PATH) ?: '/web-settings.php';
 $perm = hasPagePermission($conn, $currentUrl);
 
 $pageName = getDynamicPageName($conn, $perm, $currentUrl);
@@ -109,7 +109,7 @@ if (isPostRequest()) {
     $logMessage = '';
     $actionTitle = '';
     $flashType = 'success';
-    $logActionCode = 'E';
+    $logActionCode = 'Save';
 
     // Validate Hex Color helper function
     $validateHex = function($value, $default) {
@@ -138,19 +138,21 @@ if (isPostRequest()) {
         $logMessage = 'Reset Website Settings to Default';
         $actionTitle = "{$pageName}已重置为默认值！";
         $flashType = 'warning';
-        $logActionCode = 'D';
+        $logActionCode = 'Reset_defaults';
 
     } elseif ($actionType === $ACTION_RM_LOGO && $ACTION_RM_LOGO !== null) {
         if (!empty($current['website_logo'])) @unlink($uploadDir . $current['website_logo']);
         $newDataToSave = ['website_logo' => ''];
         $logMessage = 'Removed Website Logo';
         $actionTitle = "网站 Logo 已移除！";
+        $logActionCode = 'Remove_logo';
 
     } elseif ($actionType === $ACTION_RM_FAV && $ACTION_RM_FAV !== null) {
         if (!empty($current['website_favicon'])) @unlink($uploadDir . $current['website_favicon']);
         $newDataToSave = ['website_favicon' => ''];
         $logMessage = 'Removed Website Favicon';
         $actionTitle = "网站 Favicon 已移除！";
+        $logActionCode = 'Remove_favicon';
 
     } else {
        // DEFAULT SAVE ACTION
@@ -286,10 +288,16 @@ if (isPostRequest()) {
 }
 
 // ========== RENDER ==========
+$pageMetaKey = $currentUrl;
+$customCSS[] = 'src/pages/webSetting/css/webSetting.css';
 ?>
-
-<link rel="stylesheet" href="<?php echo SITEURL; ?>/src/pages/webSetting/css/webSetting.css">
-<div class="web-settings-container mt-4" style="max-width: 1000px; margin: 0 auto;">
+<!DOCTYPE html>
+<head>
+    <?php require_once BASE_PATH . 'include/header.php'; ?>
+</head>
+<body>
+<?php require_once BASE_PATH . 'common/menu/header.php'; ?>
+<div class="web-settings-container app-page-shell">
     
     <div class="mb-3">
         <?php echo generateBreadcrumb($conn, $currentUrl); ?>
@@ -319,4 +327,9 @@ if (isPostRequest()) {
     </div>
 </div>
 
+<script src="<?php echo URL_ASSETS; ?>/js/jquery-3.6.0.min.js"></script>
+<script src="<?php echo URL_ASSETS; ?>/js/bootstrap.bundle.min.js"></script>
+<script src="<?php echo URL_ASSETS; ?>/js/sweetalert2@11.js"></script>
 <script src="<?php echo SITEURL; ?>/src/pages/webSetting/js/webSetting.js"></script>
+</body>
+</html>

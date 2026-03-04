@@ -253,6 +253,49 @@ input[type="password"]::-ms-clear {
   box-sizing: border-box;
 }
 
+/* Unified shell for standalone pages under fixed sidebar */
+body.has-sidebar .app-page-shell,
+body.has-sidebar .tag-container,
+body.has-sidebar .category-container,
+body.has-sidebar .meta-container,
+body.has-sidebar .profile-container,
+body.has-sidebar .web-settings-container,
+body.has-sidebar .admin-dashboard-container,
+body.has-sidebar .email-template-container,
+body.has-sidebar #pageActionApp {
+  width: 100%;
+  max-width: var(--container-width);
+  margin: var(--space-xl) auto 0 !important;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body.has-sidebar .app-page-shell .global-breadcrumb-inline,
+body.has-sidebar .tag-container .global-breadcrumb-inline,
+body.has-sidebar .category-container .global-breadcrumb-inline,
+body.has-sidebar .meta-container .global-breadcrumb-inline,
+body.has-sidebar .profile-container .global-breadcrumb-inline,
+body.has-sidebar .web-settings-container .global-breadcrumb-inline,
+body.has-sidebar .admin-dashboard-container .global-breadcrumb-inline,
+body.has-sidebar .email-template-container .global-breadcrumb-inline,
+body.has-sidebar #pageActionApp .global-breadcrumb-inline {
+  margin-bottom: var(--space-sm);
+}
+
+body.has-sidebar .global-breadcrumb-inline .page-action-breadcrumb {
+  margin-bottom: 0 !important;
+}
+
+body.has-sidebar .web-settings-container .row {
+  margin-left: 0;
+  margin-right: 0;
+}
+
+body.has-sidebar .web-settings-container .col-12 {
+  padding-left: 0;
+  padding-right: 0;
+}
+
 .tag-card,
 .category-card,
 .profile-form-card,
@@ -423,17 +466,31 @@ body.is-mobile {
   }
 
   /* Keep content above fixed bottom nav */
+  /* Keep content above fixed bottom nav */
   .dashboard-main,
   .dashboard-container,
   .container.mt-4,
-  .container-fluid.mt-4 {
-    padding-bottom: 90px !important;
+  .container-fluid.mt-4,
+  .app-page-shell,
+  .tag-container,
+  .category-container,
+  .profile-container,
+  .admin-dashboard-container,
+  .email-template-container {
+    padding-bottom: 90px !important; /* Increased global clearance */
   }
 
   .card-header {
     flex-direction: column !important;
     align-items: stretch !important;
     gap: 15px !important;
+  }
+  .card-header > * {
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+  .card-header .d-flex {
+    flex-wrap: wrap !important;
   }
   .desktop-add-btn {
     width: 100% !important;

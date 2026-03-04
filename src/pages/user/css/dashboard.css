@@ -1,80 +1,16 @@
 /* Layout Grid */
 .dashboard-container {
-  display: flex;
+  display: block;
   max-width: 1600px;
   margin: var(--space-xl) auto;
   padding: 0 var(--space-lg);
-  gap: var(--space-xl);
   min-height: 80vh;
-}
-
-/* Sidebar (Desktop Only) */
-.dashboard-sidebar {
-  width: 240px;
-  flex-shrink: 0;
-  background: var(--bg-card);
-  border-radius: var(--radius-lg);
-  padding: var(--space-lg);
-  box-shadow: var(--shadow-md);
-  height: fit-content;
-  position: sticky;
-  z-index: 10;
-}
-
-.sidebar-menu {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.sidebar-menu li {
-  margin-bottom: var(--space-sm);
-}
-
-.sidebar-menu a {
-  display: flex;
-  align-items: center;
-  padding: 12px 15px;
-  color: inherit;
-  text-decoration: none;
-  border-radius: var(--radius-md);
-  transition: all 0.2s;
-  font-weight: 500;
-}
-
-.sidebar-menu a i {
-  width: 24px;
-  margin-right: 10px;
-  color: var(--text-muted);
-}
-
-.sidebar-menu a:hover,
-.sidebar-menu a.active {
-  background: var(--bg-body);
-  color: var(--primary-color);
-}
-
-.sidebar-menu a:hover i,
-.sidebar-menu a.active i {
-  color: var(--primary-color);
 }
 
 /* Main Content Area */
 .dashboard-main {
-  flex-grow: 1;
+  width: 100%;
   min-width: 0;
-}
-
-.dashboard-main > .container,
-.dashboard-main > .container-fluid,
-.dashboard-main > .tag-container,
-.dashboard-main > .category-container,
-.dashboard-main > .meta-container,
-.dashboard-main > .profile-container {
-  margin: 0 !important;
-  padding-left: 0 !important;
-  padding-right: 0 !important;
-  max-width: 100% !important;
 }
 
 /* Profile Card */
@@ -232,19 +168,8 @@ body.is-tablet {
   .dashboard-container {
     max-width: 100%;
     padding: 0 12px;
-    gap: 14px;
     margin-top: var(--space-lg);
     box-sizing: border-box;
-  }
-
-  .dashboard-sidebar {
-    width: 190px;
-    padding: 14px;
-  }
-
-  .sidebar-menu a {
-    padding: 10px 12px;
-    font-size: 15px;
   }
 
   .dashboard-main {
@@ -256,13 +181,8 @@ body.is-tablet {
 /* Mobile Responsive Rules (Unified) */
 body.is-mobile {
   .dashboard-container {
-    flex-direction: column;
     padding: 0 15px;
     margin-top: var(--space-lg);
-  }
-
-  .dashboard-sidebar {
-    display: none;
   }
 
   .profile-card {

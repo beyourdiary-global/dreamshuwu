@@ -6,7 +6,6 @@
     <div class="col-12">
         <div class="card meta-card">
             <div class="card-header meta-card-header">
-                <?php echo generateBreadcrumb($conn, $currentUrl); ?>
                 <h4 class="header-title">Page Specific Settings</h4>
                 <p class="header-subtitle">Select a specific page below to override the global defaults.</p>
             </div>
@@ -21,9 +20,6 @@
                 <div class="bg-light p-4 rounded mb-4 border">
                     <label class="form-label mb-2 d-block text-start">Select Page to Edit / 选择页面</label>
                     <form method="GET" id="pageSelectForm" class="d-flex">
-                        <?php if (isset($isEmbeddedMeta) && $isEmbeddedMeta): ?>
-                            <input type="hidden" name="view" value="meta_settings">
-                        <?php endif; ?>
                         <input type="hidden" name="section" value="page">
                         <input type="hidden" name="page" id="pageSelectValue" value="<?php echo htmlspecialchars($selectedPageKey); ?>">
 
@@ -59,13 +55,13 @@
 
                 <?php if (!empty($selectedPageKey) && array_key_exists($selectedPageKey, $PAGE_META_REGISTRY)): ?>
                     
-                    <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-3">
-                        <h5 class="m-0" style="font-size: 16px;">
+                    <div class="meta-editing-header d-flex justify-content-between align-items-center mb-4 border-bottom pb-3">
+                        <h5 class="meta-editing-title m-0" style="font-size: 16px;">
                             Editing: <span class="text-primary fw-bold"><?php echo htmlspecialchars($PAGE_META_REGISTRY[$selectedPageKey]); ?></span>
                             <?php if (in_array($selectedPageKey, $customizedPages)): ?>
-                                <span class="badge bg-success ms-2">Customized</span>
+                                <span class="badge bg-success ms-2 meta-status-badge">Customized</span>
                             <?php else: ?>
-                                <span class="badge bg-secondary ms-2">Using Global</span>
+                                <span class="badge bg-secondary ms-2 meta-status-badge">Using Global</span>
                             <?php endif; ?>
                         </h5>
 
@@ -74,7 +70,7 @@
                         <form method="POST" class="reset-form">
                             <input type="hidden" name="form_type" value="delete_page">
                             <input type="hidden" name="page_key" value="<?php echo htmlspecialchars($selectedPageKey, ENT_QUOTES, 'UTF-8'); ?>">
-                            <button type="submit" class="btn btn-outline-danger btn-sm">
+                            <button type="submit" class="btn btn-outline-danger btn-sm meta-reset-btn">
                             <i class="fa-solid fa-rotate-left"></i> Reset
                             </button>
                         </form>
@@ -111,8 +107,8 @@
 
                         <div class="row mt-4">
                             <div class="col-md-9 offset-md-3">
-                                <?php if ($perm->edit): ?>
-                                <button type="submit" class="btn btn-success px-5 fw-bold"><i class="fa-solid fa-save"></i> Save Page Settings</button>
+                                <?php if (!empty($perm->save)): ?>
+                                <button type="submit" class="btn btn-success px-5 fw-bold meta-save-btn"><i class="fa-solid fa-save"></i> Save Page Settings</button>
                                 <?php endif; ?>
                             </div>
                         </div>

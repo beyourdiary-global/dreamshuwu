@@ -300,9 +300,17 @@ try {
             
             $newRow = authorVerificationFetchRow($conn, $id, $authorProfileTable, $usersTable);
             if (function_exists('logAudit')) {
+                // Map actionType to page_action name
+                $auditActionMap = [
+                    'approve' => 'Approve',
+                    'reject'  => 'Reject',
+                    'resend'  => 'Resend Email',
+                ];
+                $auditActionCode = $auditActionMap[$actionType] ?? 'E';
+
                 logAudit([
                     'page' => $auditPage,
-                    'action' => 'E',
+                    'action' => $auditActionCode,
                     'action_message' => $messageText,
                     'query' => $updateSql ?? 'Action: ' . $actionType,
                     'query_table' => $authorProfileTable,

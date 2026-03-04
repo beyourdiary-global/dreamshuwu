@@ -85,7 +85,7 @@ if (isPostRequest()) {
 }
 ?>
 
-<?php $pageMetaKey = '/forgot_password.php'; ?>
+<?php $pageMetaKey = parse_url(URL_FORGOT_PWD, PHP_URL_PATH) ?: '/forgot-password.php'; ?>
 <!DOCTYPE html>
 <head>
     <?php require_once BASE_PATH . 'include/header.php'; ?>

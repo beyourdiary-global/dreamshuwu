@@ -18,14 +18,13 @@ requireLogin();
 $tableInfo = PAGE_INFO_LIST;
 $tableMaster = ACTION_MASTER;
 $auditPage = 'Page Information Management';
-$isEmbedded = isset($EMBED_PAGE_INFO) && $EMBED_PAGE_INFO === true;
 $currentUserId = sessionInt('user_id');
 
-$baseListUrl = URL_USER_DASHBOARD . '?view=page_info';
-$formBaseUrl = URL_USER_DASHBOARD . '?view=page_info&mode=form';
+$baseListUrl = URL_PAGE_INFO;
+$formBaseUrl = URL_PAGE_INFO . '?mode=form';
 $apiEndpoint = defined('URL_PAGE_INFO_API') ? URL_PAGE_INFO_API : (SITEURL . '/src/pages/admin/page-information-list/index.php');
 
-$currentUrl = '/dashboard.php?view=page_info';
+$currentUrl = parse_url(URL_PAGE_INFO, PHP_URL_PATH) ?: '/admin/page-information-list.php';
 $perm = hasPagePermission($conn, $currentUrl);
 $pageName = getDynamicPageName($conn, $perm, $currentUrl);
 
@@ -35,8 +34,9 @@ checkPermissionError('view', $perm);
 if (isPostRequest()) {
     // [FIX] Use global post method
     $actionType = post('action_type');
+    $mode = post('mode');
 
-    if ($actionType === 'delete') {
+    if ($actionType === 'delete' || $mode === 'delete_api') {
         // 2. Check Delete Permission
         checkPermissionError('delete', $perm);
 
@@ -51,8 +51,6 @@ if (isPostRequest()) {
                 $stmt->bind_param('ii', $currentUserId, $delId);
                 if ($stmt->execute()) {
                     $newValue = fetchPageInfoRowById($conn, $tableInfo, $delId);
-                    setSession('flash_msg', '删除成功');
-                    setSession('flash_type', 'success');
 
                     if (function_exists('logAudit')) {
                         logAudit([
@@ -67,18 +65,34 @@ if (isPostRequest()) {
                             'new_value' => $newValue,
                         ]);
                     }
+                    $stmt->close();
+                    
+                    // [NEW] Respond with JSON if requested via AJAX
+                    if ($mode === 'delete_api') {
+                        respondJsonAndExit(true, '删除成功');
+                    }
+                    
+                    // Legacy fallback
+                    setSession('flash_msg', '删除成功');
+                    setSession('flash_type', 'success');
+                    pageInfoRedirect($baseListUrl);
                 } else {
+                    $stmt->close();
+                    if ($mode === 'delete_api') respondJsonAndExit(false, '删除失败');
                     setSession('flash_msg', '删除失败');
                     setSession('flash_type', 'danger');
+                    pageInfoRedirect($baseListUrl);
                 }
-                $stmt->close();
             } else {
+                if ($mode === 'delete_api') respondJsonAndExit(false, '删除失败');
                 setSession('flash_msg', '删除失败');
                 setSession('flash_type', 'danger');
+                pageInfoRedirect($baseListUrl);
             }
+        } else {
+            if ($mode === 'delete_api') respondJsonAndExit(false, '无效的ID');
+            pageInfoRedirect($baseListUrl);
         }
-
-        pageInfoRedirect($baseListUrl);
     }
 }
 
@@ -121,11 +135,21 @@ $perPage = (int)(numberInput('per_page') ?: 10);
 $allowedSizes = [10, 20, 50, 100];
 if (!in_array($perPage, $allowedSizes, true)) $perPage = 10;
 
-if ($isEmbedded):
-    $pageScripts = ($viewMode === 'form')
-        ? ['src/pages/admin/js/admin.js']
-        : ['jquery.dataTables.min.js', 'dataTables.bootstrap.min.js', 'src/pages/admin/js/admin.js'];
+$pageMetaKey = $currentUrl;
+$customCSS[] = 'src/pages/admin/css/admin.css';
+?>
+<!DOCTYPE html>
+<head>
+    <?php require_once BASE_PATH . 'include/header.php'; ?>
+    <?php if ($viewMode !== 'form'): ?>
+    <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/dataTables.bootstrap.min.css">
+    <?php endif; ?>
+</head>
+<body>
+<?php require_once BASE_PATH . 'common/menu/header.php'; ?>
 
+<?php
+    // Flash Messages
     if (hasSession('flash_msg')) {
         echo '<div class="alert alert-' . htmlspecialchars(session('flash_type') ?: 'info') . ' alert-dismissible fade show"><button type="button" class="btn-close" data-bs-dismiss="alert"></button>' . htmlspecialchars(session('flash_msg')) . '</div>';
         unsetSession('flash_msg');
@@ -189,13 +213,12 @@ if ($isEmbedded):
             error_log('Failed to prepare page info list statement: ' . $conn->error);
         }
 ?>
-<link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/dataTables.bootstrap.min.css">
-<div class="container-fluid px-0">
-    <?php $displayIndexStart = ((max(1, $page) - 1) * max(1, $perPage)) + 1; ?>
+<div class="app-page-shell" id="pageActionApp" data-delete-api-url="<?php echo htmlspecialchars($apiEndpoint); ?>">
+    <?php $displayIndexStart = (((int) max(1, (int) $page) - 1) * (int) max(1, (int) $perPage)) + 1; ?>
+    <?php echo generateBreadcrumb($conn, $currentUrl); ?>
     <div class="card page-action-card">
         <div class="card-header bg-white d-flex justify-content-between align-items-center py-3 flex-wrap gap-2">
             <div>
-                <?php echo generateBreadcrumb($conn, $currentUrl); ?>
                 <h4 class="m-0 text-primary"><i class="fa-solid fa-file-signature me-2"></i><?php echo htmlspecialchars($pageName); ?></h4>
             </div>
             <?php if (!empty($perm->add)): ?>
@@ -205,7 +228,6 @@ if ($isEmbedded):
 
         <div class="card-body">
             <form id="pageInfoFilterForm" method="GET" class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
-                <input type="hidden" name="view" value="page_info">
                 <div class="d-flex align-items-center gap-2">
                     <span>显示</span>
                     <select name="per_page" class="form-select" style="width: 90px;">
@@ -250,9 +272,7 @@ if ($isEmbedded):
                                     <a href="<?php echo $formBaseUrl . '&id=' . $row['id']; ?>" class="btn btn-sm btn-outline-primary me-1"><i class="fa-solid fa-pen"></i></a>
                                     <?php endif; ?>
                                     <?php if (!empty($perm->delete)): ?>
-                                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="confirmDelete(<?php echo $row['id']; ?>)"><i class="fa-solid fa-trash"></i></button>
-                                    <?php endif; ?>
-                                    <?php if (empty($perm->edit) && empty($perm->delete)): ?>
+                                    <button type="button" class="btn btn-sm btn-outline-danger page-action-delete-btn" data-id="<?php echo $row['id']; ?>" data-name="<?php echo htmlspecialchars($row['name_cn']); ?>"><i class="fa-solid fa-trash"></i></button>
                                     <?php endif; ?>
                                 </td>
                             </tr>
@@ -281,7 +301,7 @@ if ($isEmbedded):
                                 <a href="<?php echo $formBaseUrl . '&id=' . $row['id']; ?>" class="btn btn-sm btn-outline-primary me-2"><i class="fa-solid fa-pen"></i> 编辑</a>
                                 <?php endif; ?>
                                 <?php if (!empty($perm->delete)): ?>
-                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="confirmDelete(<?php echo $row['id']; ?>)"><i class="fa-solid fa-trash"></i> 删除</button>
+                                <button type="button" class="btn btn-sm btn-outline-danger page-action-delete-btn" data-id="<?php echo $row['id']; ?>" data-name="<?php echo htmlspecialchars($row['name_cn']); ?>"><i class="fa-solid fa-trash"></i> 删除</button>
                                 <?php endif; ?>
                                 <?php if (empty($perm->edit) && empty($perm->delete)): ?>
                                 <span class="text-muted small">无操作权限</span>
@@ -293,30 +313,21 @@ if ($isEmbedded):
                     <div class="text-muted">暂无数据</div>
                 <?php endif; ?>
             </div>
-
         </div>
     </div>
 </div>
 
-<form id="deleteForm" method="POST" action="<?php echo htmlspecialchars($baseListUrl); ?>" style="display:none;">
-    <input type="hidden" name="action_type" value="delete">
-    <input type="hidden" name="id" id="deleteId" value="0">
-</form>
-
 <?php
     }
-else:
 ?>
-<?php $pageMetaKey = 'page_info'; ?>
-<!DOCTYPE html>
-<head>
-    <?php require_once BASE_PATH . 'include/header.php'; ?>
-</head>
-<body>
-<?php require_once BASE_PATH . 'common/menu/header.php'; ?>
-<div class="container mt-4">
-    <div class="alert alert-info">请通过用户面板访问该页面：<a href="<?php echo $baseListUrl; ?>"><?php echo htmlspecialchars($pageName); ?></a></div>
-</div>
+
+<script src="<?php echo URL_ASSETS; ?>/js/jquery-3.6.0.min.js"></script>
+<?php if ($viewMode !== 'form'): ?>
+<script src="<?php echo URL_ASSETS; ?>/js/jquery.dataTables.min.js"></script>
+<script src="<?php echo URL_ASSETS; ?>/js/dataTables.bootstrap.min.js"></script>
+<?php endif; ?>
+<script src="<?php echo URL_ASSETS; ?>/js/bootstrap.bundle.min.js"></script>
+<script src="<?php echo URL_ASSETS; ?>/js/sweetalert2@11.js"></script>
+<script src="<?php echo SITEURL; ?>/src/pages/admin/js/admin.js"></script>
 </body>
 </html>
-<?php endif; ?>

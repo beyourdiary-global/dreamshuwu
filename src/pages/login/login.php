@@ -1,6 +1,15 @@
 <?php
 require_once dirname(__DIR__, 3) . '/common.php';
 
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
+header('Expires: 0');
+
+if (!isPostRequest() && hasSession('logged_in') && session('logged_in') === true) {
+    header('Location: ' . URL_HOME);
+    exit();
+}
+
 $dbTable = USR_LOGIN; 
 $loginQuery = "SELECT * FROM " . $dbTable . " WHERE email = ?";
 $auditPage = 'Login Page'; 
@@ -59,6 +68,19 @@ if (isPostRequest()) {
                 if (session_status() !== PHP_SESSION_ACTIVE) session_start();
                 session_regenerate_id(true);
 
+                if (!headers_sent() && session_name() !== '' && session_id() !== '') {
+                    $lifetime = defined('SESSION_LIFETIME') ? (int)SESSION_LIFETIME : (60 * 60 * 24 * 30);
+                    $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+                    setcookie(session_name(), session_id(), [
+                        'expires' => time() + $lifetime,
+                        'path' => '/',
+                        'domain' => '',
+                        'secure' => $isHttps,
+                        'httponly' => true,
+                        'samesite' => 'Lax',
+                    ]);
+                }
+
                 // Set session variables including role_id
                 setSession('user_id', $user['id']);
                 setSession('user_name', $user['name'] ?? $email);
@@ -114,7 +136,7 @@ if (isPostRequest()) {
     }
 }
 ?>
-<?php $pageMetaKey = 'login'; ?>
+<?php $pageMetaKey = parse_url(URL_LOGIN, PHP_URL_PATH) ?: '/login.php'; ?>
 <!DOCTYPE html>
 <head>
     <?php require_once BASE_PATH . 'include/header.php'; ?>
@@ -163,5 +185,14 @@ if (isPostRequest()) {
 </main>
 <script src="<?php echo URL_ASSETS; ?>/js/jquery-3.7.1.min.js"></script>
 <script src="<?php echo URL_ASSETS; ?>/js/auth.js"></script>
+<script>
+window.addEventListener('pageshow', function (event) {
+    var nav = performance.getEntriesByType('navigation');
+    var isBackForward = nav && nav.length > 0 && nav[0].type === 'back_forward';
+    if (event.persisted || isBackForward) {
+        window.location.reload();
+    }
+});
+</script>
 </body>
 </html>

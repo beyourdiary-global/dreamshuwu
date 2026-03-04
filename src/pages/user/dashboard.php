@@ -8,83 +8,42 @@ $userTable = USR_LOGIN;
 $dashTable = USR_DASHBOARD;
 $auditPage = 'User Dashboard';
 
-// --- VIEW LOGIC ---
-$currentView     = input('view') ?: 'home';
-$legacyMode      = input('pa_mode') ?: '';
-$tagMode         = input(QUERY_TAG_MODE) ?: $legacyMode;
-$catMode         = input(QUERY_CAT_MODE) ?: $legacyMode;
+// --- LEGACY VIEW REDIRECTS ---
+// Redirect old dashboard.php?view=X URLs to their new standalone pages
+$currentView = input('view') ?: '';
 
-if ($currentView === 'tag_form') {
-    $redirectUrl = URL_NOVEL_TAGS_FORM;
-    if (!empty(numberInput('id'))) {
-        $redirectUrl .= '&id=' . numberInput('id');
+$legacyRedirects = [
+    'profile'       => URL_PROFILE,
+    'tags'          => URL_NOVEL_TAGS,
+    'tag_form'      => URL_NOVEL_TAGS_FORM,
+    'categories'    => URL_NOVEL_CATS,
+    'cat_form'      => URL_NOVEL_CATS_FORM,
+    'meta_settings' => URL_META_SETTINGS,
+    'web_settings'  => URL_WEB_SETTINGS,
+    'admin'         => URL_ADMIN_DASHBOARD,
+    'page_action'   => URL_PAGE_ACTION,
+    'page_info'     => URL_PAGE_INFO,
+    'user_role'     => URL_USER_ROLE,
+];
+
+if ($currentView !== '' && $currentView !== 'home' && isset($legacyRedirects[$currentView])) {
+    $redirectUrl = $legacyRedirects[$currentView];
+    // Preserve extra query params (except 'view')
+    $extraParams = $_GET;
+    unset($extraParams['view']);
+    if (!empty($extraParams)) {
+        $separator = (strpos($redirectUrl, '?') !== false) ? '&' : '?';
+        $redirectUrl .= $separator . http_build_query($extraParams);
     }
     header('Location: ' . $redirectUrl);
     exit();
 }
 
-if ($currentView === 'cat_form') {
-    $redirectUrl = URL_NOVEL_CATS_FORM;
-    if (!empty(numberInput('id'))) {
-        $redirectUrl .= '&id=' . numberInput('id');
-    }
-    header('Location: ' . $redirectUrl);
-    exit();
-}
-
-// Define View States
-$isTagListView    = ($currentView === 'tags' && $tagMode !== QUERY_FORM_MODE);
-$isTagFormView    = ($currentView === 'tags' && $tagMode === QUERY_FORM_MODE);
-$isTagSection     = $isTagListView || $isTagFormView;
-
-$isCatListView    = ($currentView === 'categories' && $catMode !== QUERY_FORM_MODE);
-$isCatFormView    = ($currentView === 'categories' && $catMode === QUERY_FORM_MODE);
-$isCatSection     = $isCatListView || $isCatFormView;
-
-$isProfileView    = ($currentView === 'profile');
-$isMetaView       = ($currentView === 'meta_settings');
-$isWebSettingView = ($currentView === 'web_settings');
-
-// [NEW] Admin States
-$isAdminHome      = ($currentView === 'admin');
-$isPageActionView = ($currentView === 'page_action');
-$isPageInfoView   = ($currentView === 'page_info'); // [NEW]
-$isUserRoleView   = ($currentView === 'user_role'); // [NEW]
-$isAdminSection   = ($isAdminHome || $isPageActionView || $isPageInfoView || $isUserRoleView);
-
-// Define the base path to prevent redundant hardcoding
-$baseViewPath = '/dashboard.php?view=';
-
-$permDashboard  = hasPagePermission($conn, '/dashboard.php');
-$permProfile    = hasPagePermission($conn, $baseViewPath . 'profile');
-$permTags       = hasPagePermission($conn, $baseViewPath . 'tags');
-$permCategories = hasPagePermission($conn, $baseViewPath . 'categories');
-$permMeta       = hasPagePermission($conn, $baseViewPath . 'meta_settings');
-$permWeb        = hasPagePermission($conn, $baseViewPath . 'web_settings');
-$permAdmin      = hasPagePermission($conn, $baseViewPath . 'admin');
-$permPageAction = hasPagePermission($conn, $baseViewPath . 'page_action');
-$permPageInfo   = hasPagePermission($conn, $baseViewPath . 'page_info');
-$permUserRole   = hasPagePermission($conn, $baseViewPath . 'user_role');
-
-if (!$isTagSection && !$isCatSection && !$isProfileView && !$isMetaView && !$isWebSettingView && !$isAdminSection) {
-    checkPermissionError('view', $permDashboard);
-}
-
-if ($isTagSection) {
-    checkPermissionError('view', $permTags);
-    if ($isTagFormView) {
-        $tagFormActionToCheck = !empty(numberInput('id')) ? 'edit' : 'add';
-        checkPermissionError($tagFormActionToCheck, $permTags);
-    }
-}
-
-if ($isCatSection) {
-    checkPermissionError('view', $permCategories);
-    if ($isCatFormView) {
-        $catFormActionToCheck = !empty(numberInput('id')) ? 'edit' : 'add';
-        checkPermissionError($catFormActionToCheck, $permCategories);
-    }
-}
+// --- DASHBOARD HOME ---
+$currentUrl = parse_url(URL_USER_DASHBOARD, PHP_URL_PATH) ?: '/dashboard.php';
+$permDashboard = hasPagePermission($conn, $currentUrl);
+$pageName = getDynamicPageName($conn, $permDashboard, $currentUrl);
+checkPermissionError('view', $permDashboard);
 
 // Data Fetching
 $userQuery = "SELECT name FROM " . $userTable . " WHERE id = ? LIMIT 1";
@@ -109,7 +68,7 @@ if ($dashStmt->fetch()) { foreach($row as $key => $val) { $dashRow[$key] = $val;
 $dashStmt->close();
 
 // Audit Logging
-if (!$isTagSection && !$isCatSection && !$isMetaView && !$isProfileView && !$isWebSettingView && !$isAdminSection && !$isUserRoleView && function_exists('logAudit')) {
+if (function_exists('logAudit')) {
     logAudit([
         'page'           => $auditPage,
         'action'         => 'V',
@@ -131,22 +90,8 @@ $statsArray = [
 ];
 
 $profileComponents = [
-    ['type' => 'avatar', 'url' => URL_USER_DASHBOARD . '?view=profile', 'src' => $rawAvatar],
-    ['type' => 'info', 'url' => URL_USER_DASHBOARD . '?view=profile', 'name' => $rawName, 'level' => $rawLevel, 'stats' => $statsArray]
-];
-
-// --- SIDEBAR ITEMS ---
-$sidebarItems = [
-    ['label' => '首页',     'url' => URL_HOME, 'icon' => 'fa-solid fa-house-user', 'active' => false, 'permission' => !empty($permDashboard->view)],
-    ['label' => '账号中心', 'url' => URL_USER_DASHBOARD, 'icon' => 'fa-solid fa-id-card', 'active' => (!$isTagSection && !$isCatSection && !$isProfileView && !$isMetaView && !$isWebSettingView && !$isAdminSection), 'permission' => !empty($permProfile->view)],
-    ['label' => '写小说',   'url' => URL_AUTHOR_DASHBOARD, 'icon' => 'fa-solid fa-pen-nib',  'active' => false],
-    ['label' => '小说分类', 'url' => URL_NOVEL_CATS,     'icon' => 'fa-solid fa-layer-group','active' => $isCatSection, 'permission' => !empty($permCategories->view)],
-    ['label' => '小说标签', 'url' => URL_NOVEL_TAGS,     'icon' => 'fa-solid fa-tags',      'active' => $isTagSection, 'permission' => !empty($permTags->view)],
-    ['label' => 'META 设置',  'url' => URL_USER_DASHBOARD . '?view=meta_settings', 'icon' => 'fa-solid fa-sliders', 'active' => $isMetaView, 'permission' => !empty($permMeta->view)],
-    ['label' => '网站设置',   'url' => URL_USER_DASHBOARD . '?view=web_settings', 'icon' => 'fa-solid fa-paintbrush', 'active' => $isWebSettingView, 'permission' => !empty($permWeb->view)],
-    
-    // [UPDATED] Admin Dashboard Link
-    ['label' => '管理员',     'url' => URL_ADMIN_DASHBOARD, 'icon' => 'fa-solid fa-user-shield', 'active' => $isAdminSection, 'permission' => !empty($permAdmin->view)]
+    ['type' => 'avatar', 'url' => URL_PROFILE, 'src' => $rawAvatar],
+    ['type' => 'info', 'url' => URL_PROFILE, 'name' => $rawName, 'level' => $rawLevel, 'stats' => $statsArray]
 ];
 
 $quickActions = [
@@ -156,12 +101,8 @@ $quickActions = [
 ];
 
 $customCSS[] = 'src/pages/user/css/dashboard.css';
-$customCSS[] = 'src/pages/user/css/profile.css';
-$customCSS[] = 'src/pages/admin/css/admin.css';
 
-// Page Meta Key Setting
-// Dynamically generate the key based on the current view instead of a switch statement
-$pageMetaKey = ($currentView === 'home' || empty($currentView)) ? '/dashboard.php' : $baseViewPath . $currentView;
+$pageMetaKey = $currentUrl;
 ?>
 
 <!DOCTYPE html>
@@ -173,40 +114,10 @@ $pageMetaKey = ($currentView === 'home' || empty($currentView)) ? '/dashboard.ph
 <?php require_once BASE_PATH . 'common/menu/header.php'; ?>
 
 <div class="dashboard-container">
-    <aside class="dashboard-sidebar">
-        <ul class="sidebar-menu">
-            <?php foreach ($sidebarItems as $item): ?>
-                <?php if (!isset($item['permission']) || $item['permission']): ?>
-                <li>
-                    <a href="<?php echo $item['url']; ?>" class="<?php echo $item['active'] ? 'active' : ''; ?>">
-                        <i class="<?php echo $item['icon']; ?>"></i> <?php echo $item['label']; ?>
-                    </a>
-                </li>
-                <?php endif; ?>
-            <?php endforeach; ?>
-            <li style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 10px;">
-            <a href="<?php echo URL_LOGOUT; ?>" class="logout-btn" style="color: #d9534f;" data-api-url="<?php echo URL_LOGOUT; ?>"> 
-                <i class="fa-solid fa-right-from-bracket"></i> 登出
-             </a>
-            </li>
-        </ul>
-    </aside>
-
     <main class="dashboard-main">
-        <?php 
-        if (hasSession('flash_msg')) {
-            $dashFlashMsg = session('flash_msg');
-            $dashFlashType = session('flash_type') ?: 'danger';
-            unsetSession('flash_msg');
-            unsetSession('flash_type');
-        ?>
-        <div class="alert alert-<?php echo $dashFlashType; ?> alert-dismissible fade show shadow-sm" role="alert">
-            <i class="fa-solid fa-circle-exclamation me-2"></i> 
-            <?php echo htmlspecialchars($dashFlashMsg); ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        <div class="mb-3">
+            <?php echo generateBreadcrumb($conn, $currentUrl); ?>
         </div>
-    <?php } ?>
-        <?php if (!$isTagSection && !$isCatSection && !$isProfileView && !$isMetaView && !$isWebSettingView && !$isAdminSection): ?>
         <div class="profile-card">
             <?php foreach ($profileComponents as $component): ?>
                 <?php if ($component['type'] === 'avatar'): ?>
@@ -230,82 +141,28 @@ $pageMetaKey = ($currentView === 'home' || empty($currentView)) ? '/dashboard.ph
                 <?php endif; ?>
             <?php endforeach; ?>
 
-            <a href="<?php echo URL_USER_DASHBOARD; ?>?view=profile" class="settings-btn">
+            <a href="<?php echo URL_PROFILE; ?>" class="settings-btn">
                 <i class="fa-solid fa-gear desktop-icon"></i>
                 <i class="fa-solid fa-chevron-right mobile-icon"></i>
             </a>
         </div>
-        <?php endif; ?>
 
-        <?php 
-        if ($isProfileView):
-            if (!defined('PROFILE_EMBEDDED')) define('PROFILE_EMBEDDED', true);
-            require BASE_PATH . PATH_PROFILE;
-
-        elseif ($isTagSection):
-            $EMBED_TAGS_PAGE = true;
-            require BASE_PATH . PATH_NOVEL_TAGS_INDEX;
-
-        elseif ($isCatSection):
-            $EMBED_CATS_PAGE = true;
-            require BASE_PATH . PATH_NOVEL_CATS_INDEX;
-        
-        elseif ($isMetaView):
-            $EMBED_META_PAGE = true;
-            require BASE_PATH . PATH_META_SETTINGS;
-        
-        elseif ($isWebSettingView):
-            $EMBED_WEB_SETTING_PAGE = true;
-            require BASE_PATH . PATH_WEB_SETTINGS;
-
-        // [NEW] Embedded Admin View
-        elseif ($isAdminHome):
-            $EMBED_ADMIN_PAGE = true;
-            require BASE_PATH . PATH_ADMIN_INDEX;
-
-        // [NEW] Embedded Page Action Feature
-        elseif ($isPageActionView):
-            $EMBED_PAGE_ACTION = true;
-            require BASE_PATH . PATH_PAGE_ACTION;
-
-        // [NEW] Page Information List Feature
-        elseif ($isPageInfoView):
-            $EMBED_PAGE_INFO = true;
-            require BASE_PATH . PATH_PAGE_INFO_INDEX;
-
-        // [NEW] User Role Management Feature
-        elseif ($isUserRoleView):
-            $EMBED_USER_ROLE = true;
-            require BASE_PATH . PATH_USER_ROLE_INDEX;
-
-        else: ?>
-            <div class="quick-actions-grid">
-                <?php foreach ($quickActions as $action): ?>
-                    <a href="<?php echo $action['url']; ?>" class="action-card">
-                        <div class="action-icon-wrapper" style="<?php echo $action['style']; ?>">
-                            <i class="<?php echo $action['icon']; ?>"></i>
-                        </div>
-                        <h4><?php echo $action['label']; ?></h4>
-                    </a>
-                <?php endforeach; ?>
-            </div>
-        <?php endif; ?>
+        <div class="quick-actions-grid">
+            <?php foreach ($quickActions as $action): ?>
+                <a href="<?php echo $action['url']; ?>" class="action-card">
+                    <div class="action-icon-wrapper" style="<?php echo $action['style']; ?>">
+                        <i class="<?php echo $action['icon']; ?>"></i>
+                    </div>
+                    <h4><?php echo $action['label']; ?></h4>
+                </a>
+            <?php endforeach; ?>
+        </div>
     </main>
 </div>
 
 <script src="<?php echo URL_ASSETS; ?>/js/jquery-3.6.0.min.js"></script>
 <script src="<?php echo URL_ASSETS; ?>/js/bootstrap.bundle.min.js"></script>
 <script src="<?php echo URL_ASSETS; ?>/js/sweetalert2@11.js"></script>
-
-<?php if (!empty($pageScripts)): ?>
-    <?php foreach ($pageScripts as $__script): ?>
-    <?php if (strpos($__script, '/') !== false): ?>
-    <script src="<?php echo SITEURL . '/' . ltrim($__script, '/'); ?>"></script>
-    <?php else: ?>
-    <script src="<?php echo URL_ASSETS; ?>/js/<?php echo $__script; ?>"></script>
-    <?php endif; ?>
-    <?php endforeach; ?>
-<?php endif; ?>
 <script src="<?php echo URL_ASSETS; ?>/js/auth.js"></script>
 </body>
 </html>

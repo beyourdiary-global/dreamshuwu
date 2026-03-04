@@ -5,8 +5,9 @@ require_once dirname(__DIR__, 3) . '/common.php';
 // Auth Check
 requireLogin();
 
-$currentUrl = '/dashboard.php?view=meta_settings'; 
+$currentUrl = parse_url(URL_META_SETTINGS, PHP_URL_PATH) ?: '/meta-setting.php'; 
 $perm = hasPagePermission($conn, $currentUrl);
+$pageName = getDynamicPageName($conn, $perm, $currentUrl);
 checkPermissionError('view', $perm);
 
 $auditPage = 'Meta Settings';
@@ -76,15 +77,14 @@ if (!isPostRequest() && function_exists('logAudit')){
     ]);
 }
 
-$isEmbeddedMeta = ($EMBED_META_PAGE ?? false) === true;
-$metaBaseUrl = $isEmbeddedMeta ? (URL_USER_DASHBOARD . '?view=meta_settings') : URL_META_SETTINGS;
+$metaBaseUrl = URL_META_SETTINGS;
 
 // ========== HANDLE POST REQUESTS ==========
 if (isPostRequest()) {
     
     // 1. GLOBAL POST
     if (post('form_type') === 'global') {
-        checkPermissionError('edit', $perm);
+        checkPermissionError('save', $perm);
 
         $reqFields = ['meta_title', 'meta_description', 'og_title', 'og_description', 'og_url'];
         $emptyCount = 0;
@@ -140,7 +140,7 @@ if (isPostRequest()) {
                 if (function_exists('logAudit')) {
                     logAudit([
                         'page' => $auditPage,
-                        'action' => $hasGlobal ? 'E' : 'A',
+                        'action' => 'Save',
                         'action_message' => $hasGlobal ? 'Updated Global Meta Settings' : 'Added Global Meta Settings',
                         'query' => $sql,
                         'query_table' => $metaTable,
@@ -161,7 +161,7 @@ if (isPostRequest()) {
 
     // 2. PAGE POST
     if (post('form_type') === 'page') {
-        checkPermissionError('edit', $perm);
+        checkPermissionError('save', $perm);
 
         $pKey = post('page_key');
         if ($pKey !== '' && array_key_exists($pKey, $PAGE_META_REGISTRY)) {
@@ -229,7 +229,7 @@ if (isPostRequest()) {
                         $auditData['page_key'] = $pKey;
                         logAudit([
                             'page' => $auditPage,
-                            'action' => $hasPage ? 'E' : 'A',
+                            'action' => 'Save',
                             'action_message' => $hasPage ? 'Updated Page Meta Settings' : 'Added Page Meta Settings',
                             'query' => $sql,
                             'query_table' => $pageMetaTable,
@@ -318,47 +318,23 @@ $cpRes = $conn->query("SELECT page_key FROM $pageMetaTable");
 while ($cpRes && $row = $cpRes->fetch_assoc()) $customizedPages[] = $row['page_key'];
 
 // ========== RENDER ==========
-if ($isEmbeddedMeta):
-    $pageScripts = ['src/pages/meta/js/meta.js'];
+$pageMetaKey = $currentUrl;
 ?>
-    <link rel="stylesheet" href="<?php echo SITEURL; ?>/src/pages/meta/css/meta.css">
-    <div class="meta-settings-container" style="max-width: 1000px; margin: 0 auto;">
-
-        <?php echo generateBreadcrumb($conn, $currentUrl); ?>
-
-        <div class="d-flex justify-content-center">
-            <div class="nav nav-pills nav-pills-container mb-4">
-                <a class="nav-link <?php echo $activeSection === 'global' ? 'active' : ''; ?>" 
-                   href="<?php echo $metaBaseUrl; ?>&section=global">
-                   <i class="fa-solid fa-globe"></i> Whole Website
-                </a>
-                <a class="nav-link <?php echo $activeSection === 'page' ? 'active' : ''; ?>" 
-                   href="<?php echo $metaBaseUrl; ?>&section=page">
-                   <i class="fa-solid fa-file-lines"></i> Each Page
-                </a>
-            </div>
-        </div>
-
-        <?php if ($activeSection === 'global'): ?>
-            <?php require __DIR__ . '/metaSetting/globalMetaSetting.php'; ?>
-        <?php endif; ?>
-
-        <?php if ($activeSection === 'page'): ?>
-            <?php require __DIR__ . '/metaSetting/pageMetaSetting.php'; ?>
-        <?php endif; ?>
-    </div>
-
-<?php else: ?>
     <!DOCTYPE html>
     <head>
         <?php require_once BASE_PATH . 'include/header.php'; ?>
         <link rel="stylesheet" href="<?php echo SITEURL; ?>/src/pages/meta/css/meta.css">
     </head>
-    <body>
+    <body class="meta-page">
     <?php require_once BASE_PATH . 'common/menu/header.php'; ?>
 
-    <div class="container mt-4" style="max-width: 1000px;">
-        <?php echo generateBreadcrumb($conn, $currentUrl); ?>
+    <div class="meta-container app-page-shell">
+        <div class="section-header mb-3">
+            <div class="header-text-content">
+                <?php echo generateBreadcrumb($conn, $currentUrl); ?>
+                <h4 class="m-0 text-primary"><i class="fa-solid fa-sliders me-2"></i><?php echo htmlspecialchars($pageName); ?></h4>
+            </div>
+        </div>
         
         <div class="d-flex justify-content-center">
             <div class="nav nav-pills nav-pills-container mb-4">
@@ -388,4 +364,3 @@ if ($isEmbeddedMeta):
     <script src="<?php echo URL_ASSETS; ?>/js/bootstrap.bundle.min.js"></script>
     </body>
     </html>
-<?php endif; ?>

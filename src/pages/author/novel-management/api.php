@@ -130,7 +130,10 @@ try {
 
         if (!empty($tagIds)) {
             $inClause = implode(',', array_fill(0, count($tagIds), '?'));
-            $sqlT = "SELECT id, name FROM {$tagTable} WHERE id IN ($inClause) ORDER BY name ASC";
+            
+            // [MODIFIED] Added "AND status = 'A'" to ensure authors only see active tags
+            $sqlT = "SELECT id, name FROM {$tagTable} WHERE id IN ($inClause) AND status = 'A' ORDER BY name ASC";
+            
             $stmt = $conn->prepare($sqlT);
             if ($stmt) {
                 $types = str_repeat('i', count($tagIds));

@@ -4,6 +4,21 @@ RewriteEngine On
 # Chapter Management Dynamic Routing
 RewriteRule ^author/novel/([0-9]+)/chapters/?$ src/pages/author/chapter-management/index.php?novel_id=$1 [QSA,L]
 
+# Admin dashboard route
+RewriteRule ^admin/?$ admin/dashboard.php [QSA,L]
+
+# Canonical trailing slash for extensionless routes
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_URI} !\.[^./]+$
+RewriteCond %{REQUEST_URI} !/$
+RewriteRule ^(.+)$ $1/ [R=301,L]
+
+# Extensionless route mapping to public php entry files
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.+?)/$ $1.php [QSA,L]
+
 # 2. Allow static assets under src/ (CSS/JS/fonts/images)
 RewriteRule ^src/.*\.(?:css|js|mjs|map|png|jpe?g|gif|webp|svg|ico|bmp|woff2?|ttf|eot|otf)$ - [L,NC]
 

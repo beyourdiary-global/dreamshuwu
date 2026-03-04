@@ -176,6 +176,36 @@ $navLinks = [
     </div>
 </header>
 
+<?php
+$globalBreadcrumbUrl = !empty($currentUrl ?? '') ? (string)$currentUrl : (string)$requestPath;
+$globalBreadcrumbFallback = isset($pageName) ? (string)$pageName : '';
+$homePath = parse_url(defined('URL_HOME') ? URL_HOME : '/', PHP_URL_PATH) ?: '/';
+$breadcrumbPath = parse_url($globalBreadcrumbUrl, PHP_URL_PATH) ?: (string)$globalBreadcrumbUrl;
+
+$normalizePath = static function ($path) {
+    $path = trim((string)$path);
+    if ($path === '') return '/';
+    if ($path !== '/' && substr($path, -1) === '/') {
+        $path = rtrim($path, '/');
+    }
+    return $path === '' ? '/' : $path;
+};
+
+$normalizedHomePath = $normalizePath($homePath);
+$normalizedBreadcrumbPath = $normalizePath($breadcrumbPath);
+
+$isHomeBreadcrumb = ($normalizedBreadcrumbPath === $normalizedHomePath)
+    || ($normalizedBreadcrumbPath === '/index.php')
+    || ($requestPath === '/' && $currentPage === 'index.php');
+
+$showGlobalBreadcrumb = $isLoggedIn && !empty($globalBreadcrumbUrl) && !$isHomeBreadcrumb;
+?>
+<?php if ($showGlobalBreadcrumb): ?>
+<div id="globalBreadcrumbSource" style="display:none;">
+    <?php echo generateBreadcrumb($conn, $globalBreadcrumbUrl, $globalBreadcrumbFallback); ?>
+</div>
+<?php endif; ?>
+
 <nav class="mobile-bottom-nav">
     <?php foreach ($navLinks as $link): ?>
         <?php if ($link['mobile']): ?>
@@ -187,5 +217,7 @@ $navLinks = [
         <?php endif; ?>
     <?php endforeach; ?>
 </nav>
+
+<?php require_once BASE_PATH . 'common/menu/sidebar.php'; ?>
 
 <script src="<?php echo URL_ASSETS; ?>/js/header-script.js"></script>

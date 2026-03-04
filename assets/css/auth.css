@@ -63,6 +63,9 @@ body.is-mobile {
   text-decoration: none;
   transition: color 0.2s;
 }
+.auth-page .footer-links {
+  margin-top: var(--space-sm);
+}
 .auth-page .footer-links a:hover {
   color: var(--primary-hover);
   text-decoration: underline;

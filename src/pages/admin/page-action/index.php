@@ -17,18 +17,18 @@ requireLogin();
 
 $table = PAGE_ACTION;
 $auditPage = 'Page Action Management';
-$isEmbeddedPageAction = isset($EMBED_PAGE_ACTION) && $EMBED_PAGE_ACTION === true;
 $currentUserId = sessionInt('user_id');
 
-$currentUrl = '/dashboard.php?view=page_action';
+$currentUrl = parse_url(URL_PAGE_ACTION, PHP_URL_PATH) ?: '/admin/page-action.php';
 $perm = hasPagePermission($conn, $currentUrl);
 $pageName = getDynamicPageName($conn, $perm, $currentUrl);
 
 // 1. Check View Permission
 checkPermissionError('view', $perm);
 
-$baseListUrl = defined('URL_PAGE_ACTION') ? URL_PAGE_ACTION : (URL_USER_DASHBOARD . '?view=page_action');
-$formBaseUrl = $baseListUrl . '&pa_mode=form';
+$baseListUrl = defined('URL_PAGE_ACTION') ? URL_PAGE_ACTION : (SITEURL . '/admin/page-action.php');
+$separator = (strpos($baseListUrl, '?') !== false) ? '&' : '?';
+$formBaseUrl = $baseListUrl . $separator . 'pa_mode=form';
 $apiEndpoint = defined('URL_PAGE_ACTION_API') ? URL_PAGE_ACTION_API : (SITEURL . '/src/pages/admin/page-action/index.php');
 
 $flashMsg = session('flash_msg');
@@ -44,7 +44,7 @@ $pageActionMode = input('pa_mode') === 'form' ? 'form' : 'list';
 // [FIX] Used input() global function
 if (input('mode') === 'data') {
     header('Content-Type: application/json');
-    if (!$hasPermission) {
+    if (empty($perm) || empty($perm->view)) {
         http_response_code(403);
         echo safeJsonEncode(['success' => false, 'message' => 'Forbidden']);
         exit();
@@ -261,22 +261,28 @@ if ($pageActionMode === 'list') {
     }
 }
 
-if ($isEmbeddedPageAction):
-    $pageScripts = ($pageActionMode === 'list')
-    ? ['jquery.dataTables.min.js', 'dataTables.bootstrap.min.js', 'src/pages/admin/js/admin.js']
-    : ['src/pages/admin/js/admin.js'];
+$pageMetaKey = $currentUrl;
+$customCSS[] = 'src/pages/admin/css/admin.css';
 ?>
+<!DOCTYPE html>
+<head>
+    <?php require_once BASE_PATH . 'include/header.php'; ?>
+    <?php if ($pageActionMode === 'list'): ?>
+    <link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/dataTables.bootstrap.min.css">
+    <?php endif; ?>
+</head>
+<body>
+<?php require_once BASE_PATH . 'common/menu/header.php'; ?>
 
 <?php if ($pageActionMode === 'form'): ?>
     <?php require __DIR__ . '/form.php'; ?>
 <?php else: ?>
-<link rel="stylesheet" href="<?php echo URL_ASSETS; ?>/css/dataTables.bootstrap.min.css">
-<div class="container-fluid px-0" id="pageActionApp" data-delete-api-url="<?php echo htmlspecialchars($apiEndpoint); ?>">
-    <?php $displayIndexStart = ((max(1, $currentPage) - 1) * max(1, $perPage)) + 1; ?>
+<div class="app-page-shell" id="pageActionApp" data-delete-api-url="<?php echo htmlspecialchars($apiEndpoint); ?>">
+    <?php $displayIndexStart = (((int) max(1, (int) $currentPage) - 1) * (int) max(1, (int) $perPage)) + 1; ?>
+    <?php echo generateBreadcrumb($conn, $currentUrl); ?>
     <div class="card page-action-card">
         <div class="card-header bg-white d-flex justify-content-between align-items-center py-3 flex-wrap gap-2">
             <div>
-                <?php echo generateBreadcrumb($conn, $currentUrl); ?>
                 <h4 class="m-0 text-primary"><i class="fa-solid fa-gears me-2"></i><?php echo htmlspecialchars($pageName); ?></h4>
             </div>
             <?php if (!empty($perm->add)): ?>
@@ -295,7 +301,6 @@ if ($isEmbeddedPageAction):
             <?php endif; ?>
 
             <form id="pageActionFilterForm" method="GET" class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
-                <input type="hidden" name="view" value="page_action">
                 <div class="d-flex align-items-center gap-2">
                     <span>显示</span>
                     <select name="per_page" class="form-select" style="width: 90px;">
@@ -398,17 +403,13 @@ if ($isEmbeddedPageAction):
 
 <?php endif; ?>
 
-<?php else: ?>
-<?php $pageMetaKey = 'page_action'; ?>
-<!DOCTYPE html>
-<head>
-    <?php require_once BASE_PATH . 'include/header.php'; ?>
-</head>
-<body>
-<?php require_once BASE_PATH . 'common/menu/header.php'; ?>
-<div class="container mt-4">
-    <div class="alert alert-info">请通过用户面板访问该页面：<a href="<?php echo $baseListUrl; ?>"><?php echo htmlspecialchars($pageName); ?></a></div>
-</div>
+<script src="<?php echo URL_ASSETS; ?>/js/jquery-3.6.0.min.js"></script>
+<?php if ($pageActionMode === 'list'): ?>
+<script src="<?php echo URL_ASSETS; ?>/js/jquery.dataTables.min.js"></script>
+<script src="<?php echo URL_ASSETS; ?>/js/dataTables.bootstrap.min.js"></script>
+<?php endif; ?>
+<script src="<?php echo URL_ASSETS; ?>/js/bootstrap.bundle.min.js"></script>
+<script src="<?php echo URL_ASSETS; ?>/js/sweetalert2@11.js"></script>
+<script src="<?php echo SITEURL; ?>/src/pages/admin/js/admin.js"></script>
 </body>
 </html>
-<?php endif; ?>

@@ -12,20 +12,24 @@ $pageName = getDynamicPageName($conn, $perm, $currentUrl);
 
 checkPermissionError('view', $perm);
 
-// Dynamically fetch all unique actions that exist in the audit log
+// Fetch actions from page_action table for the filter dropdown
 $auditActions = [];
-$actionSql = "SELECT DISTINCT action FROM " . AUDIT_LOG . " WHERE action IS NOT NULL";
+$actionSql = "SELECT name FROM " . PAGE_ACTION . " WHERE status = 'A' ORDER BY id ASC";
 $actionRes = $conn->query($actionSql);
 if ($actionRes) {
-    // Fallback map for nice UI translations of standard codes
     while ($row = $actionRes->fetch_assoc()) {
-        $code = strtoupper(trim($row['action']));
-        if ($code !== '') {
-            // Use the nice label if it exists, otherwise just show the raw code
-            $auditActions[$code] = $labelMap[$code] ?? $code; 
+        $name = trim($row['name']);
+        if ($name !== '') {
+            $auditActions[$name] = $name;
         }
     }
     $actionRes->free();
+}
+
+// Custom audit-only actions (not stored in page_action table)
+$customAuditActions = ['PAGE_ACTION_BIND', 'PAGE_ACTION_UPDATE', 'ROLE_PERM_BIND', 'ROLE_PERM_UPDATE'];
+foreach ($customAuditActions as $customAction) {
+    $auditActions[$customAction] = $customAction;
 }
 
 // Use the new input() helper to safely check the mode
@@ -84,8 +88,23 @@ if (input('mode') === 'data') {
         
         // B. Filter Action
         if ($actionRaw !== '') {
-            $safeAction = $conn->real_escape_string($actionRaw);
-            $whereClauses[] = "action = '{$safeAction}'";
+            $normalizedAction = strtolower(trim($actionRaw));
+            $legacyActionMap = [
+                'view' => 'V',
+                'add' => 'A',
+                'edit' => 'E',
+                'delete' => 'D',
+            ];
+
+            if (isset($legacyActionMap[$normalizedAction])) {
+                $safeName = $conn->real_escape_string($actionRaw);
+                $safeCode = $conn->real_escape_string($legacyActionMap[$normalizedAction]);
+                // Support both legacy code logs and newer full-name logs
+                $whereClauses[] = "(action = '{$safeCode}' OR action = '{$safeName}')";
+            } else {
+                $safeAction = $conn->real_escape_string($actionRaw);
+                $whereClauses[] = "action = '{$safeAction}'";
+            }
         }
 
         $whereSQL = empty($whereClauses) ? '' : ' AND ' . implode(' AND ', $whereClauses);
@@ -143,10 +162,21 @@ if (input('mode') === 'data') {
         }
 
         // 8. Process Output
+        // Badge color mapping for action names
+        $badgeMap = [
+            // Danger (red)
+            'D' => 'danger', 'Delete' => 'danger', 'Reject' => 'danger',
+            'Remove_logo' => 'danger', 'Remove_favicon' => 'danger',
+            // Warning (yellow)
+            'E' => 'warning', 'Edit' => 'warning', 'Reset_defaults' => 'warning',
+            // Success (green)
+            'A' => 'success', 'Add' => 'success', 'Approve' => 'success', 'Save' => 'success',
+        ];
+
         $data = [];
         foreach ($results as $cRow) {
             $actCode = trim($cRow['action'] ?? '');
-            $badgeClass = ($actCode=='D')?'danger':(($actCode=='E')?'warning':(($actCode=='A')?'success':'info'));
+            $badgeClass = $badgeMap[$actCode] ?? 'info';
             
             // Format Date using Global Helper
                 $dateStr = ''; $timeStr = '';
@@ -229,12 +259,11 @@ $pageMetaKey = $currentUrl;
 <body>
 <?php require_once BASE_PATH . 'common/menu/header.php'; ?>
 
-<main class="dashboard-main">
-<div class="container-fluid px-0 mt-4">
+<main class="audit-container">
+    <?php echo generateBreadcrumb($conn, $currentUrl); ?>
     <div class="card shadow-sm">
         <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
             <div>
-                <?php echo generateBreadcrumb($conn, $currentUrl); ?>
                 <h4 class="m-0 text-primary"><i class="fa-solid fa-file-shield"></i> <?php echo htmlspecialchars($pageName); ?></h4>
             </div>
             <div class="d-flex align-items-center gap-2">
@@ -253,7 +282,6 @@ $pageMetaKey = $currentUrl;
             </table>
         </div>
     </div>
-</div>
 
 </main>
 <script src="<?php echo URL_ASSETS; ?>/js/jquery-3.6.0.min.js"></script>

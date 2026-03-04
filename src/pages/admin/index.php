@@ -3,10 +3,7 @@
 
 requireLogin();
 
-// 1. Define the base path to prevent redundant hardcoding
-$baseViewPath = '/dashboard.php?view=';
-
-$currentUrl = $baseViewPath . 'admin';
+$currentUrl = parse_url(URL_ADMIN_DASHBOARD, PHP_URL_PATH) ?: '/admin/dashboard.php';
 $perm = hasPagePermission($conn, $currentUrl);
 $pageName = getDynamicPageName($conn, $perm, $currentUrl);
 
@@ -14,16 +11,21 @@ $pageName = getDynamicPageName($conn, $perm, $currentUrl);
 // This handles the access check and redirects to /dashboard.php if denied
 checkPermissionError('view', $perm);
 
-$pageScripts = ['src/pages/admin/js/admin.js'];
+$pageMetaKey = $currentUrl;
+$customCSS[] = 'src/pages/admin/css/admin.css';
 
-// 3. Fetch permissions for child cards using the base path
-$permPageAction = hasPagePermission($conn, $baseViewPath . 'page_action');
-$permPageInfo   = hasPagePermission($conn, $baseViewPath . 'page_info');
-$permUserRole   = hasPagePermission($conn, $baseViewPath . 'user_role');
+// 3. Fetch permissions for child cards
+$pageActionPath = parse_url(URL_PAGE_ACTION, PHP_URL_PATH) ?: '/admin/page-action.php';
+$pageInfoPath = parse_url(URL_PAGE_INFO, PHP_URL_PATH) ?: '/admin/page-information-list.php';
+$userRolePath = parse_url(URL_USER_ROLE, PHP_URL_PATH) ?: '/admin/user-role.php';
 
-$pageActionName = getDynamicPageName($conn, $permPageAction, $baseViewPath . 'page_action');
-$pageInfoName = getDynamicPageName($conn, $permPageInfo, $baseViewPath . 'page_info');
-$userRoleName = getDynamicPageName($conn, $permUserRole, $baseViewPath . 'user_role');
+$permPageAction = hasPagePermission($conn, $pageActionPath);
+$permPageInfo   = hasPagePermission($conn, $pageInfoPath);
+$permUserRole   = hasPagePermission($conn, $userRolePath);
+
+$pageActionName = getDynamicPageName($conn, $permPageAction, $pageActionPath);
+$pageInfoName = getDynamicPageName($conn, $permPageInfo, $pageInfoPath);
+$userRoleName = getDynamicPageName($conn, $permUserRole, $userRolePath);
 
 $permAuthorVerification = hasPagePermission($conn, '/author/author-verification.php');
 if (empty($permAuthorVerification) || (isset($permAuthorVerification->view) && empty($permAuthorVerification->view))) {
@@ -40,10 +42,15 @@ if (empty($permEmailTemplate) || (isset($permEmailTemplate->view) && empty($perm
 }
 $emailTemplateName = getDynamicPageName($conn, $permEmailTemplate, '/author/email-template.php');
 ?>
-<div class="container-fluid">
+<!DOCTYPE html>
+<head>
+    <?php require_once BASE_PATH . 'include/header.php'; ?>
+</head>
+<body>
+<?php require_once BASE_PATH . 'common/menu/header.php'; ?>
+<div class="admin-dashboard-container app-page-shell">
     <div class="d-flex align-items-center justify-content-between mb-4">
         <div>
-            <?php echo generateBreadcrumb($conn, $currentUrl); ?>
             <h3 class="text-dark mb-0"><?php echo htmlspecialchars($pageName); ?></h3>
         </div>
     </div>
@@ -51,7 +58,7 @@ $emailTemplateName = getDynamicPageName($conn, $permEmailTemplate, '/author/emai
     <div class="row">
         <?php if (!empty($permPageAction) && $permPageAction->view): ?>
         <div class="col-md-6 col-lg-4 col-xl-3 mb-4">
-            <a href="<?php echo $baseViewPath . 'page_action'; ?>" class="text-decoration-none">
+            <a href="<?php echo URL_PAGE_ACTION; ?>" class="text-decoration-none">
                 <div class="card h-100 border-0 shadow-sm action-card hover-lift">
                     <div class="card-body text-center p-4">
                         <div class="mb-3">
@@ -69,7 +76,7 @@ $emailTemplateName = getDynamicPageName($conn, $permEmailTemplate, '/author/emai
 
         <?php if (!empty($permPageInfo) && $permPageInfo->view): ?>
         <div class="col-md-6 col-lg-4 col-xl-3 mb-4">
-            <a href="<?php echo $baseViewPath . 'page_info'; ?>" class="text-decoration-none">
+            <a href="<?php echo URL_PAGE_INFO; ?>" class="text-decoration-none">
                 <div class="card h-100 border-0 shadow-sm action-card hover-lift">
                     <div class="card-body text-center p-4">
                         <div class="mb-3">
@@ -87,7 +94,7 @@ $emailTemplateName = getDynamicPageName($conn, $permEmailTemplate, '/author/emai
 
         <?php if (!empty($permUserRole) && $permUserRole->view): ?>
         <div class="col-md-6 col-lg-4 col-xl-3 mb-4">
-            <a href="<?php echo $baseViewPath . 'user_role'; ?>" class="text-decoration-none">
+            <a href="<?php echo URL_USER_ROLE; ?>" class="text-decoration-none">
                 <div class="card h-100 border-0 shadow-sm action-card hover-lift">
                     <div class="card-body text-center p-4">
                         <div class="mb-3">
@@ -140,3 +147,7 @@ $emailTemplateName = getDynamicPageName($conn, $permEmailTemplate, '/author/emai
         <?php endif; ?>
     </div>
 </div>
+<script src="<?php echo URL_ASSETS; ?>/js/bootstrap.bundle.min.js"></script>
+<script src="<?php echo SITEURL; ?>/src/pages/admin/js/admin.js"></script>
+</body>
+</html>
