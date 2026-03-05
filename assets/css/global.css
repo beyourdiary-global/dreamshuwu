@@ -443,6 +443,13 @@ table.dataTable tbody td,
   text-decoration: underline !important;
 }
 
+.dataTables_wrapper .dataTables_paginate .paginate_button.current,
+.dataTables_paginate .paginate_button.current,
+.dataTables_paginate ul.pagination > li.active > a,
+.dataTables_paginate ul.pagination > li.active > .page-link {
+  text-decoration: underline !important;
+}
+
 .dataTables_wrapper .dataTables_filter {
   width: 100%;
   display: flex;

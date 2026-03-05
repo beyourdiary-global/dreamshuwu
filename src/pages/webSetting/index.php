@@ -70,7 +70,7 @@ if (isPostRequest()) {
     
     // 2. Map Database actions to Variables
     $ACTION_SAVE    = $validActions['save'] ?? 'save'; 
-    $ACTION_RESET   = $validActions['reset_default'] ?? ($validActions['reset_defaults'] ?? null);
+    $ACTION_RESET   = $validActions['reset_default'] ?? null; 
     $ACTION_RM_LOGO = $validActions['remove_logo'] ?? null;
     $ACTION_RM_FAV  = $validActions['remove_favicon'] ?? null;
 
