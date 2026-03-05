@@ -251,7 +251,9 @@ if (isPostRequest()) {
 
     // 3. DELETE PAGE POST
     if (post('form_type') === 'delete_page') {
-        checkPermissionError('delete', $perm);
+        if (empty($perm->reset_default) && empty($perm->reset_defaults)) {
+            checkPermissionError('reset_default', $perm);
+        }
 
         $delKey = post('page_key');
         if ($delKey !== '' && array_key_exists($delKey, $PAGE_META_REGISTRY)) {

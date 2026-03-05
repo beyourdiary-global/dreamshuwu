@@ -258,6 +258,14 @@ $customCSS[] = 'src/pages/user/css/profile.css';
 <body>
 <?php require_once BASE_PATH . 'common/menu/header.php'; ?>
 <div class="profile-container app-page-shell">
+    <?php if ($passwordChangeSuccess): ?>
+        <div
+            id="pwd-redirect"
+            data-url="<?php echo htmlspecialchars($passwordRedirectUrl, ENT_QUOTES, 'UTF-8'); ?>"
+            data-delay="1500"
+            data-message="密码修改成功，请使用新密码重新登录。"
+        ></div>
+    <?php else: ?>
     <div class="section-header">
         <div class="header-text-content">
             <?php echo generateBreadcrumb($conn, $currentUrl); ?>
@@ -271,16 +279,6 @@ $customCSS[] = 'src/pages/user/css/profile.css';
         </div>
     <?php endif; ?>
 
-    <?php if ($passwordChangeSuccess): ?>
-        <div id="pwd-redirect" data-url="<?php echo htmlspecialchars($passwordRedirectUrl, ENT_QUOTES, 'UTF-8'); ?>" data-delay="1500"></div>
-        <div class="profile-form-card text-center">
-            <div class="form-title"><i class="fa-solid fa-circle-check text-success"></i> 密码修改成功</div>
-            <p class="text-muted mb-3">请使用新密码重新登录，页面即将自动跳转。</p>
-            <a href="<?php echo htmlspecialchars($passwordRedirectUrl, ENT_QUOTES, 'UTF-8'); ?>" class="btn btn-primary">立即登录</a>
-        </div>
-    <?php endif; ?>
-
-    <?php if (!$passwordChangeSuccess): ?>
     <div class="profile-form-card">
         <div class="form-title"><i class="fa-solid fa-user-pen"></i> 编辑个人资料</div>
         

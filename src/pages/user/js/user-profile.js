@@ -3,12 +3,31 @@ document.addEventListener("DOMContentLoaded", () => {
   const pwdRedirect = document.getElementById("pwd-redirect");
   if (pwdRedirect) {
     const targetUrl = pwdRedirect.dataset.url || "";
-    const delay = Number(pwdRedirect.dataset.delay || 10000);
+    const delay = Number(pwdRedirect.dataset.delay || 1500);
+    const redirectMessage =
+      pwdRedirect.dataset.message || "密码修改成功，请使用新密码重新登录。";
+
     if (targetUrl) {
-      setTimeout(() => {
-        window.location.href = targetUrl;
-      }, delay);
+      if (typeof Swal !== "undefined") {
+        Swal.fire({
+          icon: "success",
+          title: "操作成功",
+          text: redirectMessage,
+          confirmButtonText: "我知道了",
+          confirmButtonColor: "#233dd2",
+          allowOutsideClick: false,
+          allowEscapeKey: false,
+        }).then(() => {
+          window.location.href = targetUrl;
+        });
+      } else {
+        setTimeout(() => {
+          window.location.href = targetUrl;
+        }, delay);
+      }
     }
+
+    return;
   }
 
   // --- Helper: Show Custom Error Message ---
@@ -40,6 +59,29 @@ document.addEventListener("DOMContentLoaded", () => {
   const currentPwd = pwdForm
     ? pwdForm.querySelector('[name="current_password"]')
     : null;
+
+  // --- 2.1 Password Toggle ---
+  document.querySelectorAll(".toggle-password").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+
+      const targetId = btn.getAttribute("data-target");
+      const input = targetId
+        ? document.getElementById(targetId)
+        : btn.closest(".password-field")?.querySelector("input");
+
+      if (!input) return;
+
+      const toText = input.type === "password";
+      input.type = toText ? "text" : "password";
+
+      const icon = btn.querySelector("i");
+      if (icon) {
+        icon.className = toText ? "fa fa-eye-slash" : "fa fa-eye";
+      }
+      btn.setAttribute("title", toText ? "隐藏密码" : "显示密码");
+    });
+  });
 
   if (pwdForm) {
     pwdForm.addEventListener("submit", (e) => {
