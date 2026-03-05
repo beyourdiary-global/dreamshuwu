@@ -153,9 +153,18 @@
   color: #fff;
 }
 
-body.is-mobile .profile-container,
-body.is-tablet .profile-container {
-  padding: 0;
+body.is-mobile.has-sidebar .profile-container.app-page-shell,
+body.is-tablet.has-sidebar .profile-container.app-page-shell {
+  padding-left: 12px !important;
+  padding-right: 12px !important;
+  box-sizing: border-box;
+}
+
+@media (max-width: 380px) {
+  body.is-mobile.has-sidebar .profile-container.app-page-shell {
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
 }
 
 body.is-mobile .profile-container .section-header h2,

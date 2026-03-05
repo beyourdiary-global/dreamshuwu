@@ -70,7 +70,7 @@ if (isPostRequest()) {
     
     // 2. Map Database actions to Variables
     $ACTION_SAVE    = $validActions['save'] ?? 'save'; 
-    $ACTION_RESET   = $validActions['reset_defaults'] ?? null;
+    $ACTION_RESET   = $validActions['reset_default'] ?? null; 
     $ACTION_RM_LOGO = $validActions['remove_logo'] ?? null;
     $ACTION_RM_FAV  = $validActions['remove_favicon'] ?? null;
 
@@ -139,7 +139,7 @@ if (isPostRequest()) {
         $logMessage = 'Reset Website Settings to Default';
         $actionTitle = "{$pageName}已重置为默认值！";
         $flashType = 'warning';
-        $logActionCode = 'Reset_defaults';
+        $logActionCode = 'Reset_default';
 
     } elseif ($actionType === $ACTION_RM_LOGO && $ACTION_RM_LOGO !== null) {
         if (!empty($current['website_logo'])) @unlink($uploadDir . $current['website_logo']);

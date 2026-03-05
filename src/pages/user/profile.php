@@ -15,6 +15,8 @@ $msgType = "";
 $auditPage = 'User Profile'; 
 $passwordChangeSuccess = false;
 $passwordRedirectUrl = '';
+$passwordFieldError = '';
+$passwordFieldTarget = '';
 
 // Determine redirect URL
 $profileRedirectUrl = URL_PROFILE;
@@ -171,10 +173,16 @@ if (post('action') === 'change_pwd') {
 
     if (!$userRow || !password_verify($currentPwd, $userRow['password_hash'])) {
         $message = "当前密码错误"; $msgType = "danger";
+        $passwordFieldError = $message;
+        $passwordFieldTarget = 'current_password';
     } elseif ($newPwd !== $confirmPwd) {
         $message = "两次输入的密码不一致"; $msgType = "danger";
+        $passwordFieldError = $message;
+        $passwordFieldTarget = 'confirm_password';
     } elseif (!isStrongPassword($newPwd)) {
         $message = "新密码强度不足"; $msgType = "danger";
+        $passwordFieldError = "新密码强度不足（至少8位，包含大小写字母、数字和特殊字符）";
+        $passwordFieldTarget = 'new_password';
     } else {
         $newHash = password_hash($newPwd, PASSWORD_DEFAULT);
         $upPwdSql = "UPDATE " . USR_LOGIN . " SET password_hash = ? WHERE id = ?";
@@ -258,29 +266,27 @@ $customCSS[] = 'src/pages/user/css/profile.css';
 <body>
 <?php require_once BASE_PATH . 'common/menu/header.php'; ?>
 <div class="profile-container app-page-shell">
+    <?php if ($passwordChangeSuccess): ?>
+        <div
+            id="pwd-redirect"
+            data-url="<?php echo htmlspecialchars($passwordRedirectUrl, ENT_QUOTES, 'UTF-8'); ?>"
+            data-delay="1500"
+            data-message="密码修改成功，请使用新密码重新登录。"
+        ></div>
+    <?php else: ?>
     <div class="section-header">
         <div class="header-text-content">
             <?php echo generateBreadcrumb($conn, $currentUrl); ?>
         </div>
     </div>
 
-    <?php if ($message): ?>
+    <?php if ($message && $passwordFieldError === ''): ?>
         <div class="alert alert-<?php echo $msgType; ?> d-none">
             <?php echo htmlspecialchars($message); ?>
             
         </div>
     <?php endif; ?>
 
-    <?php if ($passwordChangeSuccess): ?>
-        <div id="pwd-redirect" data-url="<?php echo htmlspecialchars($passwordRedirectUrl, ENT_QUOTES, 'UTF-8'); ?>" data-delay="1500"></div>
-        <div class="profile-form-card text-center">
-            <div class="form-title"><i class="fa-solid fa-circle-check text-success"></i> 密码修改成功</div>
-            <p class="text-muted mb-3">请使用新密码重新登录，页面即将自动跳转。</p>
-            <a href="<?php echo htmlspecialchars($passwordRedirectUrl, ENT_QUOTES, 'UTF-8'); ?>" class="btn btn-primary">立即登录</a>
-        </div>
-    <?php endif; ?>
-
-    <?php if (!$passwordChangeSuccess): ?>
     <div class="profile-form-card">
         <div class="form-title"><i class="fa-solid fa-user-pen"></i> 编辑个人资料</div>
         
@@ -331,7 +337,9 @@ $customCSS[] = 'src/pages/user/css/profile.css';
     <div class="profile-form-card">
         <div class="form-title"><i class="fa-solid fa-lock"></i> 修改密码</div>
         
-        <form method="POST" id="passwordForm">
+          <form method="POST" id="passwordForm"
+              data-server-error="<?php echo htmlspecialchars($passwordFieldError, ENT_QUOTES, 'UTF-8'); ?>"
+              data-server-error-target="<?php echo htmlspecialchars($passwordFieldTarget, ENT_QUOTES, 'UTF-8'); ?>">
             <input type="hidden" name="action" value="change_pwd">
             <div class="form-group">
                 <label>当前密码 <span class="text-danger">*</span></label>

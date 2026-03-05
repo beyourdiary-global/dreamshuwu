@@ -115,8 +115,10 @@
         </div>
         
         <div class="col-12 col-md-6 text-center text-md-end">
-            <?php if (!empty($perm->delete)): ?>
-            <button type="button" class="btn btn-danger px-4 mobile-full-width" onclick="confirmAction('reset_defaults', '确定要重置所有设置吗？此操作无法撤销。', 'warning')">
+            <?php if (!empty($perm->reset_default)): ?>
+            <button type="button"
+                class="btn btn-danger px-4 mobile-full-width"
+                onclick="confirmAction('<?php echo !empty($perm->reset_default) ? 'reset_default' : ''; ?>', '确定要重置所有设置吗？此操作无法撤销。', 'warning')">
                 <i class="fa-solid fa-rotate-left"></i> Reset to Defaults
             </button>
             <?php endif; ?>

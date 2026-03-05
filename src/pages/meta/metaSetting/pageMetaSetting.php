@@ -66,7 +66,7 @@
                         </h5>
 
                         <?php if (in_array($selectedPageKey, $customizedPages)): ?>
-                        <?php if ($perm->delete): ?>
+                        <?php if (!empty($perm->reset_default) || !empty($perm->reset_defaults)): ?>
                         <form method="POST" class="reset-form">
                             <input type="hidden" name="form_type" value="delete_page">
                             <input type="hidden" name="page_key" value="<?php echo htmlspecialchars($selectedPageKey, ENT_QUOTES, 'UTF-8'); ?>">
