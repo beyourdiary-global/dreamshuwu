@@ -117,21 +117,44 @@
 
 .profile-container .password-field {
   position: relative;
+  display: block;
 }
 
 .profile-container .password-field .form-control {
-  padding-right: 38px;
+  padding-right: 44px !important;
+}
+
+.profile-container .password-field .form-control.is-invalid {
+  background-image: none !important;
+}
+
+.profile-container .password-field .form-control.is-invalid ~ .toggle-password {
+  right: 8px !important;
+  top: 50%;
+  transform: translateY(-50%);
 }
 
 .profile-container .password-field .toggle-password {
   position: absolute;
-  right: 10px;
+  right: 8px;
   top: 50%;
   transform: translateY(-50%);
   border: none;
   background: transparent;
   color: #64748b;
-  padding: 2px;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3;
+  transition: none;
+}
+
+.profile-container .form-group .custom-error-msg {
+  display: block;
+  margin-top: 6px;
 }
 
 .profile-container .btn-save,

@@ -261,8 +261,117 @@ $(document).ready(function () {
     saveChapter("save");
   });
 
+  function showFieldError(input, message) {
+    if (!input) return;
+
+    if (
+      window.GlobalFormValidation &&
+      typeof window.GlobalFormValidation.showError === "function"
+    ) {
+      window.GlobalFormValidation.showError(input, message);
+      return;
+    }
+
+    const container =
+      input.closest(".mb-3, .mb-2, .col-md-4, .col-md-8, .col, .form-group") ||
+      input.parentElement;
+    if (!container) return;
+
+    let errorDiv = container.querySelector(".custom-error-msg");
+    if (!errorDiv) {
+      errorDiv = document.createElement("div");
+      errorDiv.className = "custom-error-msg text-danger small mt-1";
+      container.appendChild(errorDiv);
+    }
+
+    errorDiv.innerText = message || "此字段不能为空";
+    input.classList.add("is-invalid");
+    input.style.setProperty("border-color", "#dc3545", "important");
+  }
+
+  function clearFieldError(input) {
+    if (!input) return;
+
+    if (
+      window.GlobalFormValidation &&
+      typeof window.GlobalFormValidation.clearError === "function"
+    ) {
+      window.GlobalFormValidation.clearError(input);
+      return;
+    }
+
+    const container =
+      input.closest(".mb-3, .mb-2, .col-md-4, .col-md-8, .col, .form-group") ||
+      input.parentElement;
+    if (!container) return;
+
+    const errorDiv = container.querySelector(".custom-error-msg");
+    if (errorDiv) errorDiv.remove();
+
+    input.classList.remove("is-invalid");
+    input.style.removeProperty("border-color");
+  }
+
+  function clearChapterFormErrors() {
+    $("#chapterForm")
+      .find("input, textarea, select")
+      .each(function () {
+        clearFieldError(this);
+      });
+  }
+
+  function validateRequiredFields() {
+    const requiredFields = $("#chapterForm").find(
+      "input[required], textarea[required], select[required]",
+    );
+    let firstInvalidField = null;
+
+    requiredFields.each(function () {
+      const input = this;
+      const value = (input.value || "").trim();
+
+      if (value === "") {
+        let message = "此字段不能为空";
+        if (
+          window.GlobalFormValidation &&
+          typeof window.GlobalFormValidation.getRequiredMessage === "function"
+        ) {
+          message = window.GlobalFormValidation.getRequiredMessage(input);
+        }
+
+        showFieldError(input, message);
+        if (!firstInvalidField) firstInvalidField = input;
+      } else {
+        clearFieldError(input);
+      }
+    });
+
+    if (firstInvalidField) {
+      firstInvalidField.focus();
+      return false;
+    }
+
+    return true;
+  }
+
+  $("#chapterForm").on(
+    "input change",
+    "input[required], textarea[required], select[required]",
+    function () {
+      if ((this.value || "").trim() !== "") {
+        clearFieldError(this);
+      }
+    },
+  );
+
   function saveChapter(saveMode) {
     const form = $("#chapterForm")[0];
+    clearChapterFormErrors();
+
+    if (!validateRequiredFields()) {
+      return;
+    }
+
     if (!form.checkValidity()) {
       form.reportValidity();
       return;
@@ -438,6 +547,7 @@ $(document).ready(function () {
       { mode: "get", novel_id: NOVEL_ID, chapter_id: id },
       function (res) {
         if (res.success) {
+          clearChapterFormErrors();
           $("#edit_chapter_id").val(res.data.id);
           $("#chapter_number").val(res.data.chapter_number);
           $("#chapter_title").val(res.data.title);
@@ -485,6 +595,7 @@ $(document).ready(function () {
   });
 
   $("#btnResetEditor").click(() => {
+    clearChapterFormErrors();
     $("#chapterForm")[0].reset();
     $("#edit_chapter_id").val("0");
     $("#chapter_content").trigger("input");

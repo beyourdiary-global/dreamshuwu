@@ -63,14 +63,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function showFieldError(input, message) {
     if (!input) return;
-    if (
-      window.GlobalFormValidation &&
-      typeof window.GlobalFormValidation.showError === "function"
-    ) {
-      window.GlobalFormValidation.showError(input, message);
-      return;
-    }
-
     const container = input.closest(".form-group") || input.parentElement;
     if (!container) return;
 
@@ -82,23 +74,17 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     errorDiv.innerText = message || "输入有误";
     input.classList.add("is-invalid");
+    input.style.setProperty("border-color", "#dc3545", "important");
   }
 
   function clearFieldError(input) {
     if (!input) return;
-    if (
-      window.GlobalFormValidation &&
-      typeof window.GlobalFormValidation.clearError === "function"
-    ) {
-      window.GlobalFormValidation.clearError(input);
-      return;
-    }
-
     const container = input.closest(".form-group") || input.parentElement;
     if (!container) return;
     const errorDiv = container.querySelector(".custom-error-msg");
     if (errorDiv) errorDiv.remove();
     input.classList.remove("is-invalid");
+    input.style.removeProperty("border-color");
   }
 
   if (pwdForm) {
