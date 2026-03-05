@@ -1011,7 +1011,7 @@ function initAuthorVerificationModule() {
             html +=
               '<button type="button" class="btn btn-sm btn-outline-secondary btn-author-delete" data-id="' +
               id +
-              '" title="软删除">删除</button>';
+              '" title="删除">删除</button>';
           return html === ""
             ? '<span class="text-muted small">无操作权限</span>'
             : '<div class="author-verify-actions">' + html + "</div>";
@@ -1275,7 +1275,7 @@ function initAuthorVerificationModule() {
     if (typeof Swal !== "undefined") {
       Swal.fire({
         title: "确认删除？",
-        text: "此操作会进行软删除。",
+        text: "此操作会进行删除。",
         icon: "warning",
         showCancelButton: true,
         confirmButtonText: "确认",
@@ -1564,7 +1564,7 @@ function initEmailTemplateModule() {
     if (typeof Swal !== "undefined") {
       Swal.fire({
         title: "确认删除？",
-        text: "此操作会进行软删除。",
+        text: "此操作会进行删除。",
         icon: "warning",
         showCancelButton: true,
         confirmButtonText: "确认",

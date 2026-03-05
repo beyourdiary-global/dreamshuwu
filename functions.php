@@ -1132,8 +1132,20 @@ function getPageMetaSettings($conn, $pageKey) {
 function getWebSettings($conn) {
     if (!$conn) return null;
 
+    static $sidebarColumnChecked = false;
+    if (!$sidebarColumnChecked) {
+        $sidebarColumnChecked = true;
+        $columnCheck = $conn->query("SHOW COLUMNS FROM " . WEB_SETTINGS . " LIKE 'sidebar_color'");
+        if ($columnCheck && $columnCheck->num_rows === 0) {
+            @$conn->query("ALTER TABLE " . WEB_SETTINGS . " ADD COLUMN sidebar_color VARCHAR(50) DEFAULT '#FFFFFF' COMMENT 'Sidebar Background Color' AFTER background_color");
+        }
+        if ($columnCheck) {
+            $columnCheck->free();
+        }
+    }
+
     // Use prepared statement style
-    $stmt = $conn->prepare("SELECT website_name, website_logo, website_favicon, theme_bg_color, theme_text_color, button_color, button_text_color, background_color FROM " . WEB_SETTINGS . " WHERE id = 1 LIMIT 1");
+    $stmt = $conn->prepare("SELECT website_name, website_logo, website_favicon, theme_bg_color, theme_text_color, button_color, button_text_color, background_color, sidebar_color FROM " . WEB_SETTINGS . " WHERE id = 1 LIMIT 1");
     if (!$stmt) return null;
 
     $stmt->execute();
@@ -1150,7 +1162,8 @@ function getWebSettings($conn) {
             'theme_text_color' => '#333333',
             'button_color' => '#233dd2',
             'button_text_color' => '#ffffff',
-            'background_color' => '#f4f7f6'
+            'background_color' => '#f4f7f6',
+            'sidebar_color' => '#ffffff'
         ];
     }
 
@@ -1163,6 +1176,7 @@ function getWebSettings($conn) {
     $buttonColor = null;
     $buttonTextColor = null;
     $backgroundColor = null;
+    $sidebarColor = null;
 
     $stmt->bind_result(
         $websiteName, 
@@ -1172,7 +1186,8 @@ function getWebSettings($conn) {
         $themeTextColor, 
         $buttonColor, 
         $buttonTextColor, 
-        $backgroundColor
+        $backgroundColor,
+        $sidebarColor
     );
     
     $stmt->fetch();
@@ -1186,7 +1201,8 @@ function getWebSettings($conn) {
         'theme_text_color' => $themeTextColor,
         'button_color' => $buttonColor,
         'button_text_color' => $buttonTextColor,
-        'background_color' => $backgroundColor
+        'background_color' => $backgroundColor,
+        'sidebar_color' => $sidebarColor
     ];
 }
 

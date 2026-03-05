@@ -170,7 +170,8 @@
   width: 100%;
   min-width: 0;
   height: 100%;
-  color: var(--text-main);
+  color: var(--theme-text-color) !important;
+  -webkit-text-fill-color: var(--theme-text-color);
 }
 
 .site-header .search-form input[type="text"]:focus {
@@ -178,17 +179,39 @@
 }
 
 .site-header .search-form input[type="text"]::placeholder {
-  color: var(--hdr-text-light);
+  color: var(--theme-text-color) !important;
   opacity: 0.7;
+}
+
+.site-header .search-form input[type="text"]::-webkit-input-placeholder {
+  color: var(--theme-text-color) !important;
+  opacity: 0.7;
+}
+
+.site-header .search-form input[type="text"]::-moz-placeholder {
+  color: var(--theme-text-color) !important;
+  opacity: 0.7;
+}
+
+.site-header .search-form input[type="text"]:-ms-input-placeholder {
+  color: var(--theme-text-color) !important;
+}
+
+.site-header .search-form input[type="text"]::-ms-input-placeholder {
+  color: var(--theme-text-color) !important;
 }
 
 .site-header .search-form button {
   border: none;
   background: transparent;
-  color: var(--hdr-text-light);
+  color: var(--theme-text-color) !important;
   cursor: pointer;
   padding: 0;
   font-size: 16px;
+}
+
+.site-header .search-form button i {
+  color: inherit !important;
 }
 
 /* Author & Auth Section (Right Side) */

@@ -17,7 +17,8 @@ if (!$webSettings) {
         'theme_text_color'  => '#333333',
         'button_color'      => '#233dd2',
         'button_text_color' => '#ffffff',
-        'background_color'  => '#f4f7f6'
+        'background_color'  => '#f4f7f6',
+        'sidebar_color'     => '#ffffff'
     ];
 }
 
@@ -69,6 +70,7 @@ $resolvedButtonTextColor = $normalizeHexColor($webSettings['button_text_color'] 
 $resolvedPageBgColor = defined('CUSTOM_PAGE_BG')
     ? (string) CUSTOM_PAGE_BG
     : $normalizeHexColor($webSettings['background_color'] ?? '', '#F4F7F6');
+$resolvedSidebarBgColor = $normalizeHexColor($webSettings['sidebar_color'] ?? '', '#FFFFFF');
 
 $resolvedPrimaryHoverColor = $darkenHexColor($resolvedButtonColor, 0.14);
 $resolvedPrimarySoft05 = $hexToRgba($resolvedButtonColor, 0.05);
@@ -152,6 +154,7 @@ $finalOgUrl     = !empty($specificSeo['og_url']) ? $specificSeo['og_url'] : ($gl
             --btn-color: <?php echo htmlspecialchars($resolvedButtonColor, ENT_QUOTES, 'UTF-8'); ?>;
             --btn-text-color: <?php echo htmlspecialchars($resolvedButtonTextColor, ENT_QUOTES, 'UTF-8'); ?>;
             --page-bg-color: <?php echo htmlspecialchars($resolvedPageBgColor, ENT_QUOTES, 'UTF-8'); ?>;
+            --sidebar-bg-color: <?php echo htmlspecialchars($resolvedSidebarBgColor, ENT_QUOTES, 'UTF-8'); ?>;
             --primary-color: <?php echo htmlspecialchars($resolvedButtonColor, ENT_QUOTES, 'UTF-8'); ?>;
             --primary-hover: <?php echo htmlspecialchars($resolvedPrimaryHoverColor, ENT_QUOTES, 'UTF-8'); ?>;
             --btn-hover-color: <?php echo htmlspecialchars($resolvedPrimaryHoverColor, ENT_QUOTES, 'UTF-8'); ?>;
