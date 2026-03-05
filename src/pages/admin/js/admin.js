@@ -476,6 +476,16 @@ function initUserRoleFilter() {
       },
     },
   });
+
+  function syncUserRoleMobileFooter() {
+    syncMobileFooterForTable(tableEl);
+    syncMobileCardsForTable(table, tableEl);
+  }
+
+  table.on("draw", syncUserRoleMobileFooter);
+  window.addEventListener("resize", syncUserRoleMobileFooter);
+  setTimeout(syncUserRoleMobileFooter, 0);
+
   var debounceTimer = null;
 
   form.addEventListener("submit", function (event) {

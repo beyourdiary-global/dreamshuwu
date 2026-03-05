@@ -430,27 +430,6 @@ foreach ($tables as $name => $sql) {
     }
 }
 
-// 5. Safe schema migration for existing environments
-$columnCheckSql = "SHOW COLUMNS FROM web_settings LIKE 'sidebar_color'";
-$columnCheckRes = $conn->query($columnCheckSql);
-
-if ($columnCheckRes && $columnCheckRes->num_rows === 0) {
-  $alterSql = "ALTER TABLE web_settings ADD COLUMN sidebar_color VARCHAR(50) DEFAULT '#ffffff' COMMENT 'Sidebar Background Color' AFTER background_color";
-  if ($conn->query($alterSql) === TRUE) {
-    echo "Column '<strong>web_settings.sidebar_color</strong>' added safely.<br>";
-  } else {
-    echo "Error altering '<strong>web_settings</strong>': " . $conn->error . "<br>";
-  }
-} elseif ($columnCheckRes) {
-  echo "Column '<strong>web_settings.sidebar_color</strong>' already exists, skipped.<br>";
-} else {
-  echo "Warning: Unable to verify '<strong>web_settings.sidebar_color</strong>': " . $conn->error . "<br>";
-}
-
-if ($columnCheckRes instanceof mysqli_result) {
-  $columnCheckRes->free();
-}
-
 $conn->close();
 echo "<hr><strong>Environment Build Complete!</strong>";
 ?>
