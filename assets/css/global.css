@@ -225,9 +225,17 @@ input[type="password"]::-ms-clear {
   transition: 0.3s;
   text-align: center;
   text-decoration: none;
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   white-space: nowrap;
   box-shadow: none !important;
+}
+
+.desktop-add-btn i.fa-plus,
+.desktop-add-btn i.fa-solid.fa-plus,
+.desktop-add-btn i.fa.fa-plus {
+  display: none !important;
 }
 
 .btn-primary:hover,
