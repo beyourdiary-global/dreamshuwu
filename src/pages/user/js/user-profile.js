@@ -30,28 +30,6 @@ document.addEventListener("DOMContentLoaded", () => {
     return;
   }
 
-  // --- Helper: Show Custom Error Message ---
-  const alertBox = document.getElementById("js-alert-box");
-
-  function showError(message) {
-    if (alertBox) {
-      // Clear any ongoing fadeOut animation and inline styles
-      $(alertBox).stop(true, true).css("display", "");
-      alertBox.textContent = message;
-      alertBox.className = "alert alert-danger"; // Force danger styling for actual errors
-      // Scroll to top so user sees the error
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
-  }
-
-  function hideError() {
-    if (alertBox) {
-      // Clear any ongoing fadeOut animation and reset to default hidden state
-      $(alertBox).stop(true, true).css("display", "");
-      alertBox.className = "alert alert-danger d-none";
-    }
-  }
-
   // --- 2. Form B Validation (Password) ---
   const pwdForm = document.getElementById("passwordForm");
   const newPwd = document.getElementById("new_password");
@@ -83,9 +61,66 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
+  function showFieldError(input, message) {
+    if (!input) return;
+    if (
+      window.GlobalFormValidation &&
+      typeof window.GlobalFormValidation.showError === "function"
+    ) {
+      window.GlobalFormValidation.showError(input, message);
+      return;
+    }
+
+    const container = input.closest(".form-group") || input.parentElement;
+    if (!container) return;
+
+    let errorDiv = container.querySelector(".custom-error-msg");
+    if (!errorDiv) {
+      errorDiv = document.createElement("div");
+      errorDiv.className = "custom-error-msg text-danger small mt-1";
+      container.appendChild(errorDiv);
+    }
+    errorDiv.innerText = message || "输入有误";
+    input.classList.add("is-invalid");
+  }
+
+  function clearFieldError(input) {
+    if (!input) return;
+    if (
+      window.GlobalFormValidation &&
+      typeof window.GlobalFormValidation.clearError === "function"
+    ) {
+      window.GlobalFormValidation.clearError(input);
+      return;
+    }
+
+    const container = input.closest(".form-group") || input.parentElement;
+    if (!container) return;
+    const errorDiv = container.querySelector(".custom-error-msg");
+    if (errorDiv) errorDiv.remove();
+    input.classList.remove("is-invalid");
+  }
+
   if (pwdForm) {
+    [currentPwd, newPwd, confirmPwd].forEach((input) => {
+      if (!input) return;
+      input.addEventListener("input", () => clearFieldError(input));
+    });
+
+    const serverError = (pwdForm.dataset.serverError || "").trim();
+    const serverErrorTarget = (pwdForm.dataset.serverErrorTarget || "").trim();
+    if (serverError && serverErrorTarget) {
+      const targetInput = document.getElementById(serverErrorTarget);
+      if (targetInput) {
+        showFieldError(targetInput, serverError);
+        targetInput.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }
+
     pwdForm.addEventListener("submit", (e) => {
-      hideError(); // Clear previous errors
+      [currentPwd, newPwd, confirmPwd].forEach((input) =>
+        clearFieldError(input),
+      );
 
       // Check Empty
       if (!currentPwd.value || !newPwd.value || !confirmPwd.value) {
@@ -100,14 +135,14 @@ document.addEventListener("DOMContentLoaded", () => {
           typeof window.GlobalFormValidation.getRequiredMessage === "function"
             ? window.GlobalFormValidation.getRequiredMessage(missingField)
             : "此字段不能为空";
-        showError(requiredMessage);
+        showFieldError(missingField, requiredMessage);
         return;
       }
 
       // Check Match
       if (newPwd.value !== confirmPwd.value) {
         e.preventDefault();
-        showError("两次输入的密码不一致"); // "Passwords do not match"
+        showFieldError(confirmPwd, "两次输入的密码不一致");
         return;
       }
     });
