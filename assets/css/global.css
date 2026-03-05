@@ -227,6 +227,7 @@ input[type="password"]::-ms-clear {
   text-decoration: none;
   display: inline-block;
   white-space: nowrap;
+  box-shadow: none !important;
 }
 
 .btn-primary:hover,
@@ -352,7 +353,7 @@ body.has-sidebar .web-settings-container .col-12 {
   padding: 12px 20px;
   border-radius: 10px;
   font-size: 15px;
-  box-shadow: var(--shadow-sm);
+  box-shadow: none !important;
 }
 
 /* Typography Overrides */
@@ -414,7 +415,7 @@ table.dataTable tbody td,
   border-radius: var(--radius-sm);
   color: var(--btn-color) !important;
   background: var(--bg-card);
-  text-decoration: none;
+  text-decoration: none !important;
 }
 
 .dataTables_paginate ul.pagination {
@@ -428,6 +429,18 @@ table.dataTable tbody td,
 .dataTables_paginate ul.pagination > li > a {
   color: var(--btn-color) !important;
   border-radius: var(--radius-sm) !important;
+  text-decoration: none !important;
+}
+
+.dataTables_paginate ul.pagination > li > .page-link {
+  text-decoration: none !important;
+}
+
+.dataTables_wrapper .dataTables_paginate .paginate_button:hover,
+.dataTables_paginate .paginate_button:hover,
+.dataTables_paginate ul.pagination > li > a:hover,
+.dataTables_paginate ul.pagination > li > .page-link:hover {
+  text-decoration: underline !important;
 }
 
 .dataTables_wrapper .dataTables_filter {
