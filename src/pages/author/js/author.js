@@ -525,6 +525,8 @@ $(document).ready(function () {
           '"><i class="fa-solid fa-trash"></i> 删除</button>';
       actions += "</div></div>";
 
+      childHtml += actions;
+
       row.child(childHtml).show();
       tr.addClass("shown");
     }
