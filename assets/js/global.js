@@ -173,6 +173,110 @@
   }
 
   window.GlobalFormValidation = {
+    normalizeLabelText: function (value) {
+      return (value || "")
+        .replace(/[*：:]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    },
+
+    humanizeFieldName: function (value) {
+      var text = (value || "").trim();
+      if (!text) return "此字段";
+
+      text = text
+        .replace(/\[\]$/, "")
+        .replace(/[_\-.]+/g, " ")
+        .replace(/([a-z\d])([A-Z])/g, "$1 $2")
+        .replace(/\s+/g, " ")
+        .trim();
+
+      if (!text) return "此字段";
+
+      return text
+        .split(" ")
+        .map(function (part) {
+          if (!part) return part;
+          return part.charAt(0).toUpperCase() + part.slice(1);
+        })
+        .join(" ");
+    },
+
+    getFieldLabel: function (input) {
+      if (!input) return "此字段";
+
+      var explicitLabel =
+        input.getAttribute("data-label") ||
+        input.getAttribute("data-field-label") ||
+        input.getAttribute("aria-label") ||
+        input.getAttribute("title");
+      var normalizedExplicit = this.normalizeLabelText(explicitLabel);
+      if (normalizedExplicit) return normalizedExplicit;
+
+      var byFor = null;
+      if (input.id) {
+        byFor = document.querySelector('label[for="' + input.id + '"]');
+      }
+      if (byFor) {
+        var byForText = this.normalizeLabelText(byFor.textContent);
+        if (byForText) return byForText;
+      }
+
+      var wrappingLabel = input.closest("label");
+      if (wrappingLabel) {
+        var wrappingText = this.normalizeLabelText(wrappingLabel.textContent);
+        if (wrappingText) return wrappingText;
+      }
+
+      var prev = input.previousElementSibling;
+      while (prev) {
+        if (prev.tagName && prev.tagName.toLowerCase() === "label") {
+          var prevText = this.normalizeLabelText(prev.textContent);
+          if (prevText) return prevText;
+        }
+        var prevInnerLabel = prev.querySelector
+          ? prev.querySelector("label")
+          : null;
+        if (prevInnerLabel) {
+          var prevInnerText = this.normalizeLabelText(
+            prevInnerLabel.textContent,
+          );
+          if (prevInnerText) return prevInnerText;
+        }
+        prev = prev.previousElementSibling;
+      }
+
+      var nearestContainer = input.closest(
+        ".form-group, .form-floating, .form-field, .auth-field, .mb-3, .mb-2, .col, .col-md-6, .col-lg-6",
+      );
+      if (nearestContainer) {
+        var nearbyLabel = nearestContainer.querySelector("label");
+        if (nearbyLabel) {
+          var nearbyText = this.normalizeLabelText(nearbyLabel.textContent);
+          if (nearbyText) return nearbyText;
+        }
+      }
+
+      var byName = input.form
+        ? input.form.querySelector('label[for="' + (input.name || "") + '"]')
+        : null;
+      if (byName) {
+        var byNameText = this.normalizeLabelText(byName.textContent);
+        if (byNameText) return byNameText;
+      }
+
+      var fallbackName = this.normalizeLabelText(input.name || input.id);
+      if (fallbackName && /[\u4e00-\u9fff]/.test(fallbackName)) {
+        return fallbackName;
+      }
+
+      return "此字段";
+    },
+
+    getRequiredMessage: function (input) {
+      return this.getFieldLabel(input) + "不能为空";
+    },
+
     showError: function (input, message) {
       var isCheck = input.type === "checkbox" || input.type === "radio";
       var container = input.parentElement;
@@ -251,8 +355,7 @@
         requiredInputs.forEach(function (input) {
           if (window.GlobalFormValidation.isEmpty(input)) {
             hasError = true;
-            var msg =
-              input.type === "checkbox" ? "必须同意此选项" : "此字段不能为空";
+            var msg = window.GlobalFormValidation.getRequiredMessage(input);
             window.GlobalFormValidation.showError(input, msg);
           }
         });

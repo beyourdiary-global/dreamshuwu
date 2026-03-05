@@ -33,7 +33,7 @@ if (hasSession('flash_msg')) {
 // Fetch Current Settings
 $current = getWebSettings($conn);
 if (!$current) {
-    $current = array_fill_keys(['website_name', 'website_logo', 'website_favicon', 'theme_bg_color', 'theme_text_color', 'button_color', 'button_text_color', 'background_color'], '');
+    $current = array_fill_keys(['website_name', 'website_logo', 'website_favicon', 'theme_bg_color', 'theme_text_color', 'button_color', 'button_text_color', 'background_color', 'sidebar_color'], '');
 }
 
 // Define Upload Directory
@@ -128,7 +128,8 @@ if (isPostRequest()) {
             'theme_text_color' => '#333333',
             'button_color' => '#233dd2',
             'button_text_color' => '#ffffff',
-            'background_color' => '#f4f7f6'
+            'background_color' => '#f4f7f6',
+            'sidebar_color' => '#ffffff'
         ];
         
         // Clean up physical files safely
@@ -165,6 +166,7 @@ if (isPostRequest()) {
             'button_color'      => $validateHex(post('button_color'), '#233dd2'),
             'button_text_color' => $validateHex(post('button_text_color'), '#ffffff'),
             'background_color'  => $validateHex(post('background_color'), '#f4f7f6'),
+            'sidebar_color'     => $validateHex(post('sidebar_color'), '#ffffff'),
         ];
 
         // Process Uploads

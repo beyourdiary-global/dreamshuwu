@@ -98,6 +98,13 @@
         </div>
     </div>
 
+    <div class="mb-4 row">
+        <label class="col-md-3 col-form-label text-md-end form-label">Sidebar Background</label>
+        <div class="col-md-3 d-flex align-items-center">
+            <input type="color" name="sidebar_color" class="form-control form-control-color" value="<?php echo htmlspecialchars($current['sidebar_color'] ?? '#ffffff'); ?>" title="Choose color" <?php if (!$canSave) echo 'disabled'; ?>>
+        </div>
+    </div>
+
     <div class="row mt-5 pt-3 border-top">
         <div class="col-12 col-md-6 text-center text-md-start mb-3 mb-md-0">
             <?php if ($canSave): ?>

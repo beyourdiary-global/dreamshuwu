@@ -48,7 +48,17 @@ document.addEventListener("DOMContentLoaded", () => {
       // Check Empty
       if (!currentPwd.value || !newPwd.value || !confirmPwd.value) {
         e.preventDefault();
-        showError("请填写所有必填项"); // "Please fill all required fields"
+        const missingField = !currentPwd.value
+          ? currentPwd
+          : !newPwd.value
+            ? newPwd
+            : confirmPwd;
+        const requiredMessage =
+          window.GlobalFormValidation &&
+          typeof window.GlobalFormValidation.getRequiredMessage === "function"
+            ? window.GlobalFormValidation.getRequiredMessage(missingField)
+            : "此字段不能为空";
+        showError(requiredMessage);
         return;
       }
 

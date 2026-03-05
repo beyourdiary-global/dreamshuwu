@@ -97,7 +97,7 @@
 
       if (typeof Swal !== "undefined") {
         Swal.fire({
-          title: "确认软删除？",
+          title: "确认删除？",
           text: "确定要删除操作 “" + rowName + "” 吗？",
           icon: "warning",
           showCancelButton: true,
@@ -124,7 +124,7 @@
     if (typeof Swal !== "undefined") {
       Swal.fire({
         title: "确定删除?",
-        text: "此操作将执行软删除。",
+        text: "此操作将执行删除。",
         icon: "warning",
         showCancelButton: true,
         confirmButtonColor: "#d33",
@@ -145,7 +145,7 @@
       });
     } else {
       // Fallback if Swal is missing
-      if (confirm("确定删除? 此操作将执行软删除。")) {
+      if (confirm("确定删除? 此操作将执行删除。")) {
         var idInput = document.getElementById("deleteId");
         var form = document.getElementById("deleteForm");
         if (idInput && form) {

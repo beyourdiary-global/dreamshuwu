@@ -56,6 +56,30 @@ document.addEventListener("DOMContentLoaded", () => {
       return input.value.trim() === "";
     },
 
+    getRequiredMessage: (input) => {
+      if (
+        window.GlobalFormValidation &&
+        typeof window.GlobalFormValidation.getRequiredMessage === "function"
+      ) {
+        return window.GlobalFormValidation.getRequiredMessage(input);
+      }
+
+      const rawLabel =
+        input?.getAttribute("data-label") ||
+        input?.getAttribute("aria-label") ||
+        input?.name ||
+        input?.id ||
+        "此字段";
+
+      const label = String(rawLabel)
+        .replace(/[*：:]/g, " ")
+        .replace(/[_\-.]+/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+
+      return (label || "此字段") + "不能为空";
+    },
+
     isStrongPassword: (pwd) => {
       const globalPwdRegex = window.StarAdminConfig
         ? window.StarAdminConfig.pwdRegex
@@ -122,7 +146,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (!emailInput || window.AuthUtils.isEmpty(emailInput)) {
         hasError = true;
-        window.AuthUtils.showError(emailInput, "请输入邮箱");
+        window.AuthUtils.showError(
+          emailInput,
+          window.AuthUtils.getRequiredMessage(emailInput),
+        );
       } else if (!window.AuthUtils.isValidEmail(emailInput.value.trim())) {
         hasError = true;
         window.AuthUtils.showError(emailInput, "请输入有效邮箱");
@@ -132,7 +159,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (!passwordInput || window.AuthUtils.isEmpty(passwordInput)) {
         hasError = true;
-        window.AuthUtils.showError(passwordInput, "请输入密码");
+        window.AuthUtils.showError(
+          passwordInput,
+          window.AuthUtils.getRequiredMessage(passwordInput),
+        );
       } else {
         window.AuthUtils.clearError(passwordInput);
       }
@@ -232,7 +262,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (!emailVal) {
         hasError = true;
-        window.AuthUtils.showError(emailInput, "请输入邮箱");
+        window.AuthUtils.showError(
+          emailInput,
+          window.AuthUtils.getRequiredMessage(emailInput),
+        );
       } else if (!window.AuthUtils.isValidEmail(emailVal)) {
         hasError = true;
         window.AuthUtils.showError(emailInput, "请输入有效邮箱");
@@ -326,7 +359,9 @@ document.addEventListener("DOMContentLoaded", () => {
         if (window.AuthUtils.isEmpty(input)) {
           hasError = true;
           const msg =
-            input.id === "terms" ? "必须同意条款与条件" : "此字段不能为空";
+            input.id === "terms"
+              ? "必须同意条款与条件"
+              : window.AuthUtils.getRequiredMessage(input);
           window.AuthUtils.showError(input, msg);
         } else {
           // Clear previous errors first
@@ -415,7 +450,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (window.AuthUtils.isEmpty(pwd)) {
         hasError = true;
-        window.AuthUtils.showError(pwd, "请输入新密码");
+        window.AuthUtils.showError(
+          pwd,
+          window.AuthUtils.getRequiredMessage(pwd),
+        );
       } else if (!window.AuthUtils.isStrongPassword(pwd.value)) {
         hasError = true;
         window.AuthUtils.showError(
@@ -426,7 +464,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (window.AuthUtils.isEmpty(confirmPwd)) {
         hasError = true;
-        window.AuthUtils.showError(confirmPwd, "请确认新密码");
+        window.AuthUtils.showError(
+          confirmPwd,
+          window.AuthUtils.getRequiredMessage(confirmPwd),
+        );
       } else if (pwd.value !== confirmPwd.value) {
         hasError = true;
         window.AuthUtils.showError(confirmPwd, "两次输入的密码不一致");

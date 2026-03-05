@@ -337,7 +337,7 @@ $customCSS[] = 'src/pages/admin/css/admin.css';
                                     </a>
                                     <?php endif; ?>
                                     <?php if (!empty($perm->delete)): ?>
-                                    <button type="button" class="btn btn-sm btn-outline-danger btn-action page-action-delete-btn" data-id="<?php echo $item['id']; ?>" data-name="<?php echo htmlspecialchars($item['name']); ?>" title="软删除">
+                                    <button type="button" class="btn btn-sm btn-outline-danger btn-action page-action-delete-btn" data-id="<?php echo $item['id']; ?>" data-name="<?php echo htmlspecialchars($item['name']); ?>" title="删除">
                                         <i class="fa-solid fa-trash"></i>
                                     </button>
                                     <?php endif; ?>
@@ -374,7 +374,7 @@ $customCSS[] = 'src/pages/admin/css/admin.css';
                                     <?php endif; ?>
                                     <?php if (!empty($perm->delete)): ?>
                                     <button type="button" class="btn btn-sm btn-outline-danger page-action-delete-btn" data-id="<?php echo $item['id']; ?>" data-name="<?php echo htmlspecialchars($item['name']); ?>">
-                                        <i class="fa-solid fa-trash"></i> 软删除
+                                        <i class="fa-solid fa-trash"></i> 删除
                                     </button>
                                     <?php endif; ?>
                                     <?php if (empty($perm->edit) && empty($perm->delete)): ?>
