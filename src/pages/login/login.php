@@ -20,6 +20,10 @@ $isAjax = post('ajax') === '1';
 $redirectCandidate = input('redirect') ?: session('redirect_after_login');
 $redirectTarget = isSafeRedirect($redirectCandidate) ? $redirectCandidate : URL_HOME;
 
+// Brute-force protection constants
+define('LOGIN_MAX_ATTEMPTS', 5);
+define('LOGIN_LOCKOUT_SECONDS', 900); // 15 minutes
+
 if (isPostRequest()) {
     $email = postSpaceFilter('email');
     $password = post('password') ?? "";
@@ -29,9 +33,15 @@ if (isPostRequest()) {
         $redirectTarget = $redirectFromPost;
     }
 
-    if ($email === "") $errorCode = "EMAIL_REQUIRED";
-    elseif (!isValidEmail($email)) $errorCode = "INVALID_EMAIL";
-    elseif ($password === "") $errorCode = "PASSWORD_REQUIRED";
+    // --- Brute-force / Rate-limit Check ---
+    $lockoutUntil = (int)session('login_lockout_until');
+    if ($lockoutUntil > time()) {
+        $errorCode = "LOGIN_LOCKED";
+    }
+
+    if ($errorCode === "" && $email === "") $errorCode = "EMAIL_REQUIRED";
+    elseif ($errorCode === "" && !isValidEmail($email)) $errorCode = "INVALID_EMAIL";
+    elseif ($errorCode === "" && $password === "") $errorCode = "PASSWORD_REQUIRED";
 
     if ($errorCode === "") {
         $stmt = mysqli_prepare($conn, $loginQuery . " LIMIT 1");
@@ -81,6 +91,10 @@ if (isPostRequest()) {
                     ]);
                 }
 
+                // Clear brute-force counters on successful login
+                unsetSession('login_attempts');
+                unsetSession('login_lockout_until');
+
                 // Set session variables including role_id
                 setSession('user_id', $user['id']);
                 setSession('user_name', $user['name'] ?? $email);
@@ -115,6 +129,16 @@ if (isPostRequest()) {
         }
     }
 
+    // --- Increment brute-force counter on credential failure ---
+    if (in_array($errorCode, ['EMAIL_NOT_FOUND', 'PASSWORD_INCORRECT'])) {
+        $attempts = (int)session('login_attempts') + 1;
+        setSession('login_attempts', $attempts);
+        if ($attempts >= LOGIN_MAX_ATTEMPTS) {
+            setSession('login_lockout_until', time() + LOGIN_LOCKOUT_SECONDS);
+            $errorCode = "LOGIN_LOCKED";
+        }
+    }
+
     $messageMap = [
         'EMAIL_REQUIRED'    => '请输入邮箱',
         'INVALID_EMAIL'     => '请输入有效邮箱',
@@ -122,6 +146,7 @@ if (isPostRequest()) {
         'EMAIL_NOT_FOUND'   => '该邮箱尚未注册',
         'PASSWORD_INCORRECT'=> '密码错误，请重新输入',
         'ACCOUNT_DISABLED'  => '账号已被停用，请联系管理员',
+        'LOGIN_LOCKED'      => '登录尝试次数过多，请稍后再试',
         'LOGIN_FAILED'      => '登录失败，请稍后再试'
     ];
     $message = $messageMap[$errorCode] ?? '登录失败，请稍后再试';
