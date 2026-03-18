@@ -148,10 +148,18 @@ function requireLogin() {
     if (hasSession('user_id') && !empty($conn)) {
         $usersTable = defined('USR_LOGIN') ? USR_LOGIN : 'users';
         $uid = sessionInt('user_id');
-        $res = $conn->query("SELECT user_role_id FROM {$usersTable} WHERE id = $uid LIMIT 1");
-        if ($res && $res->num_rows > 0) {
-            $row = $res->fetch_assoc();
-            setSession('role_id', (int)$row['user_role_id']);
+        $stmt = $conn->prepare("SELECT user_role_id FROM {$usersTable} WHERE id = ? LIMIT 1");
+        if ($stmt) {
+            $stmt->bind_param('i', $uid);
+            $stmt->execute();
+            $stmt->store_result();
+            if ($stmt->num_rows > 0) {
+                $roleId = null;
+                $stmt->bind_result($roleId);
+                $stmt->fetch();
+                setSession('role_id', (int)$roleId);
+            }
+            $stmt->close();
         }
     }
 }

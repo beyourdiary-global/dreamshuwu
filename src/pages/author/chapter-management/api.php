@@ -52,6 +52,17 @@ try {
         if (empty($perm) || (empty($perm->add) && empty($perm->edit))) throw new Exception('无编辑权限 (No Edit Permission)');
     }
 
+    // =========================================================================
+    // CSRF Protection for state-changing POSTs
+    // =========================================================================
+    if (in_array($mode, ['save', 'auto_save', 'delete'])) {
+        $clientToken = getServer('HTTP_X_CSRF_TOKEN') ?: post('csrf_token');
+        if (empty(session('csrf_token')) || !hash_equals(session('csrf_token'), (string)$clientToken)) {
+            http_response_code(403);
+            throw new Exception('安全校验失败 (Invalid CSRF Token)');
+        }
+    }
+
     $novelTable = defined('NOVEL') ? NOVEL : 'novel';
     $chapterTable = defined('CHAPTER') ? CHAPTER : 'chapter';
     $chapterVersionTable = defined('CHAPTER_VERSION') ? CHAPTER_VERSION : 'chapter_version';
